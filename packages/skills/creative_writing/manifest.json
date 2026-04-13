@@ -1,0 +1,16 @@
+{
+  "id": "creative_writing",
+  "name": "creative writing",
+  "version": "v1",
+  "description": "Runtime skill capability for creative writing.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "prompt_only",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [],
+  "feature_flag_key": "creative_writing"
+}

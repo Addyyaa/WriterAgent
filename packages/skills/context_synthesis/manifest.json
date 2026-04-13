@@ -1,0 +1,18 @@
+{
+  "id": "context_synthesis",
+  "name": "context synthesis",
+  "version": "v1",
+  "description": "Runtime skill capability for context synthesis.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "context_synthesis"
+  ],
+  "feature_flag_key": "context_synthesis"
+}

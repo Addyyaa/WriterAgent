@@ -1,0 +1,31 @@
+{
+  "consumed_by": {
+    "micro_constraints": "code",
+    "micro_constraints.sentence_structure": "code",
+    "micro_constraints.vocabulary_level": "code",
+    "micro_constraints.forbidden_words": "code",
+    "rhythm_strategy": "code",
+    "rhythm_strategy.instruction": "code",
+    "style_mission": {
+      "consumed_by": "audit_only",
+      "rationale": "历史风格描述字段",
+      "retire_by": "2026-12-31"
+    },
+    "micro_constraints.preferred_punctuation": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "rhythm_strategy.pacing": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "anti_drift_checks": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "tonal_keywords": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    }
+  }
+}

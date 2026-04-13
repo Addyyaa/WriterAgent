@@ -1,0 +1,16 @@
+{
+  "id": "conflict_design",
+  "name": "conflict design",
+  "version": "v1",
+  "description": "Runtime skill capability for conflict design.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "prompt_only",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [],
+  "feature_flag_key": "conflict_design"
+}

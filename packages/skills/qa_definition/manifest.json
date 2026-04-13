@@ -1,0 +1,18 @@
+{
+  "id": "qa_definition",
+  "name": "qa definition",
+  "version": "v1",
+  "description": "Runtime skill capability for qa definition.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "qa_spec"
+  ],
+  "feature_flag_key": "qa_definition"
+}

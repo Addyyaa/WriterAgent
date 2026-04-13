@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "motivation_analysis": {
+      "type": "object",
+      "deprecated": true,
+      "properties": {
+        "explicit": { "type": "string" },
+        "implicit": { "type": "string" },
+        "emotion_shift": { "type": "string" }
+      },
+      "required": ["explicit", "implicit", "emotion_shift"]
+    },
+    "tone_audit": {
+      "type": "object",
+      "deprecated": true,
+      "properties": {
+        "is_consistent": { "type": "boolean" },
+        "conflict_reason": { "type": "string" },
+        "revision_example": { "type": "string" }
+      },
+      "required": ["is_consistent"]
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "must_do": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "must_not": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["must_do", "must_not"]
+    }
+  },
+  "required": ["constraints"],
+  "additionalProperties": false
+}

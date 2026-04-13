@@ -1,0 +1,8 @@
+# WriterAgent 可选能力依赖
+# 更精准 token 估算（工作记忆压缩 / 上下文预算）
+tiktoken>=0.12
+# 向量后端（可选）
+faiss-cpu>=1.8
+numpy>=1.26
+pymilvus>=2.4
+qdrant-client>=1.9

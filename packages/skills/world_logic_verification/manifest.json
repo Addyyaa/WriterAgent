@@ -1,0 +1,19 @@
+{
+  "id": "world_logic_verification",
+  "name": "world logic verification",
+  "version": "v1",
+  "description": "Runtime skill capability for world logic verification.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "constraint",
+    "logic_conflict"
+  ],
+  "feature_flag_key": "world_logic_verification"
+}

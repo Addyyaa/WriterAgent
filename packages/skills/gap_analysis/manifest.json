@@ -1,0 +1,18 @@
+{
+  "id": "gap_analysis",
+  "name": "gap analysis",
+  "version": "v1",
+  "description": "Runtime skill capability for gap analysis.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "qa_spec"
+  ],
+  "feature_flag_key": "gap_analysis"
+}

@@ -1,0 +1,41 @@
+{
+  "consumed_by": {
+    "constraints": "code",
+    "constraints.must_do": "code",
+    "constraints.must_not": "code",
+    "motivation_analysis": {
+      "consumed_by": "audit_only",
+      "rationale": "历史辅助分析字段，当前主链路不消费",
+      "retire_by": "2026-12-31"
+    },
+    "motivation_analysis.explicit": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "motivation_analysis.implicit": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "motivation_analysis.emotion_shift": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "tone_audit": {
+      "consumed_by": "audit_only",
+      "rationale": "审计留痕用途",
+      "retire_by": "2026-12-31"
+    },
+    "tone_audit.is_consistent": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "tone_audit.conflict_reason": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "tone_audit.revision_example": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    }
+  }
+}

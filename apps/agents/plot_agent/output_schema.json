@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "chapter_goal": { "type": "string" },
+    "core_conflict": { "type": "string" },
+    "narcotic_arc": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "phase": { "type": "string" },
+          "plot_beat": { "type": "string" },
+          "conflict_level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "pacing_note": { "type": "string" },
+          "outcome": { "type": "string" }
+        },
+        "required": [
+          "phase",
+          "plot_beat",
+          "conflict_level",
+          "pacing_note",
+          "outcome"
+        ]
+      }
+    },
+    "climax_twist": {
+      "type": "object",
+      "deprecated": true,
+      "properties": {
+        "description": { "type": "string" },
+        "impact": { "type": "string" }
+      },
+      "required": ["description", "impact"]
+    }
+  },
+  "required": ["chapter_goal", "core_conflict", "narcotic_arc"],
+  "additionalProperties": true
+}

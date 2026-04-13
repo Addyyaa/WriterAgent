@@ -1,0 +1,19 @@
+{
+  "id": "logical_consistency_check",
+  "name": "logical consistency check",
+  "version": "v1",
+  "description": "Runtime skill capability for logical consistency check.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "logic_conflict",
+    "canon"
+  ],
+  "feature_flag_key": "logical_consistency_check"
+}

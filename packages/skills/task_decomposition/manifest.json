@@ -1,0 +1,18 @@
+{
+  "id": "task_decomposition",
+  "name": "task decomposition",
+  "version": "v1",
+  "description": "Runtime skill capability for task decomposition.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "plan_graph"
+  ],
+  "feature_flag_key": "task_decomposition"
+}

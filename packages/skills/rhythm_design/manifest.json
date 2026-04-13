@@ -1,0 +1,7 @@
+{
+  "id": "rhythm_design",
+  "name": "rhythm design",
+  "version": "v1",
+  "description": "Runtime skill capability for rhythm design.",
+  "tags": ["agent", "runtime", "writing"]
+}

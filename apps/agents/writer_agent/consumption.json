@@ -1,0 +1,14 @@
+{
+  "consumed_by": {
+    "mode": "code",
+    "status": "code",
+    "segments": "code",
+    "segments[].beat_id": "code",
+    "segments[].content": "code",
+    "word_count": "code",
+    "chapter": "code",
+    "chapter.title": "code",
+    "chapter.content": "code",
+    "chapter.summary": "code"
+  }
+}

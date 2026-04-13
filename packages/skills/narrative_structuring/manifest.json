@@ -1,0 +1,18 @@
+{
+  "id": "narrative_structuring",
+  "name": "narrative structuring",
+  "version": "v1",
+  "description": "Runtime skill capability for narrative structuring.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "plan_graph"
+  ],
+  "feature_flag_key": "narrative_structuring"
+}

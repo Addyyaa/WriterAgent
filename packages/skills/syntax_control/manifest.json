@@ -1,0 +1,7 @@
+{
+  "id": "syntax_control",
+  "name": "syntax control",
+  "version": "v1",
+  "description": "Runtime skill capability for syntax control.",
+  "tags": ["agent", "runtime", "writing"]
+}

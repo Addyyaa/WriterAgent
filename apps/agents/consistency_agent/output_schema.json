@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "overall_status": {
+      "type": "string",
+      "enum": ["passed", "warning", "failed"]
+    },
+    "audit_summary": {
+      "type": "string"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["character", "worldview", "timeline", "foreshadowing"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["warning", "failed"]
+          },
+          "evidence_context": {
+            "type": "string",
+            "description": "Original text from context/lore"
+          },
+          "evidence_draft": {
+            "type": "string",
+            "description": "Conflicting text from current draft"
+          },
+          "reasoning": {
+            "type": "string"
+          },
+          "revision_suggestion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "severity",
+          "evidence_context",
+          "evidence_draft",
+          "reasoning",
+          "revision_suggestion"
+        ]
+      }
+    }
+  },
+  "required": ["overall_status", "audit_summary", "issues"]
+}

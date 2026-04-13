@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "writing_context_summary": {
+      "type": "object",
+      "properties": {
+        "key_facts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Absolute truths needed for this scene"
+        },
+        "current_states": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Current status of entities involved"
+        }
+      },
+      "required": ["key_facts", "current_states"]
+    },
+    "key_evidence": {
+      "type": "array",
+      "deprecated": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": { "type": "string" },
+          "snippet": { "type": "string" },
+          "relevance_reason": { "type": "string" }
+        },
+        "required": ["category", "snippet", "relevance_reason"]
+      }
+    },
+    "potential_conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "conflicting_sources": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["description", "conflicting_sources"]
+      }
+    },
+    "information_gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": [
+    "writing_context_summary",
+    "potential_conflicts",
+    "information_gaps"
+  ],
+  "additionalProperties": true
+}

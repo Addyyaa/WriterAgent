@@ -1,0 +1,7 @@
+{
+  "id": "vocabulary_curation",
+  "name": "vocabulary curation",
+  "version": "v1",
+  "description": "Runtime skill capability for vocabulary curation.",
+  "tags": ["agent", "runtime", "writing"]
+}

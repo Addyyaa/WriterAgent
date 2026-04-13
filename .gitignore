@@ -1,0 +1,14 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+node_modules/
+apps/web/.next/
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/generated/api/openapi.json

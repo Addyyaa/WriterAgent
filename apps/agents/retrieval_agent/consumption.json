@@ -1,0 +1,28 @@
+{
+  "consumed_by": {
+    "writing_context_summary": "code",
+    "writing_context_summary.key_facts": "code",
+    "writing_context_summary.current_states": "code",
+    "potential_conflicts": "code",
+    "potential_conflicts[].description": "code",
+    "potential_conflicts[].conflicting_sources": "code",
+    "information_gaps": "code",
+    "key_evidence": {
+      "consumed_by": "audit_only",
+      "rationale": "历史证据明细字段，已由 retrieval_rounds 替代",
+      "retire_by": "2026-12-31"
+    },
+    "key_evidence[].category": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "key_evidence[].snippet": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "key_evidence[].relevance_reason": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    }
+  }
+}

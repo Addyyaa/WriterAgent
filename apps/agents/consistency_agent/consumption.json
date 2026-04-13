@@ -1,0 +1,13 @@
+{
+  "consumed_by": {
+    "overall_status": "code",
+    "audit_summary": "code",
+    "issues": "code",
+    "issues[].category": "code",
+    "issues[].severity": "code",
+    "issues[].evidence_context": "code",
+    "issues[].evidence_draft": "code",
+    "issues[].reasoning": "code",
+    "issues[].revision_suggestion": "code"
+  }
+}

@@ -1,0 +1,12 @@
+version: v1
+# 建议：将温度调高。心理分析需要一定的“模糊性”和“创造性”来推测潜台词。
+# 0.3 太过严谨，容易导致分析流于表面；0.6 能更好地捕捉隐含动机。
+temperature: 0.6
+
+# 建议：增加 Token 数量。你的 Prompt 要求输出 JSON 结构，且包含举例。
+# 700 tokens 对于包含详细分析和举例的 JSON 来说非常危险，极易截断。
+# 建议至少 1200-1500，确保 JSON 闭合。
+max_tokens: 24576
+
+style: character # 保持风格
+mode: default

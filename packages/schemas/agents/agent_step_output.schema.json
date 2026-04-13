@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agents/agent_step_output.schema.json",
+  "title": "AgentStepOutput",
+  "type": "object",
+  "required": ["notes"],
+  "properties": {
+    "notes": {"type": "string", "minLength": 1},
+    "step_key": {"type": "string"},
+    "agent_name": {"type": "string"},
+    "mock_mode": {"type": "boolean"},
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": true
+}

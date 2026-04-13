@@ -1,0 +1,18 @@
+{
+  "id": "pacing_control",
+  "name": "pacing control",
+  "version": "v1",
+  "description": "Runtime skill capability for pacing control.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "context_synthesis"
+  ],
+  "feature_flag_key": "pacing_control"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "chapter_writing",
+  "name": "Chapter Writing",
+  "version": "v1",
+  "description": "将多源约束转写为章节草稿并支持修订。",
+  "tags": ["writing", "chapter"]
+}

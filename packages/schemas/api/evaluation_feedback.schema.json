@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/evaluation_feedback.schema.json",
+  "title": "EvaluationFeedbackPayload",
+  "type": "object",
+  "required": ["evaluation_type"],
+  "properties": {
+    "evaluation_type": {"type": "string", "enum": ["retrieval", "writing"]},
+    "request_id": {"type": "string"},
+    "workflow_run_id": {"type": "string"},
+    "user_id": {"type": "string"},
+    "clicked": {"type": "boolean"},
+    "clicked_doc_id": {"type": "string"},
+    "score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "comment": {"type": "string"}
+  },
+  "additionalProperties": true
+}

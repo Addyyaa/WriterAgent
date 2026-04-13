@@ -1,0 +1,30 @@
+{
+  "consumed_by": {
+    "hard_constraints": "code",
+    "hard_constraints[].rule_type": "code",
+    "hard_constraints[].rule_description": "code",
+    "hard_constraints[].limitation": "code",
+    "reusable_assets": "code",
+    "reusable_assets.locations": "code",
+    "reusable_assets.factions": "code",
+    "reusable_assets.items_concepts": "code",
+    "world_logic_summary": {
+      "consumed_by": "audit_only",
+      "rationale": "历史摘要字段",
+      "retire_by": "2026-12-31"
+    },
+    "potential_conflicts": {
+      "consumed_by": "audit_only",
+      "rationale": "历史冲突预演字段",
+      "retire_by": "2026-12-31"
+    },
+    "potential_conflicts[].risk_scenario": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "potential_conflicts[].prevention_guide": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    }
+  }
+}

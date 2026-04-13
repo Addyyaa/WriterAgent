@@ -1,0 +1,18 @@
+{
+  "id": "text_refinement",
+  "name": "text refinement",
+  "version": "v1",
+  "description": "Runtime skill capability for text refinement.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "constraint"
+  ],
+  "feature_flag_key": "text_refinement"
+}

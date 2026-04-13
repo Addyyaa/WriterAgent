@@ -1,0 +1,14 @@
+version: v1
+temperature: 0.6
+max_tokens: 2200
+style: writer
+mode: draft
+mode_strategies:
+  draft:
+    temperature: 0.65
+    max_tokens: 2600
+    style: writer_draft
+  revision:
+    temperature: 0.35
+    max_tokens: 2600
+    style: writer_revision

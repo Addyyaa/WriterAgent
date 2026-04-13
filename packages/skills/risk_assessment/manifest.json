@@ -1,0 +1,19 @@
+{
+  "id": "risk_assessment",
+  "name": "risk assessment",
+  "version": "v1",
+  "description": "Runtime skill capability for risk assessment.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "qa_spec",
+    "logic_conflict"
+  ],
+  "feature_flag_key": "risk_assessment"
+}

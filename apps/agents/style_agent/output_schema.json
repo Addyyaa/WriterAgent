@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "style_mission": { "type": "string", "deprecated": true },
+    "micro_constraints": {
+      "type": "object",
+      "properties": {
+        "sentence_structure": { "type": "string" },
+        "vocabulary_level": { "type": "string" },
+        "forbidden_words": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "preferred_punctuation": { "type": "string", "deprecated": true }
+      },
+      "required": ["sentence_structure", "vocabulary_level", "forbidden_words"]
+    },
+    "rhythm_strategy": {
+      "type": "object",
+      "properties": {
+        "pacing": { "type": "string", "deprecated": true },
+        "instruction": { "type": "string" }
+      },
+      "required": ["instruction"]
+    },
+    "anti_drift_checks": {
+      "type": "array",
+      "deprecated": true,
+      "items": { "type": "string" }
+    },
+    "tonal_keywords": {
+      "type": "array",
+      "deprecated": true,
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["micro_constraints", "rhythm_strategy"],
+  "additionalProperties": true
+}

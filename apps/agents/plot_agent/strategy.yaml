@@ -1,0 +1,5 @@
+version: v1
+temperature: 0.8
+max_tokens: 1200
+style: dramatic_dynamic
+mode: default

@@ -1,0 +1,17 @@
+{
+  "id": "character_consistency",
+  "name": "Character Consistency",
+  "version": "v1",
+  "description": "校验角色设定、动机与行为连续性。",
+  "tags": [
+    "character",
+    "consistency"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "canon"
+  ],
+  "feature_flag_key": "character_consistency"
+}

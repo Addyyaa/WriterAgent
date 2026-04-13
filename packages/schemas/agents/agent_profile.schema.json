@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agents/agent_profile.schema.json",
+  "title": "AgentProfile",
+  "type": "object",
+  "required": ["role_id", "prompt", "strategy", "skills", "schema_ref", "schema_version"],
+  "properties": {
+    "role_id": {"type": "string", "minLength": 1},
+    "prompt": {"type": "string", "minLength": 1},
+    "strategy": {"type": "object"},
+    "skills": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "schema_ref": {"type": "string", "minLength": 1},
+    "schema_version": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": true
+}

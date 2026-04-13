@@ -1,0 +1,18 @@
+{
+  "id": "timeline_tracking",
+  "name": "timeline tracking",
+  "version": "v1",
+  "description": "Runtime skill capability for timeline tracking.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "local_code",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "timeline"
+  ],
+  "feature_flag_key": "timeline_tracking"
+}

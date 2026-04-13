@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["draft", "revision"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failed"]
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "beat_id": { "type": "integer" },
+          "type": {
+            "type": "string",
+            "enum": ["action", "dialogue", "description", "internal_monologue"]
+          },
+          "content": {
+            "type": "string",
+            "description": "The actual prose text for this segment"
+          }
+        },
+        "required": ["beat_id", "content"],
+        "additionalProperties": true
+      }
+    },
+    "word_count": { "type": "integer", "minimum": 0 },
+    "notes": { "type": "string" },
+    "chapter": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "content": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 }
+      },
+      "required": ["title", "content", "summary"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["mode", "status", "segments", "word_count", "chapter"],
+  "additionalProperties": true
+}

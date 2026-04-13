@@ -1,0 +1,19 @@
+{
+  "id": "fact_checking",
+  "name": "fact checking",
+  "version": "v1",
+  "description": "Runtime skill capability for fact checking.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "internal_fact_provider",
+    "external_fact_provider"
+  ],
+  "feature_flag_key": "fact_checking"
+}

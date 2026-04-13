@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "plan_summary": {
+      "type": "string",
+      "description": "简短的计划摘要"
+    },
+    "steps": {
+      "type": "array",
+      "deprecated": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "step_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "instruction": { "type": "string" },
+          "dependencies": {
+            "type": "array",
+            "items": { "type": "integer" }
+          },
+          "risk_item": { "type": "string" },
+          "fallback_strategy": { "type": "string" },
+          "acceptance_criteria": {
+            "type": "object",
+            "properties": {
+              "keywords": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "min_length": { "type": "integer" },
+              "logic_check": { "type": "string" }
+            },
+            "required": ["keywords", "logic_check"]
+          }
+        },
+        "required": [
+          "step_id",
+          "name",
+          "instruction",
+          "dependencies",
+          "risk_item",
+          "fallback_strategy",
+          "acceptance_criteria"
+        ]
+      }
+    }
+  },
+  "required": ["plan_summary"],
+  "additionalProperties": true
+}

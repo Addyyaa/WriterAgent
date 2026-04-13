@@ -1,0 +1,7 @@
+{
+  "id": "stylistic_analysis",
+  "name": "stylistic analysis",
+  "version": "v1",
+  "description": "Runtime skill capability for stylistic analysis.",
+  "tags": ["agent", "runtime", "writing"]
+}

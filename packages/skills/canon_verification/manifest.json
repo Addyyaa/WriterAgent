@@ -1,0 +1,18 @@
+{
+  "id": "canon_verification",
+  "name": "canon verification",
+  "version": "v1",
+  "description": "Runtime skill capability for canon verification.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "canon"
+  ],
+  "feature_flag_key": "canon_verification"
+}

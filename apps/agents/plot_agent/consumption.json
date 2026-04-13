@@ -1,0 +1,25 @@
+{
+  "consumed_by": {
+    "chapter_goal": "code",
+    "core_conflict": "code",
+    "narcotic_arc": "code",
+    "narcotic_arc[].phase": "code",
+    "narcotic_arc[].plot_beat": "code",
+    "narcotic_arc[].conflict_level": "code",
+    "narcotic_arc[].pacing_note": "code",
+    "narcotic_arc[].outcome": "code",
+    "climax_twist": {
+      "consumed_by": "audit_only",
+      "rationale": "历史结尾钩子字段，主链路已不直接消费",
+      "retire_by": "2026-12-31"
+    },
+    "climax_twist.description": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    },
+    "climax_twist.impact": {
+      "consumed_by": "audit_only",
+      "retire_by": "2026-12-31"
+    }
+  }
+}

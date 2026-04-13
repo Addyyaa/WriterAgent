@@ -1,0 +1,5 @@
+version: v1
+temperature: 0.1
+max_tokens: 1500
+style: critical_analytical
+mode: default

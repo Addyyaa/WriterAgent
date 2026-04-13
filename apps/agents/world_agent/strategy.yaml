@@ -1,0 +1,23 @@
+version: v1
+# 默认配置（通常被 mode_strategies 覆盖，但保留作为 fallback）
+temperature: 0.7
+max_tokens: 2500
+style: immersive
+mode: default
+
+# 核心策略配置
+mode_strategies:
+  # 草稿模式：释放创造力
+  draft:
+    temperature: 0.9
+    max_tokens: 3000
+    top_p: 0.95
+    presence_penalty: 0.6 # 鼓励新内容生成
+
+  # 修订模式：严谨与克制
+  revision:
+    temperature: 0.2
+    max_tokens: 2000
+    top_p: 0.8
+    presence_penalty: 0.0 # 减少胡编乱造，贴近原文
+    frequency_penalty: 0.5 # 避免重复词汇

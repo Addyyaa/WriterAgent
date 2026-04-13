@@ -1,0 +1,16 @@
+{
+  "id": "narrative_showing",
+  "name": "narrative showing",
+  "version": "v1",
+  "description": "Runtime skill capability for narrative showing.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "prompt_only",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [],
+  "feature_flag_key": "narrative_showing"
+}

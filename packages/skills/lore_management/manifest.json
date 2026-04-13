@@ -1,0 +1,19 @@
+{
+  "id": "lore_management",
+  "name": "lore management",
+  "version": "v1",
+  "description": "Runtime skill capability for lore management.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "canon",
+    "context_synthesis"
+  ],
+  "feature_flag_key": "lore_management"
+}

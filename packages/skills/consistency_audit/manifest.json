@@ -1,0 +1,7 @@
+{
+  "id": "consistency_audit",
+  "name": "Consistency Audit",
+  "version": "v1",
+  "description": "审查角色、世界观、时间线与伏笔一致性。",
+  "tags": ["review", "consistency", "qa"]
+}

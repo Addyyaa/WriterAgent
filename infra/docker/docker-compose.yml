@@ -1,0 +1,19 @@
+# PostgreSQL + pgvector，与 alembic.ini 默认连接串对齐。
+# 使用：cd infra/docker && docker compose up -d
+# 本机连接：postgresql://addy:sf123123@localhost:5432/writer_agent_db
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: writeragent-postgres
+    environment:
+      POSTGRES_USER: addy
+      POSTGRES_PASSWORD: sf123123
+      POSTGRES_DB: writer_agent_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - writeragent_pgdata:/var/lib/postgresql/data
+
+volumes:
+  writeragent_pgdata:

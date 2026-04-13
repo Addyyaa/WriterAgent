@@ -1,0 +1,18 @@
+{
+  "id": "logic_conflict_detection",
+  "name": "logic conflict detection",
+  "version": "v1",
+  "description": "Runtime skill capability for logic conflict detection.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "local_code",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "logic_conflict"
+  ],
+  "feature_flag_key": "logic_conflict_detection"
+}

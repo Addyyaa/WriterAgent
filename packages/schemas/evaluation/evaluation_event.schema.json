@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "evaluation/evaluation_event.schema.json",
+  "title": "EvaluationEvent",
+  "type": "object",
+  "required": ["event_type", "payload_json"],
+  "properties": {
+    "event_type": {"type": "string", "minLength": 1},
+    "metric_key": {"type": "string"},
+    "metric_value": {"type": "number"},
+    "payload_json": {"type": "object"}
+  },
+  "additionalProperties": true
+}

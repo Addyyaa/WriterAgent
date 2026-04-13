@@ -1,0 +1,18 @@
+{
+  "id": "ontology_mapping",
+  "name": "ontology mapping",
+  "version": "v1",
+  "description": "Runtime skill capability for ontology mapping.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "canon"
+  ],
+  "feature_flag_key": "ontology_mapping"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "logical_planning",
+  "name": "logical planning",
+  "version": "v1",
+  "description": "Runtime skill capability for logical planning.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "plan_graph"
+  ],
+  "feature_flag_key": "logical_planning"
+}

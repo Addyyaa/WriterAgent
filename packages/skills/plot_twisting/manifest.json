@@ -1,0 +1,16 @@
+{
+  "id": "plot_twisting",
+  "name": "plot twisting",
+  "version": "v1",
+  "description": "Runtime skill capability for plot twisting.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "prompt_only",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [],
+  "feature_flag_key": "plot_twisting"
+}

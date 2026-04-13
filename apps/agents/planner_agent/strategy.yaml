@@ -1,0 +1,5 @@
+version: v1
+temperature: 0.5
+max_tokens: 2000
+style: logical_structured
+mode: default

@@ -1,0 +1,18 @@
+{
+  "id": "semantic_relevance_scoring",
+  "name": "semantic relevance scoring",
+  "version": "v1",
+  "description": "Runtime skill capability for semantic relevance scoring.",
+  "tags": [
+    "agent",
+    "runtime",
+    "writing"
+  ],
+  "mode": "hybrid",
+  "execution_mode_default": "active",
+  "fallback_policy": "warn_only",
+  "adapters": [
+    "context_synthesis"
+  ],
+  "feature_flag_key": "semantic_relevance_scoring"
+}

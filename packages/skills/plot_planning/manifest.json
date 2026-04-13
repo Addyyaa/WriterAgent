@@ -1,0 +1,7 @@
+{
+  "id": "plot_planning",
+  "name": "Plot Planning",
+  "version": "v1",
+  "description": "生成章节情节目标、冲突升级与转折建议。",
+  "tags": ["plot", "planning", "outline"]
+}
