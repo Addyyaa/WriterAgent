@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,6 +21,7 @@ class ChapterGenerationRequest:
     persist_chapter: bool = True
     request_id: str | None = None
     trace_id: str | None = None
+    live_progress_callback: Callable[[dict[str, Any]], None] | None = None
 
 
 @dataclass(frozen=True)

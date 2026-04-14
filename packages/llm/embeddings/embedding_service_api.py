@@ -9,12 +9,7 @@ from packages.llm.embeddings.base import EmbeddingProvider
 
 
 class EmbeddingServiceAPIProvider(EmbeddingProvider):
-    """
-    通过外部 embedding_service API 获取向量。
-
-    适配服务：
-    `/Users/shenfeng/Project/embeddingsModel/embedding_service.py`
-    """
+    """通过外部 embedding_service API 获取向量（兼容 OpenAI Embeddings 响应格式）。"""
 
     def __init__(
         self,

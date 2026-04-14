@@ -72,6 +72,17 @@ class Character(Base):
         server_default=text("'{}'::jsonb"),
     )
 
+    inventory_json = Column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+    )
+    wealth_json = Column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+    )
+
     # ========================
     # 版本与正史
     # ========================

@@ -5,7 +5,7 @@ from pathlib import Path
 from packages.evaluation.service import OnlineEvaluationService
 from sqlalchemy.orm import Session
 
-from packages.llm.text_generation.mock_provider import MockTextGenerationProvider
+from packages.llm.text_generation.factory import create_text_generation_provider
 from packages.memory.long_term.ingestion.ingestion_service import MemoryIngestionService
 from packages.memory.long_term.search.search_service import MemorySearchService
 from packages.memory.project_memory.project_memory_service import ProjectMemoryService
@@ -62,7 +62,7 @@ from scripts._chapter_workflow_support import DeterministicEmbeddingProvider
 
 def build_test_orchestrator_service(db: Session) -> WritingOrchestratorService:
     embedding_provider = DeterministicEmbeddingProvider()
-    text_provider = MockTextGenerationProvider()
+    text_provider = create_text_generation_provider()
 
     memory_repo = MemoryChunkRepository(db)
     memory_fact_repo = MemoryFactRepository(db)

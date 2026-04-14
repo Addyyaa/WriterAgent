@@ -1,0 +1,83 @@
+2026-04-15 04:50:41,681 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 04:50:41,682 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 04:50:41,682 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 04:50:41,683 [INFO] writeragent.llm - [LLM] provider init | pid=45978 model=qwen3-max-preview base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 05:15:54,014 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 05:15:54,017 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 05:15:54,017 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 05:15:54,018 [INFO] writeragent.llm - [LLM] provider init | pid=59850 model=qwen3-max-preview base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 05:15:54,815 [INFO] writeragent.llm - [LLM] generate start | model=qwen3-max-preview meta=planner_agent prompt_len=10688 max_tokens=2000
+2026-04-15 05:15:54,892 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3-max-preview meta=planner_agent
+2026-04-15 05:16:13,252 [INFO] writeragent.llm - [LLM] completion_meta | meta=planner_agent finish_reason=stop completion_tokens=799 prompt_tokens=8078 total_tokens=8877
+2026-04-15 05:16:13,254 [INFO] writeragent.llm - [LLM] success | model=qwen3-max-preview provider=openai_compatible meta=planner_agent text_len=1824
+2026-04-15 05:16:13,254 [INFO] writeragent.llm - [LLM] response_lens | meta=planner_agent primary_text_len=1824 json_dump_len=1824 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-15 05:16:13,254 [INFO] writeragent.llm - [LLM] response_word_stats | meta=planner_agent primary_text_non_ws=1705 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=1705 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-15 05:16:13,357 [INFO] writeragent.llm - [LLM] generate start | model=qwen3-max-preview meta=retrieval_agent prompt_len=18297 max_tokens=1600
+2026-04-15 05:16:13,361 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3-max-preview meta=retrieval_agent
+2026-04-15 05:16:16,496 [INFO] writeragent.llm - [LLM] completion_meta | meta=retrieval_agent finish_reason=stop completion_tokens=40 prompt_tokens=10726 total_tokens=10766
+2026-04-15 05:16:16,496 [INFO] writeragent.llm - [LLM] success | model=qwen3-max-preview provider=openai_compatible meta=retrieval_agent text_len=139
+2026-04-15 05:16:16,496 [INFO] writeragent.llm - [LLM] response_lens | meta=retrieval_agent primary_text_len=139 json_dump_len=139 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-15 05:16:16,496 [INFO] writeragent.llm - [LLM] response_word_stats | meta=retrieval_agent primary_text_non_ws=129 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=129 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-15 05:16:24,396 [INFO] writeragent.llm - [LLM] generate start | model=qwen3-max-preview meta=unknown prompt_len=14684 max_tokens=None
+2026-04-15 05:16:24,403 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3-max-preview meta=unknown
+2026-04-15 05:16:38,225 [INFO] writeragent.llm - [LLM] completion_meta | meta=unknown finish_reason=stop completion_tokens=677 prompt_tokens=9812 total_tokens=10489
+2026-04-15 05:16:38,227 [INFO] writeragent.llm - [LLM] success | model=qwen3-max-preview provider=openai_compatible meta=unknown text_len=387
+2026-04-15 05:16:38,227 [INFO] writeragent.llm - [LLM] response_lens | meta=unknown primary_text_len=387 json_dump_len=1180 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=387 top_level.content_non_ws=380 segments=0 segments_join_non_ws=0
+2026-04-15 05:16:38,227 [INFO] writeragent.llm - [LLM] response_word_stats | meta=unknown primary_text_non_ws=380 chapter.content_non_ws=None top_level.content_non_ws=380 segments_join_non_ws=0 selected_metric=top_level.content selected_non_ws=380 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-15 05:16:38,313 [INFO] writeragent.llm - [LLM] generate start | model=qwen3-max-preview meta=plot_agent prompt_len=28081 max_tokens=1200
+2026-04-15 05:16:38,317 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3-max-preview meta=plot_agent
+2026-04-15 05:16:52,399 [INFO] writeragent.llm - [LLM] completion_meta | meta=plot_agent finish_reason=stop completion_tokens=660 prompt_tokens=14233 total_tokens=14893
+2026-04-15 05:16:52,399 [INFO] writeragent.llm - [LLM] success | model=qwen3-max-preview provider=openai_compatible meta=plot_agent text_len=1187
+2026-04-15 05:16:52,400 [INFO] writeragent.llm - [LLM] response_lens | meta=plot_agent primary_text_len=1187 json_dump_len=1187 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-15 05:16:52,400 [INFO] writeragent.llm - [LLM] response_word_stats | meta=plot_agent primary_text_non_ws=1124 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=1124 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-15 05:16:52,469 [INFO] writeragent.llm - [LLM] generate start | model=qwen3-max-preview meta=character_agent prompt_len=43901 max_tokens=24576
+2026-04-15 05:16:52,475 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3-max-preview meta=character_agent
+2026-04-15 05:16:59,119 [INFO] writeragent.llm - [LLM] completion_meta | meta=character_agent finish_reason=stop completion_tokens=53 prompt_tokens=22474 total_tokens=22527
+2026-04-15 05:16:59,121 [INFO] writeragent.llm - [LLM] success | model=qwen3-max-preview provider=openai_compatible meta=character_agent text_len=174
+2026-04-15 05:16:59,121 [INFO] writeragent.llm - [LLM] response_lens | meta=character_agent primary_text_len=174 json_dump_len=174 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-15 05:16:59,122 [INFO] writeragent.llm - [LLM] response_word_stats | meta=character_agent primary_text_non_ws=157 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=157 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-15 05:16:59,663 [INFO] writeragent.llm - [LLM] generate start | model=qwen3-max-preview meta=world_agent prompt_len=46128 max_tokens=2500
+2026-04-15 05:16:59,671 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3-max-preview meta=world_agent
+2026-04-15 05:17:14,673 [INFO] writeragent.llm - [LLM] completion_meta | meta=world_agent finish_reason=stop completion_tokens=570 prompt_tokens=23330 total_tokens=23900
+2026-04-15 05:17:14,673 [INFO] writeragent.llm - [LLM] success | model=qwen3-max-preview provider=openai_compatible meta=world_agent text_len=1144
+2026-04-15 05:17:14,674 [INFO] writeragent.llm - [LLM] response_lens | meta=world_agent primary_text_len=1144 json_dump_len=1144 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-15 05:17:14,674 [INFO] writeragent.llm - [LLM] response_word_stats | meta=world_agent primary_text_non_ws=1100 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=1100 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-15 05:17:14,779 [INFO] writeragent.llm - [LLM] generate start | model=qwen3-max-preview meta=style_agent prompt_len=43008 max_tokens=2048
+2026-04-15 05:17:14,783 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3-max-preview meta=style_agent
+2026-04-15 05:17:16,534 [WARNING] writeragent.llm - [LLM] API error | meta=style_agent error=LLM 请求失败 status=403: The free tier of the model has been exhausted. If you wish to continue access the model on a paid basis, please disable the "use free tier only" mode in the management console.
+2026-04-15 05:18:19,200 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 05:18:19,200 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 05:18:19,200 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 05:18:19,200 [INFO] writeragent.llm - [LLM] provider init | pid=72180 model=qwen3-max-preview base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 05:18:24,507 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 05:18:24,507 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 05:18:24,508 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 05:18:24,508 [INFO] writeragent.llm - [LLM] provider init | pid=72241 model=qwen3-max-preview base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 05:45:36,269 [INFO] writeragent.llm - [LLM] generate start | model=qwen3-max-preview meta=style_agent prompt_len=43008 max_tokens=2048
+2026-04-15 05:45:36,389 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3-max-preview meta=style_agent
+2026-04-15 05:45:37,709 [WARNING] writeragent.llm - [LLM] API error | meta=style_agent error=LLM 请求失败 status=403: The free tier of the model has been exhausted. If you wish to continue access the model on a paid basis, please disable the "use free tier only" mode in the management console.
+2026-04-15 05:47:51,311 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 05:47:51,311 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 05:47:51,311 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 05:47:51,311 [INFO] writeragent.llm - [LLM] provider init | pid=79602 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 05:48:14,639 [INFO] writeragent.llm - [LLM] generate start | model=qwen3.6-plus meta=style_agent prompt_len=43008 max_tokens=2048
+2026-04-15 05:48:14,726 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3.6-plus meta=style_agent
+2026-04-15 05:48:41,863 [INFO] writeragent.llm - [LLM] completion_meta | meta=style_agent finish_reason=stop completion_tokens=1189 prompt_tokens=18432 total_tokens=19621
+2026-04-15 05:48:41,865 [INFO] writeragent.llm - [LLM] success | model=qwen3.6-plus provider=openai_compatible meta=style_agent text_len=889
+2026-04-15 05:48:41,865 [INFO] writeragent.llm - [LLM] response_lens | meta=style_agent primary_text_len=889 json_dump_len=889 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-15 05:48:41,865 [INFO] writeragent.llm - [LLM] response_word_stats | meta=style_agent primary_text_non_ws=850 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=850 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-15 05:48:45,352 [INFO] writeragent.llm - [chapter_generation] writer_draft_generation_mode | attempt=1/5 mode=full_regenerate enabled=True trigger_attempt=3 prev_issue=None prev_wc=None schema_min_len=1722
+2026-04-15 05:48:45,363 [INFO] writeragent.llm - [LLM] generate start | model=qwen3.6-plus meta=unknown prompt_len=25520 max_tokens=32000
+2026-04-15 05:48:45,369 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3.6-plus meta=unknown
+2026-04-15 05:50:46,009 [WARNING] writeragent.llm - [LLM] API error | meta=unknown error=The read operation timed out
+2026-04-15 05:50:46,025 [INFO] writeragent.llm - [chapter_generation] writer_draft_generation_mode | attempt=2/5 mode=full_regenerate enabled=True trigger_attempt=3 prev_issue=too_short prev_wc=0 schema_min_len=1550
+2026-04-15 05:50:46,043 [INFO] writeragent.llm - [LLM] generate start | model=qwen3.6-plus meta=unknown prompt_len=26012 max_tokens=32000
+2026-04-15 05:50:46,076 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3.6-plus meta=unknown
+2026-04-15 05:52:46,796 [WARNING] writeragent.llm - [LLM] API error | meta=unknown error=The read operation timed out
+2026-04-15 05:52:46,807 [INFO] writeragent.llm - [chapter_generation] writer_draft_generation_mode | attempt=3/5 mode=full_regenerate enabled=True trigger_attempt=3 prev_issue=too_short prev_wc=0 schema_min_len=1378
+2026-04-15 05:52:46,826 [INFO] writeragent.llm - [LLM] generate start | model=qwen3.6-plus meta=unknown prompt_len=26012 max_tokens=32000
+2026-04-15 05:52:46,831 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3.6-plus meta=unknown
+2026-04-15 05:54:47,713 [WARNING] writeragent.llm - [LLM] API error | meta=unknown error=The read operation timed out
+2026-04-15 05:54:47,721 [INFO] writeragent.llm - [chapter_generation] writer_draft_generation_mode | attempt=4/5 mode=full_regenerate enabled=True trigger_attempt=3 prev_issue=too_short prev_wc=0 schema_min_len=1240
+2026-04-15 05:54:47,740 [INFO] writeragent.llm - [LLM] generate start | model=qwen3.6-plus meta=unknown prompt_len=26012 max_tokens=32000
+2026-04-15 05:54:47,746 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=qwen3.6-plus meta=unknown

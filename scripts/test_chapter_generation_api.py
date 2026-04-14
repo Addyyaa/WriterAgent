@@ -68,7 +68,7 @@ class TestChapterGenerationAPIIntegration(unittest.TestCase):
             f"/v1/projects/{self.project.id}/chapters/generate",
             json={
                 "writing_goal": "",
-                "target_words": 10,
+                "target_words": 300,
             },
         )
         self.assertEqual(resp.status_code, 404)

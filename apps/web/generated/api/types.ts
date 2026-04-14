@@ -13,6 +13,18 @@ export interface Project {
   updated_at: string | null;
 }
 
+/** 章节草稿 LLM 轮次进度（workflow_step.input_json.live_progress） */
+export interface WriterDraftLiveProgress {
+  kind: string;
+  attempt?: number;
+  max_attempts?: number;
+  generation_mode?: string;
+  issue?: string | null;
+  schema_min_content_len?: number;
+  pulse_at?: string;
+  llm_timeout_seconds?: number;
+}
+
 export interface WorkflowStep {
   id: number;
   step_key: string;
@@ -24,6 +36,8 @@ export interface WorkflowStep {
   error_message?: string | null;
   started_at?: string | null;
   finished_at?: string | null;
+  input_json?: Record<string, unknown>;
+  output_json?: Record<string, unknown>;
 }
 
 export interface ChapterCandidate {

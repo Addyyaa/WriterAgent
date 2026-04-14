@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from .base import BaseRepository
 from packages.storage.postgres.models.chapter import Chapter
@@ -59,6 +59,36 @@ class ChapterRepository(BaseRepository):
             Chapter.chapter_no == chapter_no,
         )
         return self.db.execute(stmt).scalar_one_or_none()
+
+    def find_by_project_title(self, project_id, title: str) -> Chapter | None:
+        """按章节标题查找：先精确（忽略大小写与首尾空白），再子串 ilike。"""
+        raw = str(title or "").strip()
+        if not raw:
+            return None
+        stmt_exact = (
+            select(Chapter)
+            .where(
+                Chapter.project_id == project_id,
+                Chapter.title.isnot(None),
+                func.lower(func.trim(Chapter.title)) == raw.lower(),
+            )
+            .order_by(Chapter.chapter_no.asc())
+            .limit(1)
+        )
+        row = self.db.execute(stmt_exact).scalar_one_or_none()
+        if row is not None:
+            return row
+        stmt_like = (
+            select(Chapter)
+            .where(
+                Chapter.project_id == project_id,
+                Chapter.title.isnot(None),
+                Chapter.title.ilike(f"%{raw}%"),
+            )
+            .order_by(Chapter.chapter_no.asc())
+            .limit(1)
+        )
+        return self.db.execute(stmt_like).scalar_one_or_none()
 
     # =========================
     # 更新内容（核心）

@@ -414,12 +414,20 @@ class QASpecAdapter(BaseSkillToolAdapter):
         verified: dict[str, Any],
         context: Any,
     ) -> dict[str, Any]:
-        del spec, phase, prepared, executed, context
+        del spec, prepared, executed, context
         payload = dict((verified or {}).get("payload") or {})
         qa = payload.get("qa_spec")
         if not isinstance(qa, dict):
             qa = payload.get("skill_quality_gate")
         if not isinstance(qa, dict):
+            # after_generate 校验的是模型输出，多数 agent 不会回传 qa_spec；约束已在 before 阶段注入 skill_quality_gate
+            if str(phase or "").strip().lower() == "after_generate":
+                return {
+                    "findings": [],
+                    "evidence": [],
+                    "metrics": {"qa_spec_after_generate": 1, "qa_spec_in_output": 0},
+                    "no_effect_reason": None,
+                }
             return {"no_effect_reason": "未发现 qa_spec/skill_quality_gate"}
 
         required = (
@@ -444,7 +452,7 @@ class QASpecAdapter(BaseSkillToolAdapter):
                 "qa_spec_key_count": int(len(qa.keys())),
                 "qa_spec_missing_required": int(len(missing)),
             },
-            "no_effect_reason": None if findings else "QA 规范完整",
+            "no_effect_reason": None,
         }
 
 

@@ -274,12 +274,16 @@ class RetrievalLoopService:
         items: list[EvidenceItem] = []
         project = self.project_repo.get(request.project_id)
         if project is not None and "project" in allowed_source_types:
+            meta = getattr(project, "metadata_json", None) or {}
             project_text = "；".join(
                 part
                 for part in [
                     f"项目标题：{project.title}" if getattr(project, "title", None) else "",
                     f"类型：{project.genre}" if getattr(project, "genre", None) else "",
                     f"前提：{project.premise}" if getattr(project, "premise", None) else "",
+                    f"目标读者：{meta['target_audience']}" if meta.get("target_audience") else "",
+                    f"叙事语气：{meta['tone']}" if meta.get("tone") else "",
+                    f"标签：{', '.join(meta['tags'])}" if isinstance(meta.get("tags"), list) and meta["tags"] else "",
                 ]
                 if part
             ).strip()

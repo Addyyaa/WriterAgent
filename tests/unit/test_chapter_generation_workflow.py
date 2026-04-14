@@ -171,6 +171,11 @@ class _FakeIngestionService:
         return [SimpleNamespace(id="chunk1")]
 
 
+def _long_chapter_json(*, units: int = 1100) -> dict:
+    """非空白字符数约 units，满足 target_words=1200 的 ±10% 区间 [1080,1320]。"""
+    body = "测" * max(300, int(units))
+    return {"title": "标题", "content": body, "summary": "摘要一二三四五六七八九十"}
+
 class _FakeTextProvider(TextGenerationProvider):
     def __init__(self, should_fail: bool = False) -> None:
         self.should_fail = should_fail
@@ -178,9 +183,10 @@ class _FakeTextProvider(TextGenerationProvider):
     def generate(self, request: TextGenerationRequest) -> TextGenerationResult:
         if self.should_fail:
             raise RuntimeError("llm failed")
+        payload = _long_chapter_json()
         return TextGenerationResult(
-            text="正文",
-            json_data={"title": "标题", "content": "正文", "summary": "摘要"},
+            text="{}",
+            json_data=payload,
             model="mock",
             provider="mock",
             is_mock=True,
@@ -205,6 +211,20 @@ class TestChapterGenerationWorkflowUnit(unittest.TestCase):
             text_provider=_FakeTextProvider(should_fail=llm_fail),
         )
         return service, chapter_repo, run_repo, skill_repo
+
+    def test_live_progress_callback_invoked(self) -> None:
+        service, _, _, _ = self._build_service()
+        events: list[dict] = []
+        service.run(
+            ChapterGenerationRequest(
+                project_id="p1",
+                writing_goal="推进冲突",
+                chapter_no=1,
+                live_progress_callback=lambda p: events.append(dict(p)),
+            )
+        )
+        self.assertTrue(any(e.get("kind") == "writer_draft_llm" for e in events))
+        self.assertTrue(any(e.get("kind") == "idle" for e in events))
 
     def test_success_path(self) -> None:
         service, _, run_repo, skill_repo = self._build_service()

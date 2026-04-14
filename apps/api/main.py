@@ -4,13 +4,15 @@ import asyncio
 import json
 import hashlib
 import os
+import threading
+import logging
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable
 from uuid import UUID
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 import sqlalchemy as sa
@@ -20,6 +22,7 @@ from packages.auth import AuthError, AuthRuntimeConfig, AuthService
 from packages.evaluation.service import OnlineEvaluationService
 from packages.llm.embeddings.base import EmbeddingProvider
 from packages.llm.embeddings.factory import create_embedding_provider_from_env
+from packages.llm.text_generation.base import TextGenerationRequest
 from packages.llm.text_generation.factory import create_text_generation_provider
 from packages.memory.long_term.ingestion.ingestion_service import MemoryIngestionService
 from packages.memory.long_term.lifecycle.rebuild import MemoryRebuildService
@@ -30,7 +33,11 @@ from packages.memory.working_memory.context_builder import ContextBuilder
 from packages.memory.working_memory.hybrid_compressor import HybridContextCompressor
 from packages.retrieval.chunking.simple_text_chunker import SimpleTextChunker
 from packages.storage.postgres.repositories.agent_run_repository import AgentRunRepository
+from packages.storage.postgres.repositories.character_chapter_asset_repository import (
+    CharacterChapterAssetRepository,
+)
 from packages.storage.postgres.repositories.character_repository import CharacterRepository
+from packages.storage.postgres.repositories.retrieval_eval_repository import RetrievalEvalRepository
 from packages.storage.postgres.repositories.chapter_repository import ChapterRepository
 from packages.storage.postgres.repositories.chapter_candidate_repository import (
     ChapterCandidateRepository,
@@ -101,17 +108,19 @@ from packages.workflows.orchestration.run_events import (
 )
 from packages.workflows.orchestration.types import WorkflowRunRequest
 
+logger = logging.getLogger("writeragent.api")
+
 
 class ChapterGeneratePayload(BaseModel):
     writing_goal: str = Field(..., min_length=1, description="写作目标，建议包含剧情推进目标、冲突点或本章任务。")
     chapter_no: int | None = Field(default=None, ge=1, description="目标章节号。为空时由 workflow 自行决定写入章节序号。")
-    target_words: int = Field(default=1200, ge=200, le=5000, description="目标字数范围中心值。")
+    target_words: int = Field(default=1200, ge=300, le=10000, description="目标字数（正文非空白字符数将校验在 ±10%）。")
     style_hint: str | None = Field(default=None, description="风格提示，如“冷峻纪实”“高张力对话”。")
     include_memory_top_k: int = Field(default=8, ge=1, le=50, description="记忆检索候选条数上限。")
     context_token_budget: int | None = Field(
         default=None,
         ge=400,
-        le=12000,
+        le=20000,
         description="上下文预算（近似 token）。为空则使用系统默认预算。",
     )
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="生成随机性。")
@@ -138,13 +147,13 @@ class WorkflowRunCreatePayload(BaseModel):
     )
     writing_goal: str = Field(..., min_length=1, description="本次 run 的写作目标。")
     chapter_no: int | None = Field(default=None, ge=1, description="目标章节号。")
-    target_words: int = Field(default=1200, ge=200, le=5000, description="目标字数。")
+    target_words: int = Field(default=1200, ge=300, le=10000, description="目标字数（章节正文将校验 ±10%）。")
     style_hint: str | None = Field(default=None, description="文风提示。")
     include_memory_top_k: int = Field(default=8, ge=1, le=50, description="检索候选数量。")
     context_token_budget: int | None = Field(
         default=None,
         ge=400,
-        le=12000,
+        le=20000,
         description="上下文预算（近似 token）。为空使用默认值。",
     )
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="生成温度。")
@@ -268,6 +277,8 @@ class CharacterCreatePayload(BaseModel):
     profile_json: dict = Field(default_factory=dict, description="角色设定 JSON。")
     speech_style_json: dict = Field(default_factory=dict, description="说话风格 JSON。")
     arc_status_json: dict = Field(default_factory=dict, description="角色弧状态 JSON。")
+    inventory_json: dict = Field(default_factory=dict, description="携带物品、道具等（结构化 JSON）。")
+    wealth_json: dict = Field(default_factory=dict, description="财富、资源、货币等（结构化 JSON）。")
     is_canonical: bool = Field(default=True, description="是否正史角色。")
 
 
@@ -279,8 +290,16 @@ class CharacterUpdatePayload(BaseModel):
     profile_json: dict | None = None
     speech_style_json: dict | None = None
     arc_status_json: dict | None = None
+    inventory_json: dict | None = None
+    wealth_json: dict | None = None
     is_canonical: bool | None = None
     version: int | None = Field(default=None, ge=1)
+
+
+class CharacterChapterAssetsPayload(BaseModel):
+    chapter_no: int = Field(..., ge=1, description="章节号，快照对应该章创作视角。")
+    inventory_json: dict = Field(default_factory=dict, description="本章视角下的物品/道具。")
+    wealth_json: dict = Field(default_factory=dict, description="本章视角下的财富/资源。")
 
 
 class CharacterResponse(BaseModel):
@@ -293,6 +312,8 @@ class CharacterResponse(BaseModel):
     profile_json: dict
     speech_style_json: dict
     arc_status_json: dict
+    inventory_json: dict
+    wealth_json: dict
     version: int
     is_canonical: bool
     created_at: str | None
@@ -404,6 +425,19 @@ class ProjectBootstrapResponse(BaseModel):
     project_id: str
     outline_id: str | None
     created_counts: dict
+
+
+class AIAssetGeneratePayload(BaseModel):
+    asset_type: str = Field(
+        ...,
+        pattern="^(outline|characters|world_entries|timeline|foreshadowing)$",
+        description="要生成的资产类型",
+    )
+    premise: str = Field(..., min_length=1, description="故事前提")
+    genre: str = Field(default="", description="故事类型")
+    title: str = Field(default="", description="项目标题")
+    tone: str = Field(default="", description="叙事语气")
+    target_audience: str = Field(default="", description="目标读者")
 
 
 class ChapterPublishResponse(BaseModel):
@@ -611,6 +645,7 @@ def _rebuild_user_preferences_memory(*, db: Session, project_id, user_id, prefer
 
 
 def _build_orchestrator_service(db: Session) -> WritingOrchestratorService:
+    """无 FastAPI app 上下文时使用：每次调用都会新建 LLM Provider（单测/DI）。"""
     return WritingOrchestratorService.build_default(db)
 
 
@@ -713,6 +748,24 @@ def _is_system_admin(user: dict[str, Any]) -> bool:
     return bool(prefs.get("is_admin"))
 
 
+def _normalize_project_visibility(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in {"private", "owner_only", "self_only", "owner"}:
+        return "private"
+    return "members"
+
+
+def _with_project_visibility(metadata_json: dict | None) -> dict:
+    payload = dict(metadata_json or {})
+    payload["visibility"] = _normalize_project_visibility(payload.get("visibility"))
+    return payload
+
+
+def _is_project_private(project_row: Any) -> bool:
+    metadata = dict(getattr(project_row, "metadata_json", {}) or {})
+    return _normalize_project_visibility(metadata.get("visibility")) == "private"
+
+
 def _serialize_user(row) -> dict:
     return {
         "id": str(row.id),
@@ -748,6 +801,8 @@ def _serialize_character(row) -> dict:
         "profile_json": dict(row.profile_json or {}),
         "speech_style_json": dict(row.speech_style_json or {}),
         "arc_status_json": dict(row.arc_status_json or {}),
+        "inventory_json": dict(getattr(row, "inventory_json", None) or {}),
+        "wealth_json": dict(getattr(row, "wealth_json", None) or {}),
         "version": int(row.version or 1),
         "is_canonical": bool(row.is_canonical),
         "created_at": row.created_at.isoformat() if row.created_at else None,
@@ -783,6 +838,91 @@ def _serialize_timeline_event(row) -> dict:
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }
+
+
+def _clip_text_for_prompt(text: str | None, limit: int) -> str:
+    """截断过长文本，避免提示词膨胀。"""
+    if text is None:
+        return ""
+    t = str(text).strip()
+    if len(t) <= limit:
+        return t
+    return t[: max(0, limit - 1)] + "…"
+
+
+def _ai_asset_existing_context_lines(
+    db: Session,
+    project_id: UUID,
+    *,
+    skip_asset_type: str,
+) -> list[str]:
+    """拼接项目中已有故事资产摘要；跳过当前正在生成的类型，减少重复与矛盾。"""
+    lines: list[str] = []
+
+    if skip_asset_type != "outline":
+        outline_repo = OutlineRepository(db)
+        outline = outline_repo.get_active(project_id=project_id)
+        if outline is None:
+            outline = outline_repo.get_latest(project_id=project_id)
+        if outline is not None:
+            lines.append("### 已有大纲（当前版本）")
+            if outline.title:
+                lines.append(f"- 标题：{outline.title}")
+            clipped = _clip_text_for_prompt(outline.content, 2000)
+            if clipped:
+                lines.append(f"- 正文摘要：{clipped}")
+
+    if skip_asset_type != "characters":
+        chars = CharacterRepository(db).list_by_project(project_id=project_id, limit=40)
+        if chars:
+            lines.append("### 已有角色")
+            for c in chars[:30]:
+                bits = [c.name]
+                if c.role_type:
+                    bits.append(f"类型={c.role_type}")
+                if c.faction:
+                    bits.append(f"阵营={c.faction}")
+                lines.append("- " + "，".join(bits))
+
+    if skip_asset_type != "world_entries":
+        worlds = WorldEntryRepository(db).list_by_project(project_id=project_id, limit=40)
+        if worlds:
+            lines.append("### 已有世界观条目")
+            for w in worlds[:25]:
+                title = w.title or "(无标题)"
+                et = w.entry_type or "设定"
+                desc = _clip_text_for_prompt(w.content, 400)
+                lines.append(f"- [{et}] {title}" + (f"：{desc}" if desc else ""))
+
+    if skip_asset_type != "timeline":
+        evs = TimelineEventRepository(db).list_by_project(project_id=project_id, limit=50)
+        if evs:
+            lines.append("### 已有时间线事件")
+            for ev in evs[:30]:
+                title = ev.event_title or "(无标题)"
+                ch = ev.chapter_no if ev.chapter_no is not None else "?"
+                desc = _clip_text_for_prompt(ev.event_desc, 240)
+                lines.append(f"- 第{ch}章 · {title}" + (f"：{desc}" if desc else ""))
+
+    if skip_asset_type != "foreshadowing":
+        frows = ForeshadowingRepository(db).list_by_project(project_id=project_id, limit=40)
+        if frows:
+            lines.append("### 已有伏笔")
+            for fs_row in frows[:20]:
+                setup = _clip_text_for_prompt(fs_row.setup_text, 300)
+                lines.append(f"- 埋设第{fs_row.setup_chapter_no or '?'}章" + (f"：{setup}" if setup else ""))
+
+    return lines
+
+
+# AI 资产生成按类型的输出 token 上限（避免复杂 JSON 被截断）
+_AI_ASSET_MAX_TOKENS: dict[str, int] = {
+    "outline": 8192,
+    "characters": 8192,
+    "world_entries": 8192,
+    "timeline": 8192,
+    "foreshadowing": 6144,
+}
 
 
 def _serialize_foreshadowing(row) -> dict:
@@ -990,12 +1130,26 @@ def _serialize_transfer_job(row) -> dict:
     }
 
 
+def _ensure_llm_file_logger() -> None:
+    llm_logger = logging.getLogger("writeragent.llm")
+    if any(isinstance(h, logging.FileHandler) for h in llm_logger.handlers):
+        return
+    llm_log_path = Path(os.getenv("WRITER_LLM_LOG_FILE", "data/llm.log"))
+    llm_log_path.parent.mkdir(parents=True, exist_ok=True)
+    fh = logging.FileHandler(llm_log_path, encoding="utf-8")
+    fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s - %(message)s"))
+    fh.setLevel(logging.DEBUG)
+    llm_logger.addHandler(fh)
+    llm_logger.setLevel(logging.DEBUG)
+
+
 def create_app(
     workflow_factory: Callable[[Session], ChapterGenerationWorkflowService] | None = None,
     orchestrator_factory: Callable[[Session], WritingOrchestratorService] | None = None,
     search_factory: Callable[[Session], MemorySearchService] | None = None,
     evaluation_factory: Callable[[Session], OnlineEvaluationService] | None = None,
 ) -> FastAPI:
+    _ensure_llm_file_logger()
     app = FastAPI(
         title="WriterAgent API",
         version="2.0.0",
@@ -1025,7 +1179,16 @@ def create_app(
     app.state.session_factory = None
     app.state.orchestrator_cfg = orchestrator_cfg
     app.state.workflow_factory = workflow_factory or _build_workflow_service
-    app.state.orchestrator_factory = orchestrator_factory or _build_orchestrator_service
+
+    def _default_orchestrator_factory(db: Session) -> WritingOrchestratorService:
+        # 编排服务在「查询 run / WS 心跳」等高频路径上也会 build；复用 LLM Provider，避免每次请求都打 init 日志与重复探测厂商。
+        cached = getattr(app.state, "_shared_text_generation_provider", None)
+        if cached is None:
+            cached = create_text_generation_provider()
+            app.state._shared_text_generation_provider = cached
+        return WritingOrchestratorService.build_default(db, text_provider=cached)
+
+    app.state.orchestrator_factory = orchestrator_factory or _default_orchestrator_factory
     app.state.search_factory = search_factory or _build_search_service
     app.state.evaluation_factory = evaluation_factory or _build_evaluation_service
     app.state.metrics_registry = InMemoryMetrics()
@@ -1118,6 +1281,41 @@ def create_app(
         finally:
             db.close()
 
+    def trigger_auto_worker_tick(*, limit: int = 1) -> None:
+        if not bool(getattr(app.state.orchestrator_cfg, "enable_auto_worker", False)):
+            return
+        nonlocal session_factory
+        if session_factory is None:
+            session_factory = create_session_factory()
+            app.state.session_factory = session_factory
+
+        lock = getattr(app.state, "_auto_worker_tick_lock", None)
+        if lock is None:
+            lock = threading.Lock()
+            app.state._auto_worker_tick_lock = lock
+        if lock.locked():
+            return
+
+        def _runner() -> None:
+            if not lock.acquire(blocking=False):
+                return
+            db = None
+            try:
+                db = session_factory()
+                service = app.state.orchestrator_factory(db)
+                processed = int(service.process_once(limit=max(1, int(limit))))
+                logger.info("auto_worker_tick processed=%s", processed)
+            except Exception:
+                logger.exception("auto_worker_tick failed")
+            finally:
+                try:
+                    if db is not None:
+                        db.close()
+                finally:
+                    lock.release()
+
+        threading.Thread(target=_runner, daemon=True, name="writeragent-auto-worker").start()
+
     def ensure_project_exists(db: Session, project_id: UUID):
         row = ProjectRepository(db).get(project_id)
         if row is None:
@@ -1139,11 +1337,19 @@ def create_app(
         user: dict[str, Any],
         min_role: str = "viewer",
     ) -> None:
+        project = ProjectRepository(db).get(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="project 不存在")
+        if _is_system_admin(user):
+            return
         user_id = UUID(str(user["id"]))
         membership_repo = ProjectMembershipRepository(db)
-        if membership_repo.has_role(project_id=project_id, user_id=user_id, min_role=min_role):
-            return
-        raise HTTPException(status_code=403, detail=f"需要项目角色 {min_role}")
+        if not membership_repo.has_role(project_id=project_id, user_id=user_id, min_role=min_role):
+            raise HTTPException(status_code=403, detail=f"需要项目角色 {min_role}")
+        if _is_project_private(project):
+            owner_id = project.owner_user_id
+            if owner_id is None or str(owner_id) != str(user_id):
+                raise HTTPException(status_code=403, detail="该项目设置为仅自己可见")
 
     @app.get(
         "/healthz",
@@ -1307,17 +1513,17 @@ def create_app(
         if payload.owner_user_id is not None and UserRepository(db).get(payload.owner_user_id) is None:
             raise HTTPException(status_code=404, detail="owner_user_id 对应用户不存在")
         owner_user_id = payload.owner_user_id or UUID(str(user["id"]))
+        metadata_json = _with_project_visibility(payload.metadata_json)
         row = ProjectRepository(db).create(
             title=payload.title,
             genre=payload.genre,
             premise=payload.premise,
             owner_user_id=owner_user_id,
         )
-        if payload.metadata_json:
-            row = ProjectRepository(db).update(
-                row.id,
-                metadata_json=dict(payload.metadata_json),
-            )
+        row = ProjectRepository(db).update(
+            row.id,
+            metadata_json=metadata_json,
+        )
         ProjectMembershipRepository(db).create_or_update(
             project_id=row.id,
             user_id=owner_user_id,
@@ -1330,7 +1536,7 @@ def create_app(
         "/v2/projects",
         tags=["Projects"],
         summary="查询项目列表",
-        description="可按 owner_user_id 过滤。",
+        description="可按 owner_user_id 过滤；默认成员可见，项目可设置为仅 owner 可见。",
     )
     def list_projects(
         req: Request,
@@ -1357,9 +1563,32 @@ def create_app(
                         status="active",
                     )
                 memberships = membership_repo.list_by_user(user_id=user_uuid, include_disabled=False)
-            project_ids = [item.project_id for item in memberships]
-            rows = [repo.get(pid) for pid in project_ids]
-            rows = [row for row in rows if row is not None]
+            rows = []
+            seen: set[str] = set()
+            for membership in memberships:
+                row = repo.get(membership.project_id)
+                if row is None:
+                    continue
+                row_id = str(row.id)
+                if row_id in seen:
+                    continue
+                if _is_project_private(row):
+                    owner_id = row.owner_user_id
+                    if owner_id is None or str(owner_id) != str(user_uuid):
+                        continue
+                rows.append(row)
+                seen.add(row_id)
+            if owner_user_id is not None:
+                rows = [
+                    row
+                    for row in rows
+                    if row.owner_user_id is not None and str(row.owner_user_id) == str(owner_user_id)
+                ]
+            rows = sorted(
+                rows,
+                key=lambda item: float(item.created_at.timestamp()) if item.created_at is not None else 0.0,
+                reverse=True,
+            )
         return {"items": [_serialize_project(row) for row in rows]}
 
     @app.get(
@@ -1389,12 +1618,13 @@ def create_app(
     ) -> ProjectResponse:
         if payload.owner_user_id is not None and UserRepository(db).get(payload.owner_user_id) is None:
             raise HTTPException(status_code=404, detail="owner_user_id 对应用户不存在")
+        metadata_json = _with_project_visibility(payload.metadata_json) if payload.metadata_json is not None else None
         row = ProjectRepository(db).update(
             project_id,
             title=payload.title,
             genre=payload.genre,
             premise=payload.premise,
-            metadata_json=payload.metadata_json,
+            metadata_json=metadata_json,
             owner_user_id=payload.owner_user_id,
         )
         if row is None:
@@ -1416,9 +1646,7 @@ def create_app(
     )
     def delete_project(project_id: UUID, req: Request, db: Session = Depends(get_db)) -> dict:
         user = getattr(req.state, "current_user", None) or current_user(req, db)
-        ok = ProjectRepository(db).delete(project_id)
-        if not ok:
-            raise HTTPException(status_code=404, detail="project 不存在")
+        ensure_project_exists(db, project_id)
         AuditService(repo=AuditEventRepository(db)).log(
             action="project_delete",
             resource_type="project",
@@ -1426,6 +1654,9 @@ def create_app(
             project_id=project_id,
             user_id=UUID(str(user["id"])),
         )
+        ok = ProjectRepository(db).delete(project_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="project 不存在")
         return {"ok": True, "project_id": str(project_id)}
 
     @app.post(
@@ -1484,6 +1715,8 @@ def create_app(
                     profile_json=item.profile_json,
                     speech_style_json=item.speech_style_json,
                     arc_status_json=item.arc_status_json,
+                    inventory_json=getattr(item, "inventory_json", None) or {},
+                    wealth_json=getattr(item, "wealth_json", None) or {},
                     is_canonical=item.is_canonical,
                     auto_commit=False,
                 )
@@ -1540,6 +1773,77 @@ def create_app(
         )
 
     @app.post(
+        "/v2/projects/{project_id}/ai-generate-asset",
+        tags=["Bootstrap"],
+        summary="AI 生成故事资产",
+        description="基于项目前提，调用 LLM 生成指定类型的故事资产（大纲/角色/世界观/时间线/伏笔）。",
+    )
+    def ai_generate_asset(
+        project_id: UUID,
+        payload: AIAssetGeneratePayload,
+        req: Request,
+        db: Session = Depends(get_db),
+    ):
+        user = getattr(req.state, "current_user", None) or current_user(req, db)
+        ensure_project_role(db=db, project_id=project_id, user=user, min_role="editor")
+
+        llm = create_text_generation_provider()
+
+        asset_type = payload.asset_type
+        premise = payload.premise.strip()
+        genre = payload.genre.strip() or "通用"
+        title = payload.title.strip() or "未命名"
+        tone = payload.tone.strip() or ""
+        audience = payload.target_audience.strip() or ""
+
+        context_parts = [f"- 项目标题：{title}", f"- 故事前提：{premise}", f"- 类型：{genre}"]
+        if tone:
+            context_parts.append(f"- 叙事语气：{tone}")
+        if audience:
+            context_parts.append(f"- 目标读者：{audience}")
+
+        existing_lines = _ai_asset_existing_context_lines(db, project_id, skip_asset_type=asset_type)
+        if existing_lines:
+            context_parts.append("")
+            context_parts.append("## 项目中已存在的相关资产（生成时请与之协调，可补充或修订）")
+            context_parts.extend(existing_lines)
+
+        context_str = "\n".join(context_parts)
+        max_tokens = int(_AI_ASSET_MAX_TOKENS.get(asset_type, 4096))
+
+        prompt_dir = Path(__file__).parent / ".." / "agents" / "asset_generator" / "prompts"
+        system_prompt_path = prompt_dir / "system.md"
+        user_prompt_path = prompt_dir / f"{asset_type}.md"
+
+        if not user_prompt_path.exists():
+            raise HTTPException(status_code=400, detail=f"不支持的资产类型: {asset_type}")
+
+        system_prompt_text = system_prompt_path.read_text(encoding="utf-8").strip() if system_prompt_path.exists() else "你是一位专业的小说创作助手。请严格按照要求输出 JSON 格式结果。"
+        user_prompt = user_prompt_path.read_text(encoding="utf-8").strip().replace("{{ context }}", context_str)
+
+        try:
+            result = llm.generate(
+                TextGenerationRequest(
+                    system_prompt=system_prompt_text,
+                    user_prompt=user_prompt,
+                    temperature=0.8,
+                    max_tokens=max_tokens,
+                    metadata_json={"role_id": "ai_asset_generator", "step_key": f"generate_{asset_type}"},
+                )
+            )
+        except Exception as exc:
+            logger.error("AI asset generation failed: %s", exc, exc_info=True)
+            raise HTTPException(status_code=502, detail=f"LLM 生成失败: {str(exc)[:200]}") from exc
+
+        return {
+            "ok": True,
+            "asset_type": asset_type,
+            "is_mock": result.is_mock,
+            "data": result.json_data or {},
+            "text": result.text or "",
+        }
+
+    @app.post(
         "/v2/projects/{project_id}/characters",
         response_model=CharacterResponse,
         tags=["Story Assets"],
@@ -1561,6 +1865,8 @@ def create_app(
             profile_json=payload.profile_json,
             speech_style_json=payload.speech_style_json,
             arc_status_json=payload.arc_status_json,
+            inventory_json=payload.inventory_json,
+            wealth_json=payload.wealth_json,
             is_canonical=payload.is_canonical,
         )
         return CharacterResponse(**_serialize_character(row))
@@ -1625,10 +1931,112 @@ def create_app(
             profile_json=payload.profile_json,
             speech_style_json=payload.speech_style_json,
             arc_status_json=payload.arc_status_json,
+            inventory_json=payload.inventory_json,
+            wealth_json=payload.wealth_json,
             is_canonical=payload.is_canonical,
             version=payload.version,
         )
         return CharacterResponse(**_serialize_character(row))
+
+    @app.get(
+        "/v2/projects/{project_id}/characters/{character_id}/chapter-assets",
+        tags=["Story Assets"],
+        summary="查询角色在某章的物品/财富快照",
+        description="按章节号读取快照；若无快照则返回空对象（创作时回退到角色默认 inventory/wealth）。",
+    )
+    def get_character_chapter_assets(
+        project_id: UUID,
+        character_id: UUID,
+        chapter_no: int = Query(..., ge=1, description="章节号"),
+        db: Session = Depends(get_db),
+    ) -> dict:
+        ensure_project_exists(db, project_id)
+        row = CharacterRepository(db).get(character_id)
+        if row is None or str(row.project_id) != str(project_id):
+            raise HTTPException(status_code=404, detail="character 不存在")
+        snap = CharacterChapterAssetRepository(db).get_for_character_chapter(
+            character_id=character_id,
+            chapter_no=int(chapter_no),
+        )
+        if snap is None:
+            return {
+                "character_id": str(character_id),
+                "chapter_no": int(chapter_no),
+                "inventory_json": {},
+                "wealth_json": {},
+                "has_snapshot": False,
+            }
+        return {
+            "character_id": str(character_id),
+            "chapter_no": int(chapter_no),
+            "inventory_json": dict(snap.inventory_json or {}),
+            "wealth_json": dict(snap.wealth_json or {}),
+            "has_snapshot": True,
+        }
+
+    @app.put(
+        "/v2/projects/{project_id}/characters/{character_id}/chapter-assets",
+        tags=["Story Assets"],
+        summary="写入角色章节物品/财富快照",
+        description="用于在某章视角下固定携带物与财富，供创作与 UI 展示。",
+    )
+    def put_character_chapter_assets(
+        project_id: UUID,
+        character_id: UUID,
+        payload: CharacterChapterAssetsPayload,
+        db: Session = Depends(get_db),
+    ) -> dict:
+        ensure_project_exists(db, project_id)
+        row = CharacterRepository(db).get(character_id)
+        if row is None or str(row.project_id) != str(project_id):
+            raise HTTPException(status_code=404, detail="character 不存在")
+        saved = CharacterChapterAssetRepository(db).upsert(
+            character_id=character_id,
+            chapter_no=int(payload.chapter_no),
+            inventory_json=payload.inventory_json,
+            wealth_json=payload.wealth_json,
+        )
+        return {
+            "ok": True,
+            "character_id": str(character_id),
+            "chapter_no": int(saved.chapter_no),
+            "inventory_json": dict(saved.inventory_json or {}),
+            "wealth_json": dict(saved.wealth_json or {}),
+        }
+
+    @app.get(
+        "/v2/projects/{project_id}/retrieval-eval/daily",
+        tags=["Story Assets", "Evaluation"],
+        summary="检索 A/B 日聚合",
+        description="返回该项目 retrieval 在线评测按日、按 variant 的曝光与点击聚合（需项目成员权限）。",
+    )
+    def list_retrieval_eval_daily(
+        project_id: UUID,
+        req: Request,
+        days: int = 14,
+        db: Session = Depends(get_db),
+    ) -> dict:
+        user = getattr(req.state, "current_user", None) or current_user(req, db)
+        ensure_project_role(db=db, project_id=project_id, user=user, min_role="viewer")
+        ensure_project_exists(db, project_id)
+        dmax = date.today()
+        dmin = dmax - timedelta(days=max(1, min(int(days), 365)) - 1)
+        rows = RetrievalEvalRepository(db).get_daily_stats(project_id=project_id, start_date=dmin, end_date=dmax)
+        return {
+            "project_id": str(project_id),
+            "start_date": dmin.isoformat(),
+            "end_date": dmax.isoformat(),
+            "items": [
+                {
+                    "stat_date": r.stat_date,
+                    "variant": r.variant,
+                    "impressions": r.impressions,
+                    "clicks": r.clicks,
+                    "ctr": r.ctr,
+                }
+                for r in rows
+            ],
+        }
 
     @app.delete(
         "/v2/projects/{project_id}/characters/{character_id}",
@@ -2255,8 +2663,7 @@ def create_app(
                     payload.session_id,
                     linked_workflow_run_id=UUID(result.run_id),
                 )
-            if req.app.state.orchestrator_cfg.enable_auto_worker:
-                service.process_once(limit=1)
+            trigger_auto_worker_tick(limit=1)
             return WorkflowRunCreateResponse(**result.__dict__)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -2281,6 +2688,9 @@ def create_app(
             user=user,
             min_role="viewer",
         )
+        # 仅创建/重试时曾触发 auto_worker；若首轮线程异常或未启用，轮询查询可顺带唤醒一次调度（锁与 enable 条件在 tick 内处理）。
+        if str(detail.get("status") or "").strip().lower() == "queued":
+            trigger_auto_worker_tick(limit=1)
         return detail
 
     @app.websocket("/v2/writing/runs/{run_id}/ws")
@@ -2434,8 +2844,7 @@ def create_app(
         ok = service.retry_run(run_id)
         if not ok:
             raise HTTPException(status_code=400, detail="仅 failed/cancelled 状态可重试，或 run 不存在")
-        if req.app.state.orchestrator_cfg.enable_auto_worker:
-            service.process_once(limit=1)
+        trigger_auto_worker_tick(limit=1)
         return {"ok": True, "run_id": str(run_id), "status": "queued"}
 
     @app.post(
@@ -2492,8 +2901,7 @@ def create_app(
                     payload.session_id,
                     linked_workflow_run_id=UUID(result.run_id),
                 )
-            if req.app.state.orchestrator_cfg.enable_auto_worker:
-                service.process_once(limit=1)
+            trigger_auto_worker_tick(limit=1)
             return WorkflowRunCreateResponse(**result.__dict__)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -3260,6 +3668,10 @@ def create_app(
                 or 0
             )
         except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
             findings_count = 0
             evidence_count = 0
             metric_rows_count = 0
@@ -3288,7 +3700,10 @@ def create_app(
                 consumed_by_downstream_prompt = int(consumed_by.get("downstream_prompt") or 0)
                 consumed_by_audit_only = int(consumed_by.get("audit_only") or 0)
         except Exception:
-            pass
+            try:
+                db.rollback()
+            except Exception:
+                pass
 
         webhook_success = int(
             db.execute(sa.text("select count(*) from webhook_deliveries where status = 'success'")).scalar() or 0
@@ -3341,6 +3756,53 @@ def create_app(
                 "delivery_success_total": webhook_success,
                 "delivery_dead_total": webhook_dead,
             },
+        }
+
+    @app.get(
+        "/v2/system/llm-config",
+        tags=["System"],
+        summary="LLM 配置检测",
+        description="自动检测当前 LLM 配置的厂商匹配结果与兼容模式。",
+    )
+    def system_llm_config(req: Request, db: Session = Depends(get_db)) -> dict:
+        from packages.llm.text_generation.runtime_config import TextGenerationRuntimeConfig
+        from packages.llm.text_generation.provider_registry import detect_provider, get_registry
+
+        cfg = TextGenerationRuntimeConfig.from_env()
+        result = detect_provider(base_url=cfg.base_url, model=cfg.model)
+
+        return {
+            "current": {
+                "base_url": cfg.base_url,
+                "model": cfg.model,
+                "use_mock": cfg.use_mock,
+                "compat_mode_env": cfg.compat_mode,
+                "timeout": cfg.timeout_seconds,
+                "context_window": cfg.model_context_window_tokens,
+            },
+            "detection": {
+                "provider_name": result.profile.name if result.profile else None,
+                "provider_display": result.profile.display_name if result.profile else "未识别",
+                "matched_by": result.matched_by,
+                "confidence": result.confidence,
+                "recommended_compat_mode": result.compat_mode,
+                "supports_json_schema": result.profile.supports_json_schema if result.profile else None,
+                "supports_function_calling": result.profile.supports_function_calling if result.profile else None,
+                "recommended_timeout": result.profile.default_timeout if result.profile else None,
+                "recommended_context_window": result.profile.default_context_window if result.profile else None,
+                "notes": result.profile.notes if result.profile else "",
+            },
+            "available_providers": [
+                {
+                    "name": p.name,
+                    "display_name": p.display_name,
+                    "url_patterns": list(p.url_patterns),
+                    "model_prefixes": list(p.model_prefixes),
+                    "supports_json_schema": p.supports_json_schema,
+                    "supports_function_calling": p.supports_function_calling,
+                }
+                for p in get_registry()
+            ],
         }
 
     @app.get(

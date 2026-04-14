@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from packages.storage.postgres.models.chapter import Chapter
 from packages.storage.postgres.models.character import Character
+from packages.storage.postgres.models.character_chapter_asset import CharacterChapterAsset
 from packages.storage.postgres.models.foreshadowing import Foreshadowing
 from packages.storage.postgres.models.timeline_event import TimelineEvent
 from packages.storage.postgres.models.world_entry import WorldEntry
@@ -44,7 +45,11 @@ class SQLAlchemyStoryContextProvider:
                 chapter_window_before=chapter_window_before,
                 chapter_window_after=chapter_window_after,
             ),
-            characters=self._list_characters(project_id=project_id, limit=30),
+            characters=self._list_characters(
+                project_id=project_id,
+                limit=30,
+                chapter_no=chapter_no,
+            ),
             world_entries=self._list_world_entries(project_id=project_id, limit=30),
             timeline_events=self._list_timeline_events(project_id=project_id, limit=30),
             foreshadowings=self._list_foreshadowings(project_id=project_id, limit=30),
@@ -80,7 +85,13 @@ class SQLAlchemyStoryContextProvider:
             for row in rows
         ]
 
-    def _list_characters(self, *, project_id, limit: int) -> list[dict[str, Any]]:
+    def _list_characters(
+        self,
+        *,
+        project_id,
+        limit: int,
+        chapter_no: int | None = None,
+    ) -> list[dict[str, Any]]:
         stmt = (
             select(Character)
             .where(Character.project_id == project_id, Character.is_canonical.is_(True))
@@ -88,8 +99,27 @@ class SQLAlchemyStoryContextProvider:
             .limit(limit)
         )
         rows = list(self.db.execute(stmt).scalars().all())
-        return [
-            {
+        snap_by_char: dict[str, CharacterChapterAsset] = {}
+        if chapter_no is not None:
+            snap_stmt = (
+                select(CharacterChapterAsset)
+                .join(Character, Character.id == CharacterChapterAsset.character_id)
+                .where(
+                    Character.project_id == project_id,
+                    CharacterChapterAsset.chapter_no == int(chapter_no),
+                )
+            )
+            for snap in self.db.execute(snap_stmt).scalars().all():
+                snap_by_char[str(snap.character_id)] = snap
+
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            inv = dict(getattr(row, "inventory_json", None) or {})
+            wealth = dict(getattr(row, "wealth_json", None) or {})
+            snap = snap_by_char.get(str(row.id))
+            chapter_inventory = dict(snap.inventory_json or {}) if snap else {}
+            chapter_wealth = dict(snap.wealth_json or {}) if snap else {}
+            item = {
                 "id": str(row.id),
                 "name": row.name,
                 "role_type": row.role_type,
@@ -97,9 +127,16 @@ class SQLAlchemyStoryContextProvider:
                 "profile_json": row.profile_json or {},
                 "speech_style_json": row.speech_style_json or {},
                 "arc_status_json": row.arc_status_json or {},
+                "inventory_json": inv,
+                "wealth_json": wealth,
+                "chapter_no_for_assets": int(chapter_no) if chapter_no is not None else None,
+                "chapter_inventory_snapshot": chapter_inventory,
+                "chapter_wealth_snapshot": chapter_wealth,
             }
-            for row in rows
-        ]
+            item["effective_inventory_json"] = chapter_inventory if chapter_inventory else inv
+            item["effective_wealth_json"] = chapter_wealth if chapter_wealth else wealth
+            out.append(item)
+        return out
 
     def _list_world_entries(self, *, project_id, limit: int) -> list[dict[str, Any]]:
         stmt = (

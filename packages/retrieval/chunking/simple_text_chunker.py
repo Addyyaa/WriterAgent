@@ -6,8 +6,8 @@ class SimpleTextChunker(TextChunker):
 
     def __init__(
         self,
-        chunk_size: int = 800,
-        chunk_overlap: int = 120,
+        chunk_size: int = 500,
+        chunk_overlap: int = 80,
         boundary_window: int = 80,
         prefer_sentence_boundary: bool = True,
     ):

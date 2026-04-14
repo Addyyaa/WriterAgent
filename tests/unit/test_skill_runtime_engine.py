@@ -138,6 +138,60 @@ class TestSkillRuntimeEngine(unittest.TestCase):
             )
         self.assertEqual(result.runs[0].status, "skipped")
 
+    def test_gap_analysis_before_injects_skill_quality_gate(self) -> None:
+        engine = SkillRuntimeEngine()
+        skill = SkillSpec(
+            id="gap_analysis",
+            name="gap_analysis",
+            version="v1",
+            description="",
+            tags=["agent"],
+            mode="hybrid",
+            execution_mode_default="active",
+            adapters=["qa_spec"],
+        )
+        result = engine.run_before_generate(
+            skills=[skill],
+            system_prompt="sys",
+            input_payload={"state": {}},
+            context=SkillRuntimeContext(
+                trace_id="t-gap",
+                role_id="plot_agent",
+                workflow_type="plot_alignment",
+                step_key="plot_alignment",
+            ),
+        )
+        self.assertIsInstance(result.input_payload.get("skill_quality_gate"), dict)
+        for run in result.runs:
+            if run.skill_id == "gap_analysis":
+                self.assertNotEqual(run.no_effect_reason, "未发现 qa_spec/skill_quality_gate")
+
+    def test_gap_analysis_after_does_not_require_qa_spec_in_model_output(self) -> None:
+        engine = SkillRuntimeEngine()
+        skill = SkillSpec(
+            id="gap_analysis",
+            name="gap_analysis",
+            version="v1",
+            description="",
+            tags=["agent"],
+            mode="hybrid",
+            execution_mode_default="active",
+            adapters=["qa_spec"],
+        )
+        result = engine.run_after_generate(
+            skills=[skill],
+            output_payload={"agent_output": {"writing_context_summary": {}}},
+            context=SkillRuntimeContext(
+                trace_id="t-gap2",
+                role_id="plot_agent",
+                workflow_type="plot_alignment",
+                step_key="plot_alignment",
+            ),
+        )
+        for run in result.runs:
+            if run.skill_id == "gap_analysis":
+                self.assertNotEqual(run.no_effect_reason, "未发现 qa_spec/skill_quality_gate")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from packages.core.utils.chapter_metrics import count_fiction_word_units
+
 
 class WriterOutputAdapterError(RuntimeError):
     """Writer 输出适配失败。"""
@@ -129,6 +131,19 @@ class WriterOutputAdapter:
         content = str(chapter_map.get("content") or raw.get("content") or "").strip()
         summary = str(chapter_map.get("summary") or raw.get("summary") or "").strip()
 
+        title = cls._sanitize_text_field(title)
+        content = cls._sanitize_text_field(content)
+        summary = cls._sanitize_text_field(summary)
+
+        segment_joined = "\n".join(
+            str(item.get("content") or "").strip()
+            for item in segments
+            if str(item.get("content") or "").strip()
+        ).strip()
+        # 模型常把长叙事写在 segments，chapter.content 留成短摘要；落库与字数校验应以信息量更大的一侧为准（非压缩，是字段选择）。
+        if segment_joined and count_fiction_word_units(segment_joined) > count_fiction_word_units(content):
+            content = segment_joined
+
         if not content and segments:
             content = "\n".join(
                 str(item.get("content") or "").strip()
@@ -147,6 +162,49 @@ class WriterOutputAdapter:
             "content": content,
             "summary": summary,
         }
+
+    @staticmethod
+    def _sanitize_text_field(text: str) -> str:
+        """清洗可能被 JSON/prompt 污染的文本字段。
+
+        当 LLM 或 mock provider 将结构化 JSON 串误塞入文本字段时，
+        尝试从中提取真正的自然语言内容。
+        """
+        import json as _json
+
+        if not text:
+            return text
+        stripped = text.strip()
+        if not stripped.startswith("{"):
+            return text
+
+        try:
+            parsed = _json.loads(stripped)
+        except Exception:
+            return text
+
+        if not isinstance(parsed, dict):
+            return text
+
+        for path in [
+            ("chapter", "content"),
+            ("content",),
+            ("chapter", "title"),
+            ("title",),
+            ("chapter", "summary"),
+            ("summary",),
+        ]:
+            node: Any = parsed
+            for key in path:
+                if isinstance(node, dict):
+                    node = node.get(key)
+                else:
+                    node = None
+                    break
+            if isinstance(node, str) and len(node.strip()) > 10 and not node.strip().startswith("{"):
+                return node.strip()
+
+        return text
 
     @staticmethod
     def _normalize_mode(raw_mode: Any, *, fallback: str) -> str:

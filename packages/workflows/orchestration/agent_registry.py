@@ -41,16 +41,32 @@ class AgentRegistry:
         )
         self._profiles: dict[str, AgentProfile] = {}
         self._consumption_coverage: dict[str, SchemaConsumptionCoverage] = {}
+        self._shared_local_tools_markdown: str = ""
+        self._shared_local_tools_catalog: list[dict[str, Any]] = []
         self.reload()
 
     def reload(self) -> None:
         self._profiles.clear()
         self._consumption_coverage.clear()
+        self._shared_local_tools_markdown = ""
+        self._shared_local_tools_catalog = []
+        shared_dir = self.root / "_shared"
+        md_path = shared_dir / "local_data_tools.md"
+        catalog_path = shared_dir / "local_data_tools_catalog.json"
+        if md_path.is_file():
+            self._shared_local_tools_markdown = md_path.read_text(encoding="utf-8").strip()
+        if catalog_path.is_file():
+            raw = json.loads(catalog_path.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                self._shared_local_tools_catalog = [x for x in raw if isinstance(x, dict)]
         if not self.root.exists():
             return
 
+        required_files = ("prompt.md", "strategy.yaml", "output_schema.json", "skills.yaml")
         for path in sorted(self.root.iterdir()):
             if not path.is_dir():
+                continue
+            if not all((path / f).exists() for f in required_files):
                 continue
             profile = self._load_profile(path)
             self._profiles[profile.role_id] = profile
@@ -60,6 +76,10 @@ class AgentRegistry:
 
     def get(self, role_id: str) -> AgentProfile | None:
         return self._profiles.get(role_id)
+
+    def local_data_tools_catalog(self) -> list[dict[str, Any]]:
+        """与 apps/agents/_shared/local_data_tools_catalog.json 一致，供请求 payload 使用。"""
+        return list(self._shared_local_tools_catalog)
 
     def resolve(
         self,
@@ -98,6 +118,8 @@ class AgentRegistry:
                 raise SchemaValidationError(f"角色配置缺少文件: {required}")
 
         prompt = prompt_path.read_text(encoding="utf-8").strip()
+        if self._shared_local_tools_markdown:
+            prompt = f"{prompt.rstrip()}\n\n{self._shared_local_tools_markdown}"
         strategy_data = parse_simple_yaml(strategy_path.read_text(encoding="utf-8"))
         output_schema_data = json.loads(output_schema_path.read_text(encoding="utf-8"))
         skills_data = parse_simple_yaml(skills_path.read_text(encoding="utf-8"))
@@ -151,7 +173,7 @@ class AgentRegistry:
         strategy = AgentStrategy(
             version=str(strategy_data.get("version") or "v1"),
             temperature=float(strategy_data.get("temperature") or 0.3),
-            max_tokens=int(strategy_data.get("max_tokens") or 1024),
+            max_tokens=int(strategy_data.get("max_tokens") or 4096),
             style=str(strategy_data.get("style") or "default"),
             mode=str(strategy_data.get("mode") or "default"),
             mode_strategies=dict(strategy_data.get("mode_strategies") or {}),

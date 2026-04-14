@@ -12,3 +12,4 @@ apps/web/.next/
 apps/web/playwright-report/
 apps/web/test-results/
 apps/web/generated/api/openapi.json
+*.log

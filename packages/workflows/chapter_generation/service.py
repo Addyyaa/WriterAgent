@@ -1,13 +1,24 @@
 from __future__ import annotations
 
+import copy
 import json
+import logging
+import os
 from datetime import datetime, timezone
 from time import perf_counter
 from typing import Any, TYPE_CHECKING
 
 from packages.core.tracing import new_request_id, new_trace_id, request_context
 from packages.core.utils import ensure_non_empty_string
+from packages.core.utils.chapter_metrics import (
+    chapter_context_token_budget,
+    chapter_max_output_tokens,
+    chapter_word_count_allowed_range,
+    chapter_word_count_violation_message,
+    count_fiction_word_units,
+)
 from packages.llm.text_generation.base import TextGenerationProvider, TextGenerationRequest
+from packages.llm.text_generation.schema_errors import ResponseSchemaValidationError
 from packages.memory.long_term.ingestion.ingestion_service import MemoryIngestionService
 from packages.memory.project_memory.project_memory_service import ProjectMemoryService
 from packages.schemas import SchemaRegistry
@@ -30,6 +41,10 @@ from packages.workflows.writer_output import WriterOutputAdapter
 if TYPE_CHECKING:
     from packages.workflows.orchestration.agent_registry import AgentRegistry
 
+logger = logging.getLogger(__name__)
+# 与 LLM 文件日志同一 logger，便于 tail data/llm.log 对照正文长度
+_llm_diag_logger = logging.getLogger("writeragent.llm")
+
 
 class ChapterGenerationWorkflowError(RuntimeError):
     """章节生成 workflow 运行异常。"""
@@ -51,7 +66,7 @@ class ChapterGenerationWorkflowService:
         "properties": {
             "project": {"type": "object"},
             "goal": {"type": "string", "minLength": 1},
-            "target_words": {"type": "integer", "minimum": 100},
+            "target_words": {"type": "integer", "minimum": 300, "maximum": 10000},
             "style_hint": {"type": ["string", "null"]},
             "memory_context": {"type": "array"},
             "story_constraints": {"type": "object"},
@@ -72,6 +87,17 @@ class ChapterGenerationWorkflowService:
             "title": {"type": "string", "minLength": 1},
             "content": {"type": "string", "minLength": 1},
             "summary": {"type": "string", "minLength": 1},
+        },
+        "additionalProperties": True,
+    }
+    CHAPTER_EXPAND_OUTPUT_SCHEMA = {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+            "title": {"type": "string"},
+            "content": {"type": "string", "minLength": 1},
+            "summary": {"type": "string"},
+            "notes": {"type": "string"},
         },
         "additionalProperties": True,
     }
@@ -106,6 +132,17 @@ class ChapterGenerationWorkflowService:
         self.agent_registry = agent_registry
         self.schema_registry = schema_registry
         self.skill_runtime = skill_runtime or SkillRuntimeEngine()
+
+    @staticmethod
+    def _notify_live_progress(request: ChapterGenerationRequest, payload: dict[str, Any]) -> None:
+        """将章节草稿 LLM 重试进度推送给编排层（写入 workflow_step.input_json.live_progress）。"""
+        cb = request.live_progress_callback
+        if cb is None:
+            return
+        try:
+            cb(payload)
+        except Exception:
+            logger.debug("live_progress_callback 更新失败", exc_info=True)
 
     def run(self, request: ChapterGenerationRequest) -> ChapterGenerationResult:
         started_at = perf_counter()
@@ -147,6 +184,11 @@ class ChapterGenerationWorkflowService:
                 if project is None:
                     raise ChapterGenerationWorkflowError("project 不存在")
 
+                tw = int(request.target_words)
+                if tw < 300 or tw > 10_000:
+                    raise ChapterGenerationWorkflowError("target_words 必须在 300~10000 之间")
+                token_budget_eff = chapter_context_token_budget(tw, explicit=request.context_token_budget)
+
                 retrieval_call = self.tool_call_repo.create_call(
                     trace_id=trace_id,
                     agent_run_id=run_row.id,
@@ -155,9 +197,7 @@ class ChapterGenerationWorkflowService:
                         "project_id": str(request.project_id),
                         "query": writing_goal,
                         "top_k": int(request.include_memory_top_k),
-                        "context_token_budget": int(
-                            request.context_token_budget or self.default_context_token_budget
-                        ),
+                        "context_token_budget": int(token_budget_eff),
                     },
                 )
                 self.tool_call_repo.start(retrieval_call.id)
@@ -168,7 +208,7 @@ class ChapterGenerationWorkflowService:
                     query=writing_goal,
                     token_budget=max(
                         400,
-                        int(request.context_token_budget or self.default_context_token_budget),
+                        int(token_budget_eff),
                     ),
                     top_k=max(1, int(request.include_memory_top_k)),
                     chat_turns=request.chat_turns,
@@ -191,11 +231,19 @@ class ChapterGenerationWorkflowService:
                 )
                 active_tool_call_id = None
 
-                runtime = self._resolve_writer_runtime(
-                    workflow_type=self.WORKFLOW_NAME,
-                    step_key="writer_draft",
-                    strategy_mode="draft",
+                runtime = dict(
+                    self._resolve_writer_runtime(
+                        workflow_type=self.WORKFLOW_NAME,
+                        step_key="writer_draft",
+                        strategy_mode="draft",
+                    )
                 )
+                computed_out = chapter_max_output_tokens(tw)
+                base_mt = runtime.get("max_tokens")
+                if isinstance(base_mt, int):
+                    runtime["max_tokens"] = max(int(base_mt), int(computed_out))
+                else:
+                    runtime["max_tokens"] = int(computed_out)
                 runtime_warnings = [
                     str(item)
                     for item in list(runtime.get("warnings") or [])
@@ -212,21 +260,21 @@ class ChapterGenerationWorkflowService:
                             tags=["fallback"],
                         )
                     ]
-
-                llm_call = self.tool_call_repo.create_call(
-                    trace_id=trace_id,
-                    agent_run_id=run_row.id,
-                    tool_name="llm_generate_chapter",
-                    input_json={
-                        "target_words": int(request.target_words),
-                        "temperature": float(request.temperature),
-                        "style_hint": request.style_hint,
-                        "strategy_version": runtime.get("strategy_version"),
-                        "schema_ref": runtime.get("schema_ref"),
-                    },
+                skill_specs, skill_filter_warnings = self._filter_draft_skills(
+                    skills=skill_specs,
+                    target_words=tw,
                 )
-                self.tool_call_repo.start(llm_call.id)
-                active_tool_call_id = llm_call.id
+                if not skill_specs:
+                    skill_specs = [
+                        SkillSpec(
+                            id="chapter_writing",
+                            name="chapter_writing",
+                            version="v1",
+                            description="fallback chapter writing skill",
+                            tags=["fallback"],
+                        )
+                    ]
+                runtime_warnings.extend(list(skill_filter_warnings or []))
 
                 for spec in skill_specs:
                     skill_run = self.skill_run_repo.create_run(
@@ -247,7 +295,8 @@ class ChapterGenerationWorkflowService:
                     active_skill_run_ids.append(skill_run.id)
 
                 system_prompt = str(runtime.get("system_prompt") or self._legacy_system_prompt())
-                prompt_payload = self._build_user_prompt(
+                w_low, w_high = chapter_word_count_allowed_range(tw)
+                base_prompt_payload = self._build_user_prompt(
                     project=project,
                     writing_goal=writing_goal,
                     target_words=request.target_words,
@@ -256,91 +305,499 @@ class ChapterGenerationWorkflowService:
                     story_context=story_context,
                     working_notes=request.working_notes,
                     retrieval_context=request.retrieval_context,
+                    chapter_no=request.chapter_no,
+                    word_count_min=w_low,
+                    word_count_max=w_high,
                 )
                 if runtime.get("using_writer_schema"):
-                    prompt_payload["output_format"] = {
+                    base_prompt_payload["output_format"] = {
                         "schema_ref": "apps/agents/writer_agent/output_schema.json",
                         "contract": "WriterOutputV2",
                     }
 
-                before = self.skill_runtime.run_before_generate(
-                    skills=skill_specs,
-                    system_prompt=system_prompt,
-                    input_payload=prompt_payload,
-                    context=SkillRuntimeContext(
-                        trace_id=trace_id,
-                        role_id="writer_agent",
-                        workflow_type=self.WORKFLOW_NAME,
-                        step_key="writer_draft",
-                        mode="draft",
+                max_word_attempts = max(1, min(10, int(os.environ.get("WRITER_CHAPTER_WORD_COUNT_MAX_ATTEMPTS", "5"))))
+                short_expand_enabled = self._env_flag("WRITER_CHAPTER_TOO_SHORT_EXPAND_ENABLED", default=True)
+                short_expand_trigger_attempt = max(
+                    2,
+                    min(
+                        10,
+                        int(os.environ.get("WRITER_CHAPTER_TOO_SHORT_EXPAND_TRIGGER_ATTEMPT", "3")),
                     ),
                 )
-                user_prompt = json.dumps(before.input_payload, ensure_ascii=False)
+                last_bad_wc: int | None = None
+                last_bad_raw_len: int | None = None
+                last_issue: str | None = None
+                llm_output: Any = None
+                before: Any = None
+                after: Any = None
+                writer_structured: dict[str, Any] = {}
+                legacy: dict[str, str] = {}
+                draft_title = ""
+                draft_content = ""
+                draft_summary = ""
+                recoverable_title = ""
+                recoverable_summary = ""
+                recoverable_content = ""
+                wc = 0
+                short_expand_no_progress_streak = 0
+                schema_progressive = self._env_flag("WRITER_CHAPTER_SCHEMA_MIN_PROGRESSIVE", default=True)
 
-                runtime_temp = (
-                    float(runtime.get("temperature") or request.temperature)
-                    if runtime.get("using_writer_schema")
-                    else float(request.temperature)
-                )
-                runtime_max_tokens = (
-                    int(runtime.get("max_tokens"))
-                    if runtime.get("using_writer_schema") and runtime.get("max_tokens") is not None
-                    else None
-                )
-                llm_output = self.text_provider.generate(
-                    TextGenerationRequest(
-                        system_prompt=before.system_prompt,
-                        user_prompt=user_prompt,
-                        temperature=runtime_temp,
-                        max_tokens=runtime_max_tokens,
-                        input_payload=before.input_payload,
-                        input_schema=self.CHAPTER_INPUT_SCHEMA,
-                        input_schema_name="chapter_generation_input",
-                        input_schema_strict=True,
-                        response_schema=runtime.get("response_schema") or self.CHAPTER_OUTPUT_SCHEMA,
-                        response_schema_name="chapter_generation_output",
-                        response_schema_strict=True,
-                        validation_retries=2,
-                        use_function_calling=True,
-                        function_name="chapter_generation_output",
-                        function_description="Return chapter writer output as JSON.",
-                        metadata_json={
-                            "target_words": request.target_words,
-                            "workflow": self.WORKFLOW_NAME,
-                            "trace_id": trace_id,
-                            "strategy_version": runtime.get("strategy_version"),
-                            "schema_ref": runtime.get("schema_ref"),
+                for word_attempt in range(max_word_attempts):
+                    schema_min_content_len = self._schema_min_content_len_for_attempt(
+                        w_low=w_low,
+                        word_attempt=word_attempt,
+                        progressive_enabled=schema_progressive,
+                    )
+                    draft_pool_title = (draft_title or recoverable_title).strip()
+                    draft_pool_summary = (draft_summary or recoverable_summary).strip()
+                    draft_pool_content = (draft_content or recoverable_content).strip()
+                    prompt_payload = copy.deepcopy(base_prompt_payload)
+                    if word_attempt > 0 and last_bad_wc is not None and last_issue is not None:
+                        contract = dict(prompt_payload.get("writing_contract") or {})
+                        contract["word_count_retry"] = self._word_count_retry_contract(
+                            attempt_index=word_attempt,
+                            max_attempts=max_word_attempts,
+                            effective_chars=last_bad_wc,
+                            low=w_low,
+                            high=w_high,
+                            target_words=tw,
+                            issue=last_issue,
+                            previous_raw_char_len=last_bad_raw_len,
+                        )
+                        prompt_payload["writing_contract"] = contract
+
+                    runtime_temp = (
+                        float(runtime.get("temperature") or request.temperature)
+                        if runtime.get("using_writer_schema")
+                        else float(request.temperature)
+                    )
+                    runtime_max_tokens = (
+                        int(runtime.get("max_tokens"))
+                        if runtime.get("using_writer_schema") and runtime.get("max_tokens") is not None
+                        else None
+                    )
+                    use_short_expander = self._should_use_short_draft_expander(
+                        enabled=short_expand_enabled,
+                        attempt_index=word_attempt,
+                        trigger_attempt=short_expand_trigger_attempt,
+                        issue=last_issue,
+                        previous_content=draft_pool_content,
+                        no_progress_streak=short_expand_no_progress_streak,
+                    )
+                    generation_mode = "expand_short_draft" if use_short_expander else "full_regenerate"
+                    _llm_diag_logger.info(
+                        "[chapter_generation] writer_draft_generation_mode | attempt=%s/%s mode=%s "
+                        "enabled=%s trigger_attempt=%s prev_issue=%s prev_wc=%s schema_min_len=%s",
+                        word_attempt + 1,
+                        max_word_attempts,
+                        generation_mode,
+                        short_expand_enabled,
+                        short_expand_trigger_attempt,
+                        last_issue,
+                        last_bad_wc,
+                        schema_min_content_len,
+                    )
+                    self._notify_live_progress(
+                        request,
+                        {
+                            "kind": "writer_draft_llm",
+                            "attempt": int(word_attempt) + 1,
+                            "max_attempts": int(max_word_attempts),
+                            "generation_mode": generation_mode,
+                            "issue": last_issue,
+                            "schema_min_content_len": int(schema_min_content_len),
+                            "pulse_at": datetime.now(tz=timezone.utc).isoformat(),
+                            "llm_timeout_seconds": float(
+                                getattr(self.text_provider, "timeout_seconds", 120.0)
+                            ),
                         },
                     )
-                )
 
-                after = self.skill_runtime.run_after_generate(
-                    skills=skill_specs,
-                    output_payload=dict(llm_output.json_data or {}),
-                    context=SkillRuntimeContext(
-                        trace_id=trace_id,
-                        role_id="writer_agent",
-                        workflow_type=self.WORKFLOW_NAME,
-                        step_key="writer_draft",
-                        mode="draft",
-                    ),
-                )
+                    llm_call = None
+                    try:
+                        if use_short_expander:
+                            llm_call = self.tool_call_repo.create_call(
+                                trace_id=trace_id,
+                                agent_run_id=run_row.id,
+                                tool_name="llm_expand_chapter",
+                                input_json={
+                                    "target_words": int(request.target_words),
+                                    "temperature": float(runtime_temp),
+                                    "style_hint": request.style_hint,
+                                    "strategy_version": runtime.get("strategy_version"),
+                                    "schema_ref": runtime.get("schema_ref"),
+                                    "generation_mode": generation_mode,
+                                    "word_count_attempt": int(word_attempt) + 1,
+                                    "word_count_max_attempts": int(max_word_attempts),
+                                },
+                            )
+                            self.tool_call_repo.start(llm_call.id)
+                            active_tool_call_id = llm_call.id
 
-                writer_structured = WriterOutputAdapter.normalize(
-                    dict(after.output_payload or {}),
-                    mode="draft",
-                )
-                legacy = WriterOutputAdapter.legacy_chapter(writer_structured)
-                draft_title = str(legacy.get("title") or "").strip() or "未命名章节"
-                draft_content = str(legacy.get("content") or "").strip()
-                draft_summary = str(legacy.get("summary") or "").strip()
-                if not draft_content:
-                    raise ChapterGenerationWorkflowError("LLM 输出缺少 content")
+                            expander_prompt = self._build_short_draft_expander_prompt(
+                                project=project,
+                                writing_goal=writing_goal,
+                                style_hint=request.style_hint,
+                                target_words=tw,
+                                low=w_low,
+                                high=w_high,
+                                previous_title=draft_pool_title or draft_title,
+                                previous_summary=draft_pool_summary or draft_summary,
+                                previous_content=draft_pool_content,
+                                prompt_payload=prompt_payload,
+                            )
+                            llm_output = self.text_provider.generate(
+                                TextGenerationRequest(
+                                    system_prompt=self._short_draft_expander_system_prompt(),
+                                    user_prompt=json.dumps(expander_prompt, ensure_ascii=False),
+                                    temperature=min(0.45, float(runtime_temp)),
+                                    max_tokens=runtime_max_tokens,
+                                    input_payload=expander_prompt,
+                                    response_schema=self._build_response_schema_with_content_min(
+                                        self.CHAPTER_EXPAND_OUTPUT_SCHEMA,
+                                        min_content_len=schema_min_content_len,
+                                    ),
+                                    response_schema_name="chapter_expand_output",
+                                    response_schema_strict=True,
+                                    validation_retries=2,
+                                    use_function_calling=True,
+                                    function_name="chapter_expand_output",
+                                    function_description=(
+                                        "Return expanded chapter JSON where content length satisfies requested range."
+                                    ),
+                                    metadata_json={
+                                        "target_words": request.target_words,
+                                        "workflow": self.WORKFLOW_NAME,
+                                        "trace_id": trace_id,
+                                        "strategy_version": runtime.get("strategy_version"),
+                                        "schema_ref": runtime.get("schema_ref"),
+                                        "generation_mode": generation_mode,
+                                        "word_count_attempt": int(word_attempt) + 1,
+                                        "word_count_max_attempts": int(max_word_attempts),
+                                    },
+                                )
+                            )
+                            expanded = dict(llm_output.json_data or {})
+                            chapter_map = (
+                                dict(expanded.get("chapter") or {})
+                                if isinstance(expanded.get("chapter"), dict)
+                                else {}
+                            )
+                            expanded_title = str(
+                                chapter_map.get("title") or expanded.get("title") or draft_title or "未命名章节"
+                            ).strip()
+                            expanded_content = str(
+                                chapter_map.get("content") or expanded.get("content") or ""
+                            ).strip()
+                            expanded_summary = str(
+                                chapter_map.get("summary") or expanded.get("summary") or draft_summary or ""
+                            ).strip()
+                            writer_structured = {
+                                "mode": "draft",
+                                "status": "success",
+                                "segments": [],
+                                "word_count": count_fiction_word_units(expanded_content),
+                                "notes": str(expanded.get("notes") or "").strip(),
+                                "chapter": {
+                                    "title": expanded_title or "未命名章节",
+                                    "content": expanded_content,
+                                    "summary": expanded_summary,
+                                },
+                            }
+                        else:
+                            before = self.skill_runtime.run_before_generate(
+                                skills=skill_specs,
+                                system_prompt=system_prompt,
+                                input_payload=prompt_payload,
+                                context=SkillRuntimeContext(
+                                    trace_id=trace_id,
+                                    role_id="writer_agent",
+                                    workflow_type=self.WORKFLOW_NAME,
+                                    step_key="writer_draft",
+                                    mode="draft",
+                                ),
+                            )
+                            user_prompt = json.dumps(before.input_payload, ensure_ascii=False)
+
+                            llm_call = self.tool_call_repo.create_call(
+                                trace_id=trace_id,
+                                agent_run_id=run_row.id,
+                                tool_name="llm_generate_chapter",
+                                input_json={
+                                    "target_words": int(request.target_words),
+                                    "temperature": float(request.temperature),
+                                    "style_hint": request.style_hint,
+                                    "strategy_version": runtime.get("strategy_version"),
+                                    "schema_ref": runtime.get("schema_ref"),
+                                    "generation_mode": generation_mode,
+                                    "word_count_attempt": int(word_attempt) + 1,
+                                    "word_count_max_attempts": int(max_word_attempts),
+                                },
+                            )
+                            self.tool_call_repo.start(llm_call.id)
+                            active_tool_call_id = llm_call.id
+
+                            llm_output = self.text_provider.generate(
+                                TextGenerationRequest(
+                                    system_prompt=before.system_prompt,
+                                    user_prompt=user_prompt,
+                                    temperature=runtime_temp,
+                                    max_tokens=runtime_max_tokens,
+                                    input_payload=before.input_payload,
+                                    input_schema=self.CHAPTER_INPUT_SCHEMA,
+                                    input_schema_name="chapter_generation_input",
+                                    input_schema_strict=True,
+                                    response_schema=self._build_response_schema_with_content_min(
+                                        runtime.get("response_schema") or self.CHAPTER_OUTPUT_SCHEMA,
+                                        min_content_len=schema_min_content_len,
+                                    ),
+                                    response_schema_name="chapter_generation_output",
+                                    response_schema_strict=True,
+                                    validation_retries=2,
+                                    use_function_calling=True,
+                                    function_name="chapter_generation_output",
+                                    function_description="Return chapter writer output as JSON.",
+                                    metadata_json={
+                                        "target_words": request.target_words,
+                                        "workflow": self.WORKFLOW_NAME,
+                                        "trace_id": trace_id,
+                                        "strategy_version": runtime.get("strategy_version"),
+                                        "schema_ref": runtime.get("schema_ref"),
+                                        "generation_mode": generation_mode,
+                                        "word_count_attempt": int(word_attempt) + 1,
+                                        "word_count_max_attempts": int(max_word_attempts),
+                                    },
+                                )
+                            )
+
+                            after = self.skill_runtime.run_after_generate(
+                                skills=skill_specs,
+                                output_payload=dict(llm_output.json_data or {}),
+                                context=SkillRuntimeContext(
+                                    trace_id=trace_id,
+                                    role_id="writer_agent",
+                                    workflow_type=self.WORKFLOW_NAME,
+                                    step_key="writer_draft",
+                                    mode="draft",
+                                ),
+                            )
+
+                            writer_structured = WriterOutputAdapter.normalize(
+                                dict(after.output_payload or {}),
+                                mode="draft",
+                            )
+                    except Exception as gen_exc:
+                        gen_exc_text = str(gen_exc or "")
+                        if isinstance(gen_exc, ResponseSchemaValidationError) and gen_exc.json_data:
+                            leg = self._legacy_chapter_from_raw_writer_json(
+                                dict(gen_exc.json_data),
+                            )
+                            pc = str(leg.get("content") or "").strip()
+                            if pc:
+                                recoverable_content = pc
+                                t_leg = str(leg.get("title") or "").strip()
+                                s_leg = str(leg.get("summary") or "").strip()
+                                if t_leg:
+                                    recoverable_title = t_leg
+                                if s_leg:
+                                    recoverable_summary = s_leg
+                                last_bad_wc = count_fiction_word_units(pc)
+                                last_bad_raw_len = len(pc)
+                                last_issue = "too_short"
+                                _llm_diag_logger.info(
+                                    "[chapter_generation] schema_reject_recoverable_draft | "
+                                    "attempt=%s/%s raw_len=%s effective_non_ws=%s",
+                                    word_attempt + 1,
+                                    max_word_attempts,
+                                    last_bad_raw_len,
+                                    last_bad_wc,
+                                )
+                        # 旧逻辑曾在 schema 失败时把 minLength 按 0.75 递减，会让「契约下限」越降越低，
+                        # 与「正文要写够 target_words±10%」背道而驰；默认关闭，仅排障时可开。
+                        if self._env_flag("WRITER_CHAPTER_SCHEMA_MIN_RELAX_ON_FAIL", default=False) and (
+                            "schema 校验" in gen_exc_text
+                            or "长度不足" in gen_exc_text
+                            or "minLength" in gen_exc_text
+                        ):
+                            prev_min = int(schema_min_content_len)
+                            relax = float(os.environ.get("WRITER_CHAPTER_SCHEMA_MIN_RELAX_FACTOR", "0.75"))
+                            relax = max(0.5, min(0.99, relax))
+                            schema_min_content_len = max(1, int(schema_min_content_len * relax))
+                            if schema_min_content_len != prev_min:
+                                logger.warning(
+                                    "章节草稿 schema 最小长度下调（WRITER_CHAPTER_SCHEMA_MIN_RELAX_ON_FAIL）| "
+                                    "attempt=%s/%s mode=%s from=%s to=%s",
+                                    word_attempt + 1,
+                                    max_word_attempts,
+                                    generation_mode,
+                                    prev_min,
+                                    schema_min_content_len,
+                                )
+                        if llm_call is not None:
+                            self.tool_call_repo.fail(
+                                llm_call.id,
+                                error_code=type(gen_exc).__name__,
+                                output_json={
+                                    "error": str(gen_exc),
+                                    "generation_mode": generation_mode,
+                                    "word_count_attempt": int(word_attempt) + 1,
+                                    "word_count_max_attempts": int(max_word_attempts),
+                                },
+                            )
+                        active_tool_call_id = None
+                        if word_attempt >= max_word_attempts - 1:
+                            raise
+                        if last_bad_wc is None:
+                            last_bad_wc = 0
+                        if last_bad_raw_len is None and isinstance(
+                            gen_exc,
+                            ResponseSchemaValidationError,
+                        ):
+                            last_bad_raw_len = 0
+                        if last_issue is None:
+                            last_issue = "too_short"
+                        logger.warning(
+                            "章节草稿生成失败，将进入下一次重试 | attempt=%s/%s mode=%s error=%s",
+                            word_attempt + 1,
+                            max_word_attempts,
+                            generation_mode,
+                            str(gen_exc),
+                        )
+                        continue
+                    legacy = WriterOutputAdapter.legacy_chapter(writer_structured)
+                    draft_title = str(legacy.get("title") or "").strip() or "未命名章节"
+                    draft_content = str(legacy.get("content") or "").strip()
+                    draft_summary = str(legacy.get("summary") or "").strip()
+                    if not draft_content:
+                        self.tool_call_repo.fail(
+                            llm_call.id,
+                            error_code="MISSING_CONTENT",
+                            output_json={"word_count_attempt": int(word_attempt) + 1},
+                        )
+                        active_tool_call_id = None
+                        if word_attempt >= max_word_attempts - 1:
+                            raise ChapterGenerationWorkflowError("LLM 输出缺少 content")
+                        last_bad_wc = 0
+                        last_bad_raw_len = 0
+                        last_issue = "too_short"
+                        logger.warning(
+                            "章节草稿缺少正文，将重试 | attempt=%s/%s",
+                            word_attempt + 1,
+                            max_word_attempts,
+                        )
+                        continue
+
+                    wc = count_fiction_word_units(draft_content)
+                    if use_short_expander:
+                        base_wc = int(last_bad_wc or 0)
+                        growth = int(wc - base_wc)
+                        min_expected_growth = max(120, int(tw * 0.05))
+                        if growth < min_expected_growth:
+                            short_expand_no_progress_streak += 1
+                        else:
+                            short_expand_no_progress_streak = 0
+                    else:
+                        short_expand_no_progress_streak = 0
+                    try:
+                        llm_dump_len = len(
+                            json.dumps(dict(llm_output.json_data or {}), ensure_ascii=False)
+                        )
+                    except Exception:
+                        llm_dump_len = -1
+                    seg_list = (
+                        list(writer_structured.get("segments") or [])
+                        if isinstance(writer_structured.get("segments"), list)
+                        else []
+                    )
+                    seg_join = "\n".join(
+                        str(s.get("content") or "").strip()
+                        for s in seg_list
+                        if isinstance(s, dict)
+                    )
+                    seg_join_eff = count_fiction_word_units(seg_join)
+                    seg_n = len([s for s in seg_list if isinstance(s, dict)])
+                    _llm_diag_logger.info(
+                        "[chapter_generation] writer_draft_lens | attempt=%s/%s "
+                        "llm_primary_text_len=%d llm_json_dump_len=%d "
+                        "legacy_content_strlen=%d legacy_content_non_ws=%d "
+                        "segments_n=%d segments_join_non_ws=%d",
+                        word_attempt + 1,
+                        max_word_attempts,
+                        len(llm_output.text or ""),
+                        llm_dump_len,
+                        len(draft_content),
+                        wc,
+                        seg_n,
+                        seg_join_eff,
+                    )
+                    _llm_diag_logger.info(
+                        "[chapter_generation] writer_draft_word_stats | attempt=%s/%s "
+                        "target_words=%s allowed=[%s,%s] actual_non_ws=%s "
+                        "gap_to_min=%s gap_to_max=%s issue=%s",
+                        word_attempt + 1,
+                        max_word_attempts,
+                        tw,
+                        w_low,
+                        w_high,
+                        wc,
+                        wc - w_low,
+                        w_high - wc,
+                        "ok" if (w_low <= wc <= w_high) else ("too_short" if wc < w_low else "too_long"),
+                    )
+                    if w_low <= wc <= w_high:
+                        break
+
+                    last_bad_wc = wc
+                    last_bad_raw_len = len(draft_content)
+                    last_issue = "too_short" if wc < w_low else "too_long"
+                    logger.info(
+                        "章节草稿字数未达标，准备让模型重写 | attempt=%s/%s wc=%s 允许=[%s,%s] issue=%s",
+                        word_attempt + 1,
+                        max_word_attempts,
+                        wc,
+                        w_low,
+                        w_high,
+                        last_issue,
+                    )
+                    self.tool_call_repo.fail(
+                        llm_call.id,
+                        error_code="CHAPTER_WORD_COUNT",
+                        output_json={
+                            "effective_chars": wc,
+                            "allowed_min": w_low,
+                            "allowed_max": w_high,
+                            "target_words": tw,
+                            "will_retry": word_attempt < max_word_attempts - 1,
+                            "word_count_attempt": int(word_attempt) + 1,
+                        },
+                    )
+                    active_tool_call_id = None
+                    if word_attempt >= max_word_attempts - 1:
+                        _llm_diag_logger.warning(
+                            "[chapter_generation] writer_draft 仍不达标，放弃重写 | "
+                            "attempt=%s/%s llm_json_dump_len=%s legacy_content_non_ws=%s segments_join_non_ws=%s",
+                            word_attempt + 1,
+                            max_word_attempts,
+                            llm_dump_len,
+                            wc,
+                            seg_join_eff,
+                        )
+                        base = chapter_word_count_violation_message(
+                            effective_chars=wc,
+                            target_words=tw,
+                            low=w_low,
+                            high=w_high,
+                        )
+                        raise ChapterGenerationWorkflowError(
+                            f"{base}已达最大重写次数 {max_word_attempts}。"
+                        )
+
+                self._notify_live_progress(request, {"kind": "idle"})
 
                 skill_runs_payload = self._build_skill_runs_payload(
                     skills=skill_specs,
-                    before_runs=list(before.runs or []),
-                    after_runs=list(after.runs or []),
+                    before_runs=list(getattr(before, "runs", []) or []),
+                    after_runs=list(getattr(after, "runs", []) or []),
                 )
                 for run_id, snapshot in zip(active_skill_run_ids, skill_runs_payload):
                     self.skill_run_repo.succeed(run_id, output_snapshot_json=snapshot)
@@ -348,8 +805,12 @@ class ChapterGenerationWorkflowService:
 
                 all_warnings = []
                 all_warnings.extend(runtime_warnings)
-                all_warnings.extend([str(item) for item in list(before.warnings or []) if str(item).strip()])
-                all_warnings.extend([str(item) for item in list(after.warnings or []) if str(item).strip()])
+                all_warnings.extend(
+                    [str(item) for item in list(getattr(before, "warnings", []) or []) if str(item).strip()]
+                )
+                all_warnings.extend(
+                    [str(item) for item in list(getattr(after, "warnings", []) or []) if str(item).strip()]
+                )
 
                 self.tool_call_repo.succeed(
                     llm_call.id,
@@ -522,6 +983,7 @@ class ChapterGenerationWorkflowService:
                     skill_runs=skill_runs_payload,
                 )
             except Exception as exc:
+                self._notify_live_progress(request, {"kind": "idle"})
                 if active_tool_call_id is not None:
                     try:
                         self.tool_call_repo.fail(
@@ -610,6 +1072,39 @@ class ChapterGenerationWorkflowService:
             "strategy_version": strategy.version,
             "using_writer_schema": bool(profile.output_schema),
         }
+
+    @staticmethod
+    def _filter_draft_skills(
+        *,
+        skills: list[SkillSpec],
+        target_words: int,
+    ) -> tuple[list[SkillSpec], list[str]]:
+        """
+        长章节写作时避免注入促使过度压缩的技能提示。
+
+        说明：`text_refinement` 会追加“保持文本简洁”的系统提示，容易与长章节字数契约冲突。
+        """
+        if int(target_words) < 2000:
+            return list(skills or []), []
+
+        blocked = {"text_refinement"}
+        kept: list[SkillSpec] = []
+        removed: list[str] = []
+        for spec in list(skills or []):
+            sid = str(getattr(spec, "id", "") or "").strip().lower()
+            if sid in blocked:
+                removed.append(sid)
+                continue
+            kept.append(spec)
+
+        if not removed:
+            return kept, []
+        warning = (
+            "long-form draft 已自动禁用易压缩正文的技能: "
+            + ", ".join(sorted(set(removed)))
+            + f"（target_words={int(target_words)}）"
+        )
+        return kept, [warning]
 
     @staticmethod
     def _build_skill_runs_payload(
@@ -728,6 +1223,213 @@ class ChapterGenerationWorkflowService:
             "content 必须是完整章节正文。"
         )
 
+    @staticmethod
+    def _env_flag(name: str, *, default: bool) -> bool:
+        raw = str(os.environ.get(name, "1" if default else "0")).strip().lower()
+        if raw in {"1", "true", "yes", "on"}:
+            return True
+        if raw in {"0", "false", "no", "off"}:
+            return False
+        return bool(default)
+
+    @staticmethod
+    def _legacy_chapter_from_raw_writer_json(data: dict[str, Any]) -> dict[str, str]:
+        """从 Writer 原始 JSON 抽取 chapter 三字段（不经过 Adapter），用于 schema 失败时回收短稿。"""
+        ch = dict(data.get("chapter") or {}) if isinstance(data.get("chapter"), dict) else {}
+        title = str(ch.get("title") or data.get("title") or "").strip()
+        content = str(ch.get("content") or data.get("content") or "").strip()
+        summary = str(ch.get("summary") or data.get("summary") or "").strip()
+        return {"title": title, "content": content, "summary": summary}
+
+    @staticmethod
+    def _schema_min_content_len_for_attempt(
+        *,
+        w_low: int,
+        word_attempt: int,
+        progressive_enabled: bool,
+    ) -> int:
+        """
+        结构化输出层的 content.minLength（按 Python len，含空白），刻意低于业务低线 w_low，
+        避免「首层 schema = 终局契约」导致无草稿、扩写永不触发。
+        """
+        w_low = max(1, int(w_low))
+        soft_ratio = float(os.environ.get("WRITER_CHAPTER_SCHEMA_CONTENT_SOFT_MIN_RATIO", "0.58"))
+        soft_ratio = max(0.35, min(0.92, soft_ratio))
+        abs_frac = float(os.environ.get("WRITER_CHAPTER_SCHEMA_SOFT_ABS_FRAC", "0.22"))
+        abs_frac = max(0.08, min(0.45, abs_frac))
+        min_abs = max(1, int(w_low * abs_frac))
+        tier_factors = (1.0, 0.9, 0.8, 0.72, 0.64, 0.56)
+        idx = min(max(0, int(word_attempt)), len(tier_factors) - 1)
+        tier = tier_factors[idx] if progressive_enabled else 1.0
+        raw = int(w_low * soft_ratio * tier)
+        return max(min_abs, min(raw, w_low - 1))
+
+    @staticmethod
+    def _should_use_short_draft_expander(
+        *,
+        enabled: bool,
+        attempt_index: int,
+        trigger_attempt: int,
+        issue: str | None,
+        previous_content: str | None,
+        no_progress_streak: int = 0,
+    ) -> bool:
+        if not bool(enabled):
+            return False
+        if int(attempt_index) + 1 < int(trigger_attempt):
+            return False
+        if str(issue or "").strip().lower() != "too_short":
+            return False
+        # 扩写连续无增量时回退完整重写，避免在同一短稿上重复打转。
+        if int(no_progress_streak) > 0:
+            return False
+        return bool(str(previous_content or "").strip())
+
+    @staticmethod
+    def _short_draft_expander_system_prompt() -> str:
+        return (
+            "你是长篇小说扩写助手。"
+            "目标是在不改变关键剧情事实与因果顺序的前提下，将正文扩写到指定字数区间。"
+            "只输出 JSON 对象，字段可为 title/content/summary。"
+            "严禁输出 Markdown、解释文本或省略号占位。"
+        )
+
+    @staticmethod
+    def _build_short_draft_expander_prompt(
+        *,
+        project,
+        writing_goal: str,
+        style_hint: str | None,
+        target_words: int,
+        low: int,
+        high: int,
+        previous_title: str,
+        previous_summary: str,
+        previous_content: str,
+        prompt_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        prev_effective = count_fiction_word_units(str(previous_content or ""))
+        required_growth = max(0, int(low) - int(prev_effective))
+        return {
+            "task": "expand_short_draft",
+            "project": {
+                "id": str(project.id),
+                "title": project.title,
+                "genre": project.genre,
+            },
+            "goal": str(writing_goal or "").strip(),
+            "style_hint": str(style_hint or "").strip() or None,
+            "target_words": int(target_words),
+            "allowed_min": int(low),
+            "allowed_max": int(high),
+            "previous_draft": {
+                "title": str(previous_title or "").strip(),
+                "summary": str(previous_summary or "").strip(),
+                "content": str(previous_content or "").strip(),
+                "effective_chars": prev_effective,
+            },
+            "must_keep": [
+                "保留核心事件顺序与关键事实，不要改写成另一个故事。",
+                "扩写应以具体场景、动作、对白、心理活动推进，不要写提纲。",
+                "正文必须是连续叙事，不要输出 bullet list。",
+                "最终 content 的非空白字符数必须落在允许区间内。",
+                f"相对上一稿，content 至少新增 {required_growth} 个非空白字符（若上一稿已达标则保持在区间内）。",
+            ],
+            "growth_contract": {
+                "previous_effective_chars": int(prev_effective),
+                "required_effective_chars_at_least": int(low),
+                "required_growth_at_least": int(required_growth),
+            },
+            "reference_constraints": {
+                "writing_contract": dict(prompt_payload.get("writing_contract") or {}),
+                "story_constraints": dict(prompt_payload.get("story_constraints") or {}),
+            },
+            "output_contract": {
+                "required_fields": ["content"],
+                "optional_fields": ["title", "summary"],
+                "content_must_be_full_chapter": True,
+            },
+        }
+
+    @staticmethod
+    def _build_response_schema_with_content_min(
+        base_schema: dict[str, Any],
+        *,
+        min_content_len: int,
+    ) -> dict[str, Any]:
+        """
+        对 content 字段动态注入最小长度约束（按 Python len，含空白）。
+
+        注入值应低于业务低线（见 _schema_min_content_len_for_attempt），
+        仅作「别太短的草稿」软门槛；终局仍以非空白字数与 [w_low,w_high] 为准。
+        """
+        schema = copy.deepcopy(dict(base_schema or {}))
+        min_len = max(1, int(min_content_len))
+
+        def _patch_content(props: Any) -> None:
+            if not isinstance(props, dict):
+                return
+            content_node = props.get("content")
+            if isinstance(content_node, dict):
+                old = content_node.get("minLength")
+                try:
+                    old_val = int(old) if old is not None else 0
+                except Exception:
+                    old_val = 0
+                content_node["minLength"] = max(min_len, old_val)
+
+        root_props = schema.get("properties")
+        if isinstance(root_props, dict):
+            _patch_content(root_props)
+            chapter_node = root_props.get("chapter")
+            if isinstance(chapter_node, dict):
+                _patch_content(chapter_node.get("properties"))
+        return schema
+
+    @staticmethod
+    def _word_count_retry_contract(
+        *,
+        attempt_index: int,
+        max_attempts: int,
+        effective_chars: int,
+        low: int,
+        high: int,
+        target_words: int,
+        issue: str,
+        previous_raw_char_len: int | None = None,
+    ) -> dict[str, Any]:
+        """上一稿字数不达标时注入 writing_contract，驱动模型在后续轮次重写。"""
+        metric_note = ""
+        if previous_raw_char_len is not None:
+            metric_note = (
+                f"上一轮 `chapter.content` 原始字符数（含空白）约 {int(previous_raw_char_len)}，"
+                f"有效非空白字约 {int(effective_chars)}；请在此基础上扩写或压缩，避免误解为「零字稿」。"
+            )
+        return {
+            "round": int(attempt_index) + 1,
+            "max_rounds": int(max_attempts),
+            "previous_effective_chars": int(effective_chars),
+            "previous_raw_char_len": previous_raw_char_len,
+            "allowed_min": int(low),
+            "allowed_max": int(high),
+            "must_reach_effective_chars_at_least": int(low),
+            "must_not_exceed_effective_chars": int(high),
+            "target_words": int(target_words),
+            "issue": str(issue),
+            "instruction_cn": (
+                "上一稿未满足字数契约：请重新输出**完整** JSON。"
+                f"`chapter.content` 的「非空白字符数」必须落在 [{low}, {high}]（target_words={target_words}）。"
+                "禁止仅用摘要、大纲式 bullet 或极短片段凑数；请充分展开场景、对白与描写。"
+                "输出结束前必须先自检非空白字符数是否达标。"
+                + metric_note
+                + (
+                    " 当前偏短，请优先扩展有效剧情、对白和动作细节，直到达到最小值。"
+                    if issue == "too_short"
+                    else " 当前偏长，请压缩冗余描写并保持情节完整。"
+                )
+            ),
+        }
+
     def _build_user_prompt(
         self,
         *,
@@ -739,6 +1441,9 @@ class ChapterGenerationWorkflowService:
         story_context,
         working_notes: list[str] | None = None,
         retrieval_context: str | None = None,
+        chapter_no: int | None = None,
+        word_count_min: int | None = None,
+        word_count_max: int | None = None,
     ) -> dict[str, Any]:
         payload = {
             "project": {
@@ -750,6 +1455,16 @@ class ChapterGenerationWorkflowService:
             },
             "goal": writing_goal,
             "target_words": int(target_words),
+            "writing_contract": {
+                "word_count_metric": "非空白字符数",
+                "word_count_allowed_min": int(word_count_min) if word_count_min is not None else None,
+                "word_count_allowed_max": int(word_count_max) if word_count_max is not None else None,
+                "chapter_no": int(chapter_no) if chapter_no is not None else None,
+                "character_assets_note": (
+                    "每位角色的 effective_inventory_json / effective_wealth_json 为当前章节创作应遵守的携带物与财富状态；"
+                    "若剧情需要消耗/获得物品或财富，请在输出 notes 中列出变更建议，便于后续落库。"
+                ),
+            },
             "style_hint": style_hint,
             "memory_context": [
                 {"source": item.source, "text": item.text, "priority": item.priority}

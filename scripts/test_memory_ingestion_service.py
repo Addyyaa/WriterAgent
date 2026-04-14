@@ -41,7 +41,7 @@ from scripts._db_engine import create_engine_with_driver_fallback
 _DEFAULT_DATABASE_URL = "postgresql+psycopg2://addy:sf123123@localhost:5432/writer_agent_db"
 _DEFAULT_EMBEDDING_SERVICE_BASE_URL = "http://127.0.0.1:8000"
 _DEFAULT_EMBEDDING_API_KEY = "dummy-key"
-_DEFAULT_EMBEDDING_MODEL = "/Users/shenfeng/Project/embeddingsModel/bge-m3"
+_DEFAULT_EMBEDDING_MODEL = "bge-m3"
 
 _SYNC_TEXT = (
     "废墟城市被黄沙吞没，断壁之间偶尔能看到旧时代的霓虹牌。"

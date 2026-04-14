@@ -1,8 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "world_logic_summary": { "type": "string", "deprecated": true },
+    "world_logic_summary": { "type": "string" },
     "hard_constraints": {
       "type": "array",
       "items": {
@@ -35,7 +34,6 @@
     },
     "potential_conflicts": {
       "type": "array",
-      "deprecated": true,
       "items": {
         "type": "object",
         "properties": {
@@ -46,6 +44,6 @@
       }
     }
   },
-  "required": ["hard_constraints", "reusable_assets"],
+  "required": ["world_logic_summary", "hard_constraints", "reusable_assets", "potential_conflicts"],
   "additionalProperties": true
 }

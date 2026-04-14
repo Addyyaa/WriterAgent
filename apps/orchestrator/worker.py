@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 
 from packages.llm.embeddings.factory import create_embedding_provider_from_env
@@ -24,20 +25,28 @@ from packages.storage.postgres.repositories.webhook_subscription_repository impo
 )
 from packages.storage.postgres.session import create_session_factory
 from packages.webhooks.delivery_runner import WebhookDeliveryRunner
+from packages.llm.text_generation.factory import create_text_generation_provider
 from packages.workflows.orchestration.runtime_config import OrchestratorRuntimeConfig
 from packages.workflows.orchestration.service import WritingOrchestratorService
+
+logger = logging.getLogger("writeragent.worker")
 
 
 def run_worker_once() -> int:
     cfg = OrchestratorRuntimeConfig.from_env()
     session_factory = create_session_factory()
+    text_provider = create_text_generation_provider()
     db = session_factory()
     try:
-        service = WritingOrchestratorService.build_default(db)
+        service = WritingOrchestratorService.build_default(db, text_provider=text_provider)
         processed = service.process_once(limit=service.runtime_config.worker_batch_size)
+        logger.info("worker_once processed=%s batch_size=%s", int(processed), int(service.runtime_config.worker_batch_size))
         if processed <= 0 and cfg.lifecycle_enabled:
             _run_lifecycle_tick(db=db, cfg=cfg)
         return processed
+    except Exception:
+        logger.exception("worker_once failed")
+        raise
     finally:
         db.close()
 
@@ -45,15 +54,28 @@ def run_worker_once() -> int:
 def run_worker_loop() -> None:
     cfg = OrchestratorRuntimeConfig.from_env()
     session_factory = create_session_factory()
+    logger.info(
+        "worker_loop started poll_interval=%ss batch_size=%s lifecycle=%s webhook=%s",
+        float(cfg.worker_poll_interval_seconds),
+        int(cfg.worker_batch_size),
+        bool(cfg.lifecycle_enabled),
+        bool(cfg.webhook_enabled),
+    )
+    text_provider = create_text_generation_provider()
     while True:
         db = session_factory()
         try:
-            service = WritingOrchestratorService.build_default(db)
+            service = WritingOrchestratorService.build_default(db, text_provider=text_provider)
             processed = service.process_once(limit=cfg.worker_batch_size)
+            if processed > 0:
+                logger.info("worker_loop processed=%s", int(processed))
             if processed <= 0:
                 if cfg.lifecycle_enabled:
                     _run_lifecycle_tick(db=db, cfg=cfg)
                 time.sleep(cfg.worker_poll_interval_seconds)
+        except Exception:
+            logger.exception("worker_loop tick failed")
+            time.sleep(max(0.2, float(cfg.worker_poll_interval_seconds)))
         finally:
             db.close()
 
@@ -77,7 +99,7 @@ def _run_lifecycle_tick(*, db, cfg: OrchestratorRuntimeConfig) -> None:
             continue_on_error=True,
         )
     except Exception:
-        pass
+        logger.exception("lifecycle embedding tick failed")
 
     try:
         MemoryRebuildService(
@@ -88,7 +110,7 @@ def _run_lifecycle_tick(*, db, cfg: OrchestratorRuntimeConfig) -> None:
             continue_on_error=True,
         )
     except Exception:
-        pass
+        logger.exception("lifecycle rebuild tick failed")
 
     try:
         forgetting_service = MemoryForgettingService(
@@ -104,12 +126,12 @@ def _run_lifecycle_tick(*, db, cfg: OrchestratorRuntimeConfig) -> None:
                 allow_hard_delete=False,
             )
     except Exception:
-        pass
+        logger.exception("lifecycle forgetting tick failed")
 
     try:
         ChapterCandidateRepository(db).expire_pending()
     except Exception:
-        pass
+        logger.exception("candidate expiration tick failed")
 
     if bool(cfg.webhook_enabled):
         try:
@@ -118,4 +140,4 @@ def _run_lifecycle_tick(*, db, cfg: OrchestratorRuntimeConfig) -> None:
                 subscription_repo=WebhookSubscriptionRepository(db),
             ).run_once(limit=max(1, int(cfg.webhook_batch_size)))
         except Exception:
-            pass
+            logger.exception("webhook delivery tick failed")

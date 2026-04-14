@@ -1,8 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "style_mission": { "type": "string", "deprecated": true },
+    "style_mission": { "type": "string" },
     "micro_constraints": {
       "type": "object",
       "properties": {
@@ -12,29 +11,27 @@
           "type": "array",
           "items": { "type": "string" }
         },
-        "preferred_punctuation": { "type": "string", "deprecated": true }
+        "preferred_punctuation": { "type": "string" }
       },
       "required": ["sentence_structure", "vocabulary_level", "forbidden_words"]
     },
     "rhythm_strategy": {
       "type": "object",
       "properties": {
-        "pacing": { "type": "string", "deprecated": true },
+        "pacing": { "type": "string" },
         "instruction": { "type": "string" }
       },
-      "required": ["instruction"]
+      "required": ["pacing", "instruction"]
     },
     "anti_drift_checks": {
       "type": "array",
-      "deprecated": true,
       "items": { "type": "string" }
     },
     "tonal_keywords": {
       "type": "array",
-      "deprecated": true,
       "items": { "type": "string" }
     }
   },
-  "required": ["micro_constraints", "rhythm_strategy"],
+  "required": ["style_mission", "micro_constraints", "rhythm_strategy", "anti_drift_checks", "tonal_keywords"],
   "additionalProperties": true
 }

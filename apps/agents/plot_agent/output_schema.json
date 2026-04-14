@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
     "chapter_goal": { "type": "string" },
@@ -30,7 +29,6 @@
     },
     "climax_twist": {
       "type": "object",
-      "deprecated": true,
       "properties": {
         "description": { "type": "string" },
         "impact": { "type": "string" }
@@ -38,6 +36,6 @@
       "required": ["description", "impact"]
     }
   },
-  "required": ["chapter_goal", "core_conflict", "narcotic_arc"],
+  "required": ["chapter_goal", "core_conflict", "narcotic_arc", "climax_twist"],
   "additionalProperties": true
 }

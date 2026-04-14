@@ -1,0 +1,26 @@
+[
+  {
+    "name": "list_project_chapters",
+    "purpose": "列出项目下已有章节，仅返回章节标识与名称、概述（摘要），不含正文。",
+    "when": "需要了解全书章节结构、章节标题与摘要以便规划、引用或避免重复时。",
+    "params": "project_id（UUID）"
+  },
+  {
+    "name": "get_character_inventory",
+    "purpose": "查询角色当前携带物品（优先本章快照 inventory_json，无快照则回退角色表默认 inventory_json）。",
+    "when": "写作或审查涉及道具、背包、消耗品、财富与设定一致性时。",
+    "params": "project_id, character_id, chapter_no（可选整数；缺省时仅返回角色默认物品）"
+  },
+  {
+    "name": "search_project_memory_vectors",
+    "purpose": "基于项目长期记忆向量库做语义检索，返回相关记忆片段（含来源与文本）。",
+    "when": "需要检索前文设定、伏笔、历史情节、与世界观/角色相关的记忆证据时。",
+    "params": "project_id, query（自然语言）, top_k（可选）, token_budget（可选）"
+  },
+  {
+    "name": "get_chapter_content",
+    "purpose": "读取章节完整正文与元数据；支持按 chapter_id（UUID）或按章节标题（项目内）解析。",
+    "when": "需要引用、续写、对比或修订某一章正文时。",
+    "params": "project_id, chapter_id（可选）, chapter_title（可选，与 id 二选一）"
+  }
+]

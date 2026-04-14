@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from packages.llm.embeddings.base import EmbeddingProvider
 from packages.llm.text_generation.base import TextGenerationProvider
-from packages.llm.text_generation.mock_provider import MockTextGenerationProvider
+from packages.llm.text_generation.factory import create_text_generation_provider
 from packages.memory.long_term.ingestion.ingestion_service import MemoryIngestionService
 from packages.memory.long_term.search.search_service import MemorySearchService
 from packages.memory.project_memory.project_memory_service import ProjectMemoryService
@@ -82,5 +82,5 @@ def build_test_chapter_workflow_with_overrides(
         story_context_provider=SQLAlchemyStoryContextProvider(db),
         project_memory_service=project_memory_service,
         ingestion_service=effective_ingestion_service,
-        text_provider=text_provider or MockTextGenerationProvider(),
+        text_provider=text_provider or create_text_generation_provider(),
     )

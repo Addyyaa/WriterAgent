@@ -1,14 +1,14 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
     "plan_summary": {
       "type": "string",
-      "description": "简短的计划摘要"
+      "description": "用一句话概括整个计划的逻辑流"
     },
     "steps": {
       "type": "array",
-      "deprecated": true,
+      "description": "3-7 个原子化执行步骤",
+      "minItems": 1,
       "items": {
         "type": "object",
         "properties": {
@@ -46,6 +46,6 @@
       }
     }
   },
-  "required": ["plan_summary"],
+  "required": ["plan_summary", "steps"],
   "additionalProperties": true
 }

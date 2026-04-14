@@ -9,10 +9,10 @@ from packages.core.config import env_bool, env_float, env_int, env_str
 class OrchestratorRuntimeConfig:
     worker_poll_interval_seconds: float = 1.0
     worker_batch_size: int = 3
-    max_step_seconds: int = 120
+    max_step_seconds: int = 300
     default_max_retries: int = 2
     default_retry_delay_seconds: int = 30
-    enable_auto_worker: bool = False
+    enable_auto_worker: bool = True
     agent_config_root: str = "apps/agents"
     schema_root: str = "packages/schemas"
     schema_strict: bool = True
@@ -33,7 +33,7 @@ class OrchestratorRuntimeConfig:
     retrieval_stop_min_coverage: float = 0.85
     retrieval_stop_min_gain: float = 0.05
     retrieval_stop_stale_rounds: int = 2
-    workflow_run_timeout_seconds: int = 480
+    workflow_run_timeout_seconds: int = 900
     context_chapter_window_before: int = 2
     context_chapter_window_after: int = 1
     api_v1_enabled: bool = False
@@ -51,10 +51,10 @@ class OrchestratorRuntimeConfig:
         return cls(
             worker_poll_interval_seconds=env_float("WRITER_ORCH_WORKER_POLL_INTERVAL", 1.0, minimum=0.1),
             worker_batch_size=env_int("WRITER_ORCH_WORKER_BATCH_SIZE", 3),
-            max_step_seconds=env_int("WRITER_ORCH_MAX_STEP_SECONDS", 120),
+            max_step_seconds=env_int("WRITER_ORCH_MAX_STEP_SECONDS", 300),
             default_max_retries=env_int("WRITER_ORCH_DEFAULT_MAX_RETRIES", 2),
             default_retry_delay_seconds=env_int("WRITER_ORCH_DEFAULT_RETRY_DELAY", 30),
-            enable_auto_worker=env_bool("WRITER_ORCH_ENABLE_AUTO_WORKER", False),
+            enable_auto_worker=env_bool("WRITER_ORCH_ENABLE_AUTO_WORKER", True),
             agent_config_root=env_str("WRITER_AGENT_CONFIG_ROOT", "apps/agents"),
             schema_root=env_str("WRITER_SCHEMA_ROOT", "packages/schemas"),
             schema_strict=env_bool("WRITER_SCHEMA_STRICT", True),
@@ -94,7 +94,7 @@ class OrchestratorRuntimeConfig:
                 maximum=1.0,
             ),
             retrieval_stop_stale_rounds=env_int("WRITER_RETRIEVAL_STOP_STALE_ROUNDS", 2),
-            workflow_run_timeout_seconds=env_int("WRITER_WORKFLOW_RUN_TIMEOUT_SECONDS", 480),
+            workflow_run_timeout_seconds=env_int("WRITER_WORKFLOW_RUN_TIMEOUT_SECONDS", 900),
             context_chapter_window_before=env_int("WRITER_CONTEXT_CHAPTER_WINDOW_BEFORE", 2),
             context_chapter_window_after=env_int("WRITER_CONTEXT_CHAPTER_WINDOW_AFTER", 1),
             api_v1_enabled=env_bool("WRITER_API_V1_ENABLED", False),

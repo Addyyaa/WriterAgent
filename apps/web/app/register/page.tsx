@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import type { FormEvent } from "react";
 
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const usernameExists = error?.includes("username 已存在") ?? false;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -27,7 +30,8 @@ export default function RegisterPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(String(body?.detail || "注册失败"));
-      window.location.href = "/projects";
+      const next = String(searchParams.get("next") || "").trim();
+      window.location.href = next || "/projects";
     } catch (err) {
       setError(String((err as Error)?.message || "注册失败"));
     } finally {
@@ -65,6 +69,14 @@ export default function RegisterPage() {
             required
           />
           {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+          {usernameExists ? (
+            <p className="text-sm text-amber-700">
+              该用户名已注册，请直接
+              <Link href="/login" className="ml-1 font-semibold text-ocean underline-offset-2 hover:underline">
+                去登录
+              </Link>
+            </p>
+          ) : null}
           <Button className="w-full" type="submit" disabled={loading}>
             {loading ? "注册中..." : "注册并登录"}
           </Button>
@@ -77,5 +89,13 @@ export default function RegisterPage() {
         </p>
       </Card>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<main className="mx-auto flex min-h-screen w-full max-w-md items-center px-6" />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

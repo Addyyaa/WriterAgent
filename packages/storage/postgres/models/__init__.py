@@ -7,6 +7,7 @@ from .chapter import Chapter
 from .chapter_candidate import ChapterCandidate
 from .chapter_version import ChapterVersion
 from .character import Character
+from .character_chapter_asset import CharacterChapterAsset
 from .consistency_report import ConsistencyReport
 from .evaluation_daily_metric import EvaluationDailyMetric
 from .evaluation_event import EvaluationEvent

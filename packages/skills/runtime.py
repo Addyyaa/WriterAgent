@@ -147,7 +147,7 @@ class PolicySkillExecutor:
                 applied = True
                 changed_spans.append({"field": "input_payload.skill_constraint_hints", "type": "append_hint"})
 
-        if sid in {"risk_assessment", "qa_definition"}:
+        if sid in {"risk_assessment", "qa_definition", "gap_analysis"}:
             payload.setdefault(
                 "skill_quality_gate",
                 {
@@ -242,7 +242,7 @@ class PolicySkillExecutor:
             return "保持文本简洁，移除解释性废话与重复表达。"
         if skill_id in {"semantic_relevance_scoring", "context_synthesis"}:
             return "优先返回可直接用于下游决策的关键信息。"
-        if skill_id in {"risk_assessment", "qa_definition"}:
+        if skill_id in {"risk_assessment", "qa_definition", "gap_analysis"}:
             return "输出必须包含可执行风险项与验收标准。"
         if context.workflow_type == "revision":
             return "以最小改动修复问题，避免无关重写。"

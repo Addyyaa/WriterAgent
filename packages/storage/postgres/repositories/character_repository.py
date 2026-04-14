@@ -18,6 +18,8 @@ class CharacterRepository(BaseRepository):
         profile_json: dict | None = None,
         speech_style_json: dict | None = None,
         arc_status_json: dict | None = None,
+        inventory_json: dict | None = None,
+        wealth_json: dict | None = None,
         is_canonical: bool = True,
         auto_commit: bool = True,
     ) -> Character:
@@ -30,6 +32,8 @@ class CharacterRepository(BaseRepository):
             profile_json=dict(profile_json or {}),
             speech_style_json=dict(speech_style_json or {}),
             arc_status_json=dict(arc_status_json or {}),
+            inventory_json=dict(inventory_json or {}),
+            wealth_json=dict(wealth_json or {}),
             is_canonical=bool(is_canonical),
         )
         self.db.add(row)
@@ -68,13 +72,21 @@ class CharacterRepository(BaseRepository):
             "profile_json",
             "speech_style_json",
             "arc_status_json",
+            "inventory_json",
+            "wealth_json",
             "is_canonical",
             "version",
         }
         for key, value in fields.items():
             if key not in allowed or value is None:
                 continue
-            if key in {"profile_json", "speech_style_json", "arc_status_json"}:
+            if key in {
+                "profile_json",
+                "speech_style_json",
+                "arc_status_json",
+                "inventory_json",
+                "wealth_json",
+            }:
                 setattr(row, key, dict(value))
             elif key == "is_canonical":
                 setattr(row, key, bool(value))

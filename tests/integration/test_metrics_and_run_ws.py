@@ -23,6 +23,12 @@ class _FakeResult:
 
 
 class _FakeDB:
+    def get(self, model, pk):
+        model_name = getattr(model, "__name__", "")
+        if model_name == "Project":
+            return SimpleNamespace(id=pk, owner_user_id=None, metadata_json={"visibility": "members"})
+        return None
+
     def execute(self, statement):
         sql = str(statement).lower()
         if "workflow_runs where status in ('queued','running','waiting_review')" in sql:
@@ -104,6 +110,9 @@ class _FakeMembershipRepo:
 
 
 class _FakeAgentRegistry:
+    def local_data_tools_catalog(self):
+        return []
+
     def consumption_coverage_summary(self):
         return {
             "covered_rate": 1.0,

@@ -40,6 +40,29 @@
 - `Original_Text`: (仅限 Revision Mode) 待修改的原文。
 - `Audit_Feedback`: (仅限 Revision Mode) 具体的修改建议列表。
 
+# 字数契约（与系统校验一致）
+
+- 输入中的 `target_words` 表示**目标正文有效字数**（口径：**非空白字符数**，适合中文为主的长文本）。
+- 你必须使 `chapter.content` 的有效字数落在 **`target_words` 的 ±10%** 区间内；系统会在落库前硬校验，超出即失败。
+- `writing_contract` 中会给出 `word_count_allowed_min` / `word_count_allowed_max`，请严格对齐。
+
+# 角色物品与财富（设定一致性）
+
+- `story_constraints.characters` 中每位角色带有 `inventory_json`、`wealth_json`，以及（若存在章节快照）`effective_inventory_json`、`effective_wealth_json`。
+- 正文描写中涉及「携带物品、消耗道具、财富增减」时，必须与上述 JSON 状态一致；若剧情需要变更，在 `notes` 中用 `[UPDATE_CHARACTER]` 或结构化说明列出**前后差异**，便于后续同步到数据库。
+- 若上下文中未展开某细节，可合理推断，但不得与已有 `effective_*` 字段矛盾。
+
+# Story Asset Awareness
+
+在写作过程中，如果你的创作需要引入新角色、修改现有角色状态、推进时间线、或调整世界观设定，请在 `notes` 字段中明确标注所需的变更建议。格式示例：
+
+- `[NEW_CHARACTER] 名称：张三 | 类型：配角 | 描述：xxx`
+- `[UPDATE_TIMELINE] 事件：主角到达边境 | 章节：3`
+- `[UPDATE_CHARACTER] 名称：李四 | 变更：受伤状态`
+- `[WORLD_RULE] 新增规则：魔法不可跨区域使用`
+
+这些标注将被系统解析并自动更新故事资产数据库，确保后续章节的一致性。
+
 # Output Format (JSON)
 
 请只输出符合以下 Schema 的 JSON，不要包含 Markdown 代码块标记：

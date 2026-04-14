@@ -24,9 +24,9 @@ class ContextCompressionRuntimeConfig:
     enable_llm: bool = True
     llm_trigger_ratio: float = 1.6
     llm_min_gain_ratio: float = 0.12
-    llm_max_input_chars: int = 6000
+    llm_max_input_chars: int = 16000
     llm_max_items: int = 2
-    context_token_budget_default: int = 3200
+    context_token_budget_default: int = 8000
     context_min_relevance_score: float = 0.58
     context_relative_score_floor: float = 0.72
     context_min_keep_rows: int = 3
@@ -106,7 +106,7 @@ class MemoryRuntimeConfig:
             ),
             llm_max_input_chars=env_int(
                 "WRITER_MEMORY_CONTEXT_COMPRESS_LLM_MAX_INPUT_CHARS",
-                6000,
+                16000,
             ),
             llm_max_items=env_int(
                 "WRITER_MEMORY_CONTEXT_COMPRESS_LLM_MAX_ITEMS",
@@ -114,7 +114,7 @@ class MemoryRuntimeConfig:
             ),
             context_token_budget_default=env_int(
                 "WRITER_MEMORY_CONTEXT_TOKEN_BUDGET_DEFAULT",
-                3200,
+                10000,
             ),
             context_min_relevance_score=env_float(
                 "WRITER_MEMORY_CONTEXT_MIN_RELEVANCE_SCORE",

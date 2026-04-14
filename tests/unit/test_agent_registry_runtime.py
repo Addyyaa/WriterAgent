@@ -211,6 +211,86 @@ class TestAgentRegistryRuntime(unittest.TestCase):
             self.assertEqual(skills[0].execution_mode_default, "active")
             self.assertEqual(skills[0].adapters, ["constraint"])
 
+    def test_shared_local_tools_appended_to_prompt_and_catalog(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_root = Path(tmp)
+            schema_root = tmp_root / "schemas"
+            skill_root = tmp_root / "skills"
+            agent_root = tmp_root / "agents"
+
+            (schema_root / "tools").mkdir(parents=True)
+            (schema_root / "agents").mkdir(parents=True)
+            (skill_root / "ok_skill").mkdir(parents=True)
+            (agent_root / "x_agent").mkdir(parents=True)
+            (agent_root / "_shared").mkdir(parents=True)
+
+            (schema_root / "tools/skill_manifest.schema.json").write_text(
+                '{"type":"object","required":["id","name","version","description"],'
+                '"properties":{"id":{"type":"string"},"name":{"type":"string"},'
+                '"version":{"type":"string"},"description":{"type":"string"}}}',
+                encoding="utf-8",
+            )
+            (schema_root / "agents/agent_strategy.schema.json").write_text(
+                '{"type":"object","required":["version","temperature","max_tokens"],'
+                '"properties":{"version":{"type":"string"},"temperature":{"type":"number"},'
+                '"max_tokens":{"type":"integer"}}}',
+                encoding="utf-8",
+            )
+            (schema_root / "agents/agent_profile.schema.json").write_text(
+                '{"type":"object","required":["role_id","prompt","strategy","skills","schema_ref","schema_version"],'
+                '"properties":{"role_id":{"type":"string"},"prompt":{"type":"string"},'
+                '"strategy":{"type":"object"},"skills":{"type":"array"},'
+                '"schema_ref":{"type":"string"},"schema_version":{"type":"string"}}}',
+                encoding="utf-8",
+            )
+
+            (skill_root / "ok_skill/manifest.json").write_text(
+                '{"id":"ok_skill","name":"ok","version":"v1","description":"ok"}',
+                encoding="utf-8",
+            )
+            (agent_root / "x_agent/prompt.md").write_text("base prompt", encoding="utf-8")
+            (agent_root / "x_agent/strategy.yaml").write_text(
+                "version: v1\ntemperature: 0.3\nmax_tokens: 100\n",
+                encoding="utf-8",
+            )
+            (agent_root / "x_agent/output_schema.json").write_text(
+                '{"schema_ref":"agents/agent_step_output.schema.json","schema_version":"v1"}',
+                encoding="utf-8",
+            )
+            (agent_root / "x_agent/skills.yaml").write_text("skills:\n  - ok_skill\n", encoding="utf-8")
+
+            (agent_root / "_shared/local_data_tools.md").write_text(
+                "## Tools\nshared block",
+                encoding="utf-8",
+            )
+            (agent_root / "_shared/local_data_tools_catalog.json").write_text(
+                '[{"name": "t1", "purpose": "p"}]',
+                encoding="utf-8",
+            )
+
+            schema_registry = SchemaRegistry(schema_root)
+            skill_registry = SkillRegistry(
+                root=skill_root,
+                schema_registry=schema_registry,
+                strict=True,
+                degrade_mode=False,
+            )
+            registry = AgentRegistry(
+                root=agent_root,
+                schema_registry=schema_registry,
+                skill_registry=skill_registry,
+                strict=True,
+                degrade_mode=False,
+            )
+            profile = registry.get("x_agent")
+            self.assertIsNotNone(profile)
+            assert profile is not None
+            self.assertIn("base prompt", profile.prompt)
+            self.assertIn("shared block", profile.prompt)
+            catalog = registry.local_data_tools_catalog()
+            self.assertEqual(len(catalog), 1)
+            self.assertEqual(catalog[0].get("name"), "t1")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

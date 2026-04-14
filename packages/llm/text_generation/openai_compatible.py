@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
 from dataclasses import replace
 from typing import Any
 
@@ -11,13 +13,198 @@ from packages.core.utils import (
     ensure_non_empty_string,
     estimate_token_count,
 )
+from packages.core.utils.chapter_metrics import count_fiction_word_units
 from packages.llm.text_generation.base import (
     TextGenerationProvider,
     TextGenerationRequest,
     TextGenerationResult,
 )
-from packages.llm.text_generation.mock_provider import MockTextGenerationProvider
+from packages.llm.text_generation.schema_errors import ResponseSchemaValidationError
 from packages.memory.working_memory.hybrid_compressor import HybridContextCompressor
+
+logger = logging.getLogger("writeragent.llm")
+
+
+def _log_llm_json_response_lens(
+    *,
+    meta_tag: str,
+    primary_text: str,
+    json_data: Any,
+    target_words: int | None = None,
+) -> None:
+    """打印解析后 JSON 各块长度（不写正文），用于对照有效字数与是否截断/字段错位。"""
+    primary_text_len = len(primary_text or "")
+    primary_text_non_ws = count_fiction_word_units(primary_text or "")
+    if not isinstance(json_data, dict):
+        logger.info(
+            "[LLM] response_lens | meta=%s primary_text_len=%d json_data_type=%s",
+            meta_tag,
+            primary_text_len,
+            type(json_data).__name__,
+        )
+        logger.info(
+            "[LLM] response_word_stats | meta=%s primary_text_non_ws=%d json_data_type=%s",
+            meta_tag,
+            primary_text_non_ws,
+            type(json_data).__name__,
+        )
+        return
+    try:
+        json_dump_len = len(json.dumps(json_data, ensure_ascii=False))
+    except Exception:
+        json_dump_len = -1
+    ch = json_data.get("chapter")
+    ch_strlen: int | None = None
+    ch_eff: int | None = None
+    if isinstance(ch, dict):
+        c = str(ch.get("content") or "")
+        ch_strlen = len(c)
+        ch_eff = count_fiction_word_units(c)
+    top_raw = json_data.get("content")
+    top_len: int | None = None
+    top_eff: int | None = None
+    if top_raw is not None:
+        t = str(top_raw)
+        top_len = len(t)
+        top_eff = count_fiction_word_units(t)
+    segs = json_data.get("segments")
+    seg_n = 0
+    seg_join_eff = 0
+    if isinstance(segs, list):
+        parts: list[str] = []
+        for item in segs:
+            if isinstance(item, dict):
+                seg_n += 1
+                parts.append(str(item.get("content") or ""))
+        seg_join_eff = count_fiction_word_units("\n".join(parts))
+    logger.info(
+        "[LLM] response_lens | meta=%s primary_text_len=%d json_dump_len=%s "
+        "chapter.content_strlen=%s chapter.content_non_ws=%s "
+        "top_level.content_strlen=%s top_level.content_non_ws=%s "
+        "segments=%d segments_join_non_ws=%d",
+        meta_tag,
+        primary_text_len,
+        json_dump_len,
+        ch_strlen,
+        ch_eff,
+        top_len,
+        top_eff,
+        seg_n,
+        seg_join_eff,
+    )
+    candidates: list[tuple[str, int]] = []
+    if ch_eff is not None:
+        candidates.append(("chapter.content", int(ch_eff)))
+    if top_eff is not None:
+        candidates.append(("top_level.content", int(top_eff)))
+    if seg_n > 0:
+        candidates.append(("segments_join", int(seg_join_eff)))
+    if not candidates:
+        candidates.append(("primary_text", int(primary_text_non_ws)))
+    best_source, best_non_ws = max(candidates, key=lambda x: x[1])
+
+    low = high = gap_to_min = gap_to_max = None
+    if isinstance(target_words, int) and target_words > 0:
+        low = int(target_words * 0.9)
+        high = int(target_words * 1.1)
+        gap_to_min = int(best_non_ws - low)
+        gap_to_max = int(high - best_non_ws)
+
+    logger.info(
+        "[LLM] response_word_stats | meta=%s primary_text_non_ws=%d "
+        "chapter.content_non_ws=%s top_level.content_non_ws=%s segments_join_non_ws=%d "
+        "selected_metric=%s selected_non_ws=%d target_words=%s allowed=[%s,%s] "
+        "gap_to_min=%s gap_to_max=%s",
+        meta_tag,
+        primary_text_non_ws,
+        ch_eff,
+        top_eff,
+        seg_join_eff,
+        best_source,
+        best_non_ws,
+        target_words,
+        low,
+        high,
+        gap_to_min,
+        gap_to_max,
+    )
+
+
+def _repair_truncated_json(text: str) -> dict[str, Any] | None:
+    """尝试修复被 max_tokens 截断的 JSON（补全缺失的括号）。"""
+    text = text.rstrip()
+    if not text.startswith("{"):
+        return None
+    close_suffixes = [
+        '"}', '"}]', '"}]}', '"}}',
+        "}", "]}", "]}}", '""}'
+    ]
+    for suffix in close_suffixes:
+        for s in [suffix, "..." + suffix, '""' + suffix]:
+            candidate = text + s
+            try:
+                parsed = json.loads(candidate)
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception:
+                continue
+    depth_brace = 0
+    depth_bracket = 0
+    in_string = False
+    escape_next = False
+    for ch in text:
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == "\\":
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth_brace += 1
+        elif ch == "}":
+            depth_brace -= 1
+        elif ch == "[":
+            depth_bracket += 1
+        elif ch == "]":
+            depth_bracket -= 1
+    if in_string:
+        text += '"'
+    text += "]" * max(0, depth_bracket)
+    text += "}" * max(0, depth_brace)
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+    return None
+
+
+class LLMApiError(RuntimeError):
+    """带 HTTP 状态码的 LLM API 错误，便于上层区分可恢复/不可恢复。"""
+
+    NON_RETRYABLE_CODES = {401, 403, 429}
+
+    def __init__(self, message: str, *, status_code: int = 0) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+    @property
+    def is_rate_limited(self) -> bool:
+        return self.status_code == 429
+
+    @property
+    def is_auth_error(self) -> bool:
+        return self.status_code in {401, 403}
+
+    @property
+    def should_not_fallback_to_mock(self) -> bool:
+        return self.status_code in self.NON_RETRYABLE_CODES
 
 
 class OpenAICompatibleTextProvider(TextGenerationProvider):
@@ -25,7 +212,6 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
     OpenAI 兼容文本生成 Provider。
 
     说明：
-    - 当前阶段默认旁路到 Mock（按项目约束，不直接调用真实模型）。
     - 真实请求构建与响应解析逻辑已实现，可随时切换启用。
     - 新增整 Prompt token guard：检测超窗时，触发 LLM 二次压缩重试。
     """
@@ -45,23 +231,18 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         model: str,
         base_url: str = "https://api.openai.com/v1",
         timeout_seconds: float = 30.0,
-        bypass_to_mock: bool = True,
-        fallback_to_mock_on_error: bool = True,
         prompt_guard_enabled: bool = True,
         model_context_window_tokens: int = 128000,
         prompt_guard_output_reserve_tokens: int = 4096,
         prompt_guard_overhead_tokens: int = 256,
         prompt_guard_max_attempts: int = 2,
         prompt_guard_llm_max_input_chars: int = 12000,
-        mock_provider: MockTextGenerationProvider | None = None,
+        compat_mode: str = "auto",
     ) -> None:
         self.api_key = ensure_non_empty_string(api_key, field_name="api_key")
         self.model = ensure_non_empty_string(model, field_name="model")
         self.base_url = ensure_non_empty_string(base_url, field_name="base_url").rstrip("/")
         self.timeout_seconds = max(1.0, float(timeout_seconds))
-        self.bypass_to_mock = bool(bypass_to_mock)
-        self.fallback_to_mock_on_error = bool(fallback_to_mock_on_error)
-        self.mock_provider = mock_provider or MockTextGenerationProvider()
 
         self.prompt_guard_enabled = bool(prompt_guard_enabled)
         self.model_context_window_tokens = max(2048, int(model_context_window_tokens))
@@ -69,34 +250,46 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         self.prompt_guard_overhead_tokens = max(64, int(prompt_guard_overhead_tokens))
         self.prompt_guard_max_attempts = max(1, int(prompt_guard_max_attempts))
         self.prompt_guard_llm_max_input_chars = max(500, int(prompt_guard_llm_max_input_chars))
+        self.compat_mode = self._resolve_compat_mode(compat_mode, self.base_url, self.model)
+        logger.info(
+            "[LLM] provider init | pid=%s model=%s base_url=%s compat_mode=%s timeout=%.1fs",
+            os.getpid(),
+            self.model,
+            self.base_url,
+            self.compat_mode,
+            self.timeout_seconds,
+        )
+
+    @staticmethod
+    def _resolve_compat_mode(mode: str, base_url: str, model: str = "") -> str:
+        """
+        通过 provider_registry 自动匹配厂商并确定兼容模式。
+        - "full": 完全支持 json_schema + function_calling
+        - "basic": 仅使用 json_object，schema 通过 prompt 传达
+        - "auto": 根据 base_url + model 自动判断
+        """
+        from packages.llm.text_generation.provider_registry import log_provider_detection
+        return log_provider_detection(
+            base_url=base_url,
+            model=model,
+            user_override=str(mode or "auto").strip().lower(),
+        )
 
     def generate(self, request: TextGenerationRequest) -> TextGenerationResult:
         effective_request = request
         input_validation = self._validate_request_input(request)
         prompt_guard = {"applied": False, "attempts": 0, "reason": "disabled_or_not_needed"}
+
+        meta_tag = request.metadata_json.get("role_id", request.metadata_json.get("step_key", "unknown"))
+        logger.info(
+            "[LLM] generate start | model=%s meta=%s prompt_len=%d max_tokens=%s",
+            self.model, meta_tag, len(request.user_prompt or ""), request.max_tokens or "None",
+        )
+
         if self._should_apply_prompt_guard(request):
             effective_request, prompt_guard = self._apply_prompt_guard(
                 request=request,
                 force=False,
-            )
-
-        payload = self.build_chat_payload(effective_request)
-
-        # 当前开发阶段默认旁路到 Mock，避免依赖真实大模型服务。
-        if self.bypass_to_mock:
-            mock_result = self.mock_provider.generate(effective_request)
-            return TextGenerationResult(
-                text=mock_result.text,
-                json_data=mock_result.json_data,
-                model=self.model,
-                provider="openai_compatible(mock_bypass)",
-                is_mock=True,
-                raw_response_json={
-                    "payload": payload,
-                    "prompt_guard": prompt_guard,
-                    "input_validation": input_validation,
-                    "mock_output": mock_result.raw_response_json,
-                },
             )
 
         url = f"{self.base_url}/chat/completions"
@@ -104,11 +297,23 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        logger.info("[LLM] sending to %s | model=%s meta=%s", url, self.model, meta_tag)
         try:
             parsed, runtime_meta = self._send_with_schema_repair(
                 request=effective_request,
                 url=url,
                 headers=headers,
+            )
+            self._log_completion_usage(body=parsed.raw_response_json, meta_tag=meta_tag)
+            logger.info(
+                "[LLM] success | model=%s provider=%s meta=%s text_len=%d",
+                parsed.model, parsed.provider, meta_tag, len(parsed.text or ""),
+            )
+            _log_llm_json_response_lens(
+                meta_tag=meta_tag,
+                primary_text=parsed.text or "",
+                json_data=parsed.json_data,
+                target_words=self._coerce_target_words(request.metadata_json),
             )
             with_guard = self._with_prompt_guard(
                 parsed,
@@ -119,60 +324,39 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             )
             return self._with_input_validation(with_guard, input_validation=input_validation)
         except Exception as exc:
-            retry_payload: dict[str, Any] | None = None
-            retry_applied = False
+            logger.warning("[LLM] API error | meta=%s error=%s", meta_tag, str(exc)[:200])
             if self._should_apply_prompt_guard(effective_request) and self._is_context_length_error(exc):
                 retry_request, retry_guard = self._apply_prompt_guard(
                     request=effective_request,
                     force=True,
                 )
                 if retry_request.user_prompt != effective_request.user_prompt:
-                    retry_payload = self.build_chat_payload(retry_request)
-                    retry_applied = True
-                    try:
-                        parsed, runtime_meta = self._send_with_schema_repair(
-                            request=retry_request,
-                            url=url,
-                            headers=headers,
-                        )
-                        merged_guard = {
-                            **prompt_guard,
-                            **retry_guard,
-                            **runtime_meta,
-                            "second_retry_applied": True,
-                        }
-                        with_guard = self._with_prompt_guard(parsed, prompt_guard=merged_guard)
-                        return self._with_input_validation(with_guard, input_validation=input_validation)
-                    except Exception as retry_exc:
-                        exc = retry_exc
-                        payload = retry_payload
-                        prompt_guard = {
-                            **prompt_guard,
-                            **retry_guard,
-                            "second_retry_applied": True,
-                            "second_retry_failed": True,
-                        }
-
-            if not self.fallback_to_mock_on_error:
-                raise
-
-            fallback = self.mock_provider.generate(effective_request)
-            return TextGenerationResult(
-                text=fallback.text,
-                json_data=fallback.json_data,
-                model=self.model,
-                provider="openai_compatible(mock_fallback_after_error)",
-                is_mock=True,
-                raw_response_json={
-                    "payload": payload,
-                    "retry_payload": retry_payload,
-                    "retry_applied": retry_applied,
-                    "prompt_guard": prompt_guard,
-                    "input_validation": input_validation,
-                    "error": str(exc),
-                    "mock_output": fallback.raw_response_json,
-                },
-            )
+                    logger.info("[LLM] retrying with compressed prompt | meta=%s", meta_tag)
+                    parsed, runtime_meta = self._send_with_schema_repair(
+                        request=retry_request,
+                        url=url,
+                        headers=headers,
+                    )
+                    self._log_completion_usage(body=parsed.raw_response_json, meta_tag=meta_tag)
+                    logger.info(
+                        "[LLM] success | model=%s provider=%s meta=%s text_len=%d",
+                        parsed.model, parsed.provider, meta_tag, len(parsed.text or ""),
+                    )
+                    _log_llm_json_response_lens(
+                        meta_tag=meta_tag,
+                        primary_text=parsed.text or "",
+                        json_data=parsed.json_data,
+                        target_words=self._coerce_target_words(request.metadata_json),
+                    )
+                    merged_guard = {
+                        **prompt_guard,
+                        **retry_guard,
+                        **runtime_meta,
+                        "second_retry_applied": True,
+                    }
+                    with_guard = self._with_prompt_guard(parsed, prompt_guard=merged_guard)
+                    return self._with_input_validation(with_guard, input_validation=input_validation)
+            raise
 
     def build_chat_payload(self, request: TextGenerationRequest) -> dict[str, Any]:
         system_prompt = ensure_non_empty_string(
@@ -183,6 +367,19 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             request.user_prompt,
             field_name="user_prompt",
         )
+
+        is_basic = self.compat_mode == "basic"
+        has_response_schema = isinstance(request.response_schema, dict) and bool(request.response_schema)
+        use_function_calling = bool(request.use_function_calling) and has_response_schema
+
+        if is_basic and has_response_schema:
+            schema_hint = json.dumps(request.response_schema, ensure_ascii=False, indent=2)
+            user_prompt = (
+                f"{user_prompt}\n\n"
+                f"请严格按照以下 JSON Schema 格式输出，不要输出任何其他内容：\n"
+                f"```json\n{schema_hint}\n```"
+            )
+
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": [
@@ -191,38 +388,26 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             ],
             "temperature": max(0.0, min(float(request.temperature), 2.0)),
         }
-        if (
-            bool(request.use_function_calling)
-            and isinstance(request.response_schema, dict)
-            and request.response_schema
-        ):
-            function_name = self._resolve_function_name(request)
-            function_desc = str(
-                request.function_description
-                or "Return structured JSON output for this workflow step."
-            ).strip()
-            payload["tools"] = [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": function_name,
-                        "description": function_desc,
-                        "parameters": request.response_schema,
-                    },
-                }
-            ]
-            payload["tool_choice"] = {
-                "type": "function",
-                "function": {"name": function_name},
-            }
-        elif isinstance(request.response_schema, dict) and request.response_schema:
+
+        if is_basic and use_function_calling:
+            self._attach_function_calling_payload(payload=payload, request=request)
+        elif is_basic:
+            payload["response_format"] = {"type": "json_object"}
+        elif use_function_calling:
+            self._attach_function_calling_payload(payload=payload, request=request)
+        elif has_response_schema:
             schema_name = str(request.response_schema_name or "writer_output_schema").strip() or "writer_output_schema"
+            clean_schema = {
+                k: v
+                for k, v in request.response_schema.items()
+                if not k.startswith("$")
+            }
             payload["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
                     "name": schema_name,
                     "strict": bool(request.response_schema_strict),
-                    "schema": request.response_schema,
+                    "schema": clean_schema,
                 },
             }
         else:
@@ -230,6 +415,49 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         if request.max_tokens is not None:
             payload["max_tokens"] = int(request.max_tokens)
         return payload
+
+    @staticmethod
+    def _coerce_target_words(metadata_json: dict[str, Any] | None) -> int | None:
+        metadata = dict(metadata_json or {})
+        raw = metadata.get("target_words")
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return None
+        return value if value > 0 else None
+
+    def _attach_function_calling_payload(
+        self,
+        *,
+        payload: dict[str, Any],
+        request: TextGenerationRequest,
+    ) -> None:
+        if not isinstance(request.response_schema, dict) or not request.response_schema:
+            return
+        function_name = self._resolve_function_name(request)
+        function_desc = str(
+            request.function_description
+            or "Return structured JSON output for this workflow step."
+        ).strip()
+        clean_params = {
+            k: v
+            for k, v in request.response_schema.items()
+            if not k.startswith("$")
+        }
+        payload["tools"] = [
+            {
+                "type": "function",
+                "function": {
+                    "name": function_name,
+                    "description": function_desc,
+                    "parameters": clean_params,
+                },
+            }
+        ]
+        payload["tool_choice"] = {
+            "type": "function",
+            "function": {"name": function_name},
+        }
 
     def _post_chat_payload(
         self,
@@ -267,9 +495,12 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
                 message = error.get("message")
             elif isinstance(error, str):
                 message = error
-        raise RuntimeError(
-            f"LLM 请求失败 status={status_code}: {message or body}"
+        err = LLMApiError(
+            f"LLM 请求失败 status={status_code}: {message or body}",
+            status_code=status_code,
         )
+        raise err
+
 
     def parse_chat_response(self, body: dict[str, Any]) -> TextGenerationResult:
         try:
@@ -294,6 +525,28 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             is_mock=False,
             raw_response_json=body,
         )
+
+    @staticmethod
+    def _log_completion_usage(*, body: dict[str, Any], meta_tag: str) -> None:
+        """记录 finish_reason 与 usage，便于区分 length 截断与模型主动收束。"""
+        try:
+            choices = body.get("choices")
+            if not isinstance(choices, list) or not choices:
+                return
+            first = choices[0]
+            fr = first.get("finish_reason") if isinstance(first, dict) else None
+            usage = body.get("usage") if isinstance(body.get("usage"), dict) else {}
+            logger.info(
+                "[LLM] completion_meta | meta=%s finish_reason=%s "
+                "completion_tokens=%s prompt_tokens=%s total_tokens=%s",
+                meta_tag,
+                fr,
+                usage.get("completion_tokens"),
+                usage.get("prompt_tokens"),
+                usage.get("total_tokens"),
+            )
+        except Exception:
+            return
 
     def _parse_response_json_from_message(self, message: dict[str, Any]) -> dict[str, Any]:
         tool_calls = message.get("tool_calls")
@@ -328,8 +581,64 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             raise RuntimeError("LLM 响应 content 为空")
         try:
             return json.loads(content)
-        except Exception as exc:
-            raise RuntimeError("LLM 响应 content 不是合法 JSON") from exc
+        except Exception:
+            pass
+        extracted = self._extract_json_from_text(content)
+        if extracted is not None:
+            return extracted
+        raise RuntimeError("LLM 响应 content 不是合法 JSON")
+
+    @staticmethod
+    def _extract_json_from_text(text: str) -> dict[str, Any] | None:
+        """从 LLM 混合输出中提取最外层 JSON 对象（处理 markdown fence、前后缀文字、截断等）。"""
+        import re
+        fence = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", text, re.DOTALL)
+        if fence:
+            try:
+                parsed = json.loads(fence.group(1).strip())
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception:
+                pass
+        start = text.find("{")
+        if start == -1:
+            return None
+        depth = 0
+        end = -1
+        in_string = False
+        escape_next = False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if escape_next:
+                escape_next = False
+                continue
+            if ch == "\\":
+                escape_next = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+        if end != -1:
+            try:
+                parsed = json.loads(text[start : end + 1])
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception:
+                pass
+        truncated = text[start:]
+        repaired = _repair_truncated_json(truncated)
+        if repaired is not None:
+            return repaired
+        return None
 
     def _send_with_schema_repair(
         self,
@@ -341,11 +650,22 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         effective_request = request
         repair_limit = max(0, int(request.validation_retries))
         last_errors: list[str] = []
+        downgraded_fc = False
 
         for attempt in range(repair_limit + 1):
             payload = self.build_chat_payload(effective_request)
-            body = self._post_chat_payload(url=url, headers=headers, payload=payload)
-            parsed = self.parse_chat_response(body)
+            try:
+                body = self._post_chat_payload(url=url, headers=headers, payload=payload)
+                parsed = self.parse_chat_response(body)
+            except Exception:
+                if effective_request.use_function_calling and not downgraded_fc:
+                    effective_request = replace(
+                        effective_request,
+                        use_function_calling=False,
+                    )
+                    downgraded_fc = True
+                    continue
+                raise
             errors = self._validate_response_schema(
                 payload=parsed.json_data,
                 schema=effective_request.response_schema,
@@ -356,9 +676,17 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
                     {
                         "schema_validation_applied": bool(effective_request.response_schema),
                         "schema_repair_attempts": attempt,
+                        "function_calling_downgraded": downgraded_fc,
                     },
                 )
             last_errors = errors
+            if effective_request.use_function_calling and not downgraded_fc:
+                effective_request = replace(
+                    effective_request,
+                    use_function_calling=False,
+                )
+                downgraded_fc = True
+                continue
             if attempt >= repair_limit:
                 break
             effective_request = self._build_repair_request(
@@ -368,8 +696,10 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
                 attempt=attempt + 1,
             )
 
-        raise RuntimeError(
-            "LLM 输出未通过 schema 校验: " + "; ".join(last_errors[:5])
+        raise ResponseSchemaValidationError(
+            "LLM 输出未通过 schema 校验: " + "; ".join(last_errors[:5]),
+            errors=list(last_errors[:20]),
+            json_data=dict(parsed.json_data or {}),
         )
 
     def _validate_request_input(self, request: TextGenerationRequest) -> dict[str, Any]:

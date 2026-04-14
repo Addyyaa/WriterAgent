@@ -488,10 +488,24 @@ infra/       docker 等基础设施
 - `WRITER_RETRIEVAL_RERANK_BACKEND`
 
 ### 6.5 Embedding 服务
-- `EMBEDDING_SERVICE_BASE_URL`
-- `EMBEDDING_API_KEY`
-- `EMBEDDING_MODEL`
-- `EMBEDDING_TIMEOUT`
+
+> **设计原则**：Embedding 与 LLM 文本生成是两套完全独立的模型服务，配置命名空间互不重叠。
+> Embedding 变量统一使用 `EMBEDDING_*` 前缀，**不会** fallback 到 `WRITER_LLM_*`，反之亦然。
+> 若切到 `openai_compatible` 模式却未设置 `EMBEDDING_OPENAI_API_KEY`，启动时会直接报错而非静默复用 LLM 密钥。
+
+- `WRITER_EMBEDDING_PROVIDER`：Provider 类型选择（`local_api` | `openai_compatible` | `retrieval_local` | `retrieval_openai`，默认 `local_api`）
+
+#### local_api 模式（默认，适配本地 embedding service）
+- `EMBEDDING_SERVICE_BASE_URL`：本地 embedding 服务地址（默认 `http://127.0.0.1:8000`）
+- `EMBEDDING_API_KEY`：请求中的 api_key 字段（默认 `dummy-key`）
+- `EMBEDDING_MODEL`：模型标识（默认 `bge-m3`）
+- `EMBEDDING_TIMEOUT`：请求超时秒数（默认 `120`）
+- `EMBEDDING_FORWARD_BASE_URL`：可选，令本地服务转发到上游 OpenAI 兼容服务
+
+#### openai_compatible 模式（直连 OpenAI / Azure 等远程 embedding API）
+- `EMBEDDING_OPENAI_API_KEY`：**必需**，embedding 专用 API Key
+- `EMBEDDING_OPENAI_MODEL`：模型名（默认 `text-embedding-3-small`）
+- `EMBEDDING_OPENAI_BASE_URL`：API 地址（默认 `https://api.openai.com/v1`）
 
 ### 6.5.1 记忆压缩与分块参数
 - `WRITER_MEMORY_CHUNK_SIZE`
@@ -604,6 +618,18 @@ python3 -m venv venv
 npm install
 ```
 
+如果后端日志出现以下告警：
+
+`No supported WebSocket library detected`
+
+请在虚拟环境中补装（新版 `requirements.txt` 已包含）：
+
+```bash
+./venv/bin/pip install -r requirements.txt
+# 或单独安装
+./venv/bin/pip install "websockets>=12,<16"
+```
+
 ### 7.2 后端本地部署（API + Worker）
 
 最小可跑环境变量（建议先 mock 跑通）：
@@ -613,6 +639,15 @@ export DATABASE_URL='postgresql+psycopg2://writer:writer@127.0.0.1:5432/writerag
 export WRITER_AUTH_JWT_SECRET='replace-this-in-prod'
 export WRITER_LLM_USE_MOCK=1
 export WRITER_PLANNER_USE_MOCK=1
+```
+
+使用真实 LLM（OpenRouter + Nemotron）示例：
+
+```bash
+export WRITER_LLM_USE_MOCK=0
+export WRITER_LLM_BASE_URL='https://openrouter.ai/api/v1'
+export WRITER_LLM_MODEL='nvidia/nemotron-3-super-120b-a12b:free'
+export WRITER_LLM_API_KEY='你的 OpenRouter API Key'
 ```
 
 执行迁移并启动：
@@ -628,6 +663,9 @@ export WRITER_PLANNER_USE_MOCK=1
 ./venv/bin/python scripts/run_orchestrator_worker.py
 ```
 
+说明：当前默认 `WRITER_ORCH_ENABLE_AUTO_WORKER=1`（API 在创建/重试 run 时会自动推进一次队列），
+但为了稳定吞吐，仍建议单独运行 worker 常驻进程。
+
 ### 7.3 前端本地部署（apps/web）
 
 前端默认通过 BFF 代理后端，配置后端地址：
@@ -642,6 +680,8 @@ npm run web:dev
 - `http://127.0.0.1:3000/projects`：项目工作台
 - `http://127.0.0.1:3000/runs/<run_id>`：Run 实时时间线（WebSocket）
 - `http://127.0.0.1:3000/metrics`：专业控制台（结构化指标 + API 能力面板）
+  - 非管理员会看到只读提示；
+  - 本地开发环境可在页面点击“一键设为管理员”。
 
 ### 7.4 使用流程（从登录到写作闭环）
 
@@ -649,6 +689,7 @@ npm run web:dev
    - UI：`/login`
    - API：`POST /v2/auth/login`
 2. 创建项目：`POST /v2/projects`
+   - 默认可见性为“成员可见”；可在项目设置将可见性切为“仅自己可见”。
 3. 发起写作 run：`POST /v2/projects/{project_id}/writing/runs`
 4. 观察 run：`GET /v2/writing/runs/{run_id}` 或 `WS /v2/writing/runs/{run_id}/ws`
 5. 若状态为 `waiting_review`，处理候选稿：

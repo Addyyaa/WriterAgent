@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import perf_counter
 from typing import Any
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 from packages.core.tracing import new_request_id, new_trace_id, request_context
 from packages.core.utils import ensure_non_empty_string
@@ -48,6 +51,8 @@ from packages.storage.postgres.repositories.retrieval_trace_repository import (
 )
 from packages.storage.postgres.repositories.skill_run_repository import SkillRunRepository
 from packages.storage.postgres.repositories.tool_call_repository import ToolCallRepository
+from packages.storage.postgres.repositories.character_repository import CharacterRepository
+from packages.storage.postgres.repositories.timeline_event_repository import TimelineEventRepository
 from packages.storage.postgres.repositories.user_repository import UserRepository
 from packages.storage.postgres.repositories.workflow_run_repository import (
     WorkflowRunRepository,
@@ -77,6 +82,10 @@ from packages.workflows.consistency_review.service import (
     ConsistencyReviewWorkflowService,
 )
 from packages.workflows.orchestration.planner import DynamicPlanner, create_dynamic_planner
+from packages.workflows.orchestration.prompt_payload_assembler import (
+    PromptPayloadAssembler,
+    build_retrieval_bundle_from_raw_state,
+)
 from packages.workflows.orchestration.retrieval_loop import (
     RetrievalLoopRequest,
     RetrievalLoopService,
@@ -138,6 +147,8 @@ class WritingOrchestratorService:
         retrieval_trace_repo: RetrievalTraceRepository | None = None,
         retrieval_loop: RetrievalLoopService | None = None,
         webhook_service: WebhookService | None = None,
+        character_repo=None,
+        timeline_repo=None,
     ) -> None:
         self.runtime_config = runtime_config
         self.planner = planner
@@ -164,14 +175,17 @@ class WritingOrchestratorService:
         self.retrieval_trace_repo = retrieval_trace_repo
         self.retrieval_loop = retrieval_loop
         self.webhook_service = webhook_service
+        self._character_repo = character_repo
+        self._timeline_repo = timeline_repo
+        self.prompt_payload_assembler = PromptPayloadAssembler()
 
     @classmethod
-    def build_default(cls, db) -> "WritingOrchestratorService":
+    def build_default(cls, db, text_provider: TextGenerationProvider | None = None) -> "WritingOrchestratorService":
         runtime_config = OrchestratorRuntimeConfig.from_env()
         memory_runtime = MemoryRuntimeConfig.from_env()
         chunk_size = max(64, int(memory_runtime.ingestion.chunk_size))
         chunk_overlap = max(0, min(int(memory_runtime.ingestion.chunk_overlap), chunk_size - 1))
-        text_provider = create_text_generation_provider()
+        text_provider = text_provider or create_text_generation_provider()
         embedding_provider = create_embedding_provider_from_env()
         memory_repo = MemoryChunkRepository(db)
         memory_fact_repo = MemoryFactRepository(db)
@@ -338,6 +352,8 @@ class WritingOrchestratorService:
             retrieval_trace_repo=retrieval_trace_repo,
             retrieval_loop=retrieval_loop,
             webhook_service=webhook_service,
+            character_repo=CharacterRepository(db),
+            timeline_repo=TimelineEventRepository(db),
         )
 
     def create_run(self, request: WorkflowRunRequest) -> WorkflowRunResult:
@@ -799,6 +815,8 @@ class WritingOrchestratorService:
         recovered = self.workflow_run_repo.recover_stale_running(
             stale_after_seconds=self.runtime_config.max_step_seconds
         )
+        if recovered:
+            logger.info("recovered %d stale runs", len(recovered))
         for row in recovered:
             if str(row.status) == "queued":
                 self.workflow_step_repo.reset_for_retry(workflow_run_id=row.id)
@@ -807,14 +825,17 @@ class WritingOrchestratorService:
         processed = 0
         for row in claimed:
             processed += 1
+            logger.info("claimed run %s (workflow=%s)", row.id, row.workflow_type)
             self._execute_run(row.id)
         return processed
 
     def _execute_run(self, run_id) -> None:
         row = self.workflow_run_repo.get(run_id)
         if row is None:
+            logger.warning("run %s not found, skipping", run_id)
             return
 
+        logger.info("execute_run start run=%s project=%s workflow=%s", row.id, row.project_id, row.workflow_type)
         started_at = perf_counter()
         evaluation_run = None
         with request_context(request_id=row.request_id or new_request_id(), trace_id=row.trace_id or new_trace_id()):
@@ -864,6 +885,7 @@ class WritingOrchestratorService:
                         score_breakdown=score_breakdown,
                         context_json={"latency_ms": latency_ms},
                     )
+                logger.info("run %s completed latency=%dms", row.id, latency_ms)
                 self.workflow_run_repo.succeed(
                     row.id,
                     output_json={
@@ -888,6 +910,7 @@ class WritingOrchestratorService:
                     except Exception:
                         pass
             except Exception as exc:
+                logger.error("run %s failed: %s: %s", row.id, type(exc).__name__, exc, exc_info=True)
                 retryable = isinstance(exc, RuntimeError)
                 if self.evaluation_service is not None and evaluation_run is not None:
                     try:
@@ -936,6 +959,15 @@ class WritingOrchestratorService:
                 "title": project.title if project is not None else None,
                 "genre": project.genre if project is not None else None,
                 "premise": project.premise if project is not None else None,
+                **(
+                    {
+                        "target_audience": (getattr(project, "metadata_json", None) or {}).get("target_audience"),
+                        "tone": (getattr(project, "metadata_json", None) or {}).get("tone"),
+                        "tags": (getattr(project, "metadata_json", None) or {}).get("tags"),
+                    }
+                    if project is not None
+                    else {}
+                ),
             },
             "input": dict(row.input_json or {}),
         }
@@ -1046,6 +1078,7 @@ class WritingOrchestratorService:
         if row is None or step is None:
             raise RuntimeError("步骤执行上下文不存在")
 
+        logger.info("step start run=%s step=%s key=%s type=%s", run_id, step.id, step.step_key, step.step_type)
         step_started_at = perf_counter()
         self.workflow_step_repo.start(step.id)
         workflow_type = str((step.input_json or {}).get("workflow_type") or step.step_type)
@@ -1128,11 +1161,11 @@ class WritingOrchestratorService:
             skill_run_rows.append((spec, skill_row.id))
 
         try:
-            state = self._build_state(run_id)
+            raw_state = self._build_state(run_id)
             output = self._dispatch_step(
                 row=row,
                 step=step,
-                state=state,
+                raw_state=raw_state,
                 resolved_skills=resolved_skills,
                 skill_warnings=skill_warnings,
             )
@@ -1164,6 +1197,8 @@ class WritingOrchestratorService:
                         "no_effect_reason": "workflow did not return per-skill details",
                     }
                 self.skill_run_repo.succeed(skill_run_id, output_snapshot_json=snapshot)
+            step_latency = int((perf_counter() - step_started_at) * 1000)
+            logger.info("step done run=%s step=%s key=%s latency=%dms", run_id, step.id, step.step_key, step_latency)
             self.tool_call_repo.succeed(call.id, output_json=output)
             self.agent_run_repo.succeed(agent_run.id, output_json=output)
             if self.evaluation_service is not None and evaluation_run_id is not None:
@@ -1173,10 +1208,11 @@ class WritingOrchestratorService:
                     workflow_run_id=row.id,
                     step_key=str(step.step_key),
                     success=True,
-                    latency_ms=int((perf_counter() - step_started_at) * 1000),
+                    latency_ms=step_latency,
                     payload_json={"workflow_type": workflow_type},
                 )
         except Exception as exc:
+            logger.error("step failed run=%s step=%s key=%s: %s", run_id, step.id, step.step_key, exc, exc_info=True)
             error_payload = {"error": str(exc), "step_key": step.step_key}
             self.workflow_step_repo.fail(step.id, error_code=type(exc).__name__, error_message=str(exc))
             for _, skill_run_id in skill_run_rows:
@@ -1200,7 +1236,7 @@ class WritingOrchestratorService:
         *,
         row,
         step,
-        state: dict[str, dict],
+        raw_state: dict[str, dict],
         resolved_skills: list[SkillSpec],
         skill_warnings: list[str],
     ) -> dict[str, Any]:
@@ -1211,19 +1247,19 @@ class WritingOrchestratorService:
             return self._run_agent_step(
                 row=row,
                 step=step,
-                state=state,
+                raw_state=raw_state,
                 resolved_skills=resolved_skills,
                 inherited_skill_warnings=skill_warnings,
             )
 
         if workflow_type == "outline_generation":
-            return self._run_outline_step(row=row, step=step, state=state)
+            return self._run_outline_step(row=row, step=step, raw_state=raw_state)
         if workflow_type == "chapter_generation":
-            return self._run_chapter_step(row=row, step=step, state=state)
+            return self._run_chapter_step(row=row, step=step, raw_state=raw_state)
         if workflow_type == "consistency_review":
-            return self._run_consistency_step(row=row, step=step, state=state)
+            return self._run_consistency_step(row=row, step=step, raw_state=raw_state)
         if workflow_type == "revision":
-            return self._run_revision_step(row=row, step=step, state=state)
+            return self._run_revision_step(row=row, step=step, raw_state=raw_state)
 
         raise RuntimeError(f"未知工作流步骤: {workflow_type}")
 
@@ -1232,7 +1268,7 @@ class WritingOrchestratorService:
         *,
         row,
         step,
-        state: dict[str, dict],
+        raw_state: dict[str, dict],
         resolved_skills: list[SkillSpec],
         inherited_skill_warnings: list[str],
     ) -> dict[str, Any]:
@@ -1240,7 +1276,7 @@ class WritingOrchestratorService:
         workflow_type = str((step.input_json or {}).get("workflow_type") or step.step_type)
         role_prompt = "你是写作任务代理，请输出本步骤要点。"
         strategy_temperature = 0.4
-        strategy_max_tokens = 800
+        strategy_max_tokens = 8192
         strategy_version = step.strategy_version
         prompt_hash = step.prompt_hash
         schema_version = step.schema_version
@@ -1278,7 +1314,7 @@ class WritingOrchestratorService:
         prompt_payload = self._build_role_prompt_payload(
             row=row,
             step=step,
-            state=state,
+            raw_state=raw_state,
             role_id=role_id,
         )
 
@@ -1419,6 +1455,13 @@ class WritingOrchestratorService:
                 "schema_version": schema_version,
             },
         )
+
+        self._apply_story_asset_mutations(
+            project_id=row.project_id,
+            notes=notes,
+            agent_output=agent_output,
+            role_id=role_id,
+        )
         return output
 
     @staticmethod
@@ -1532,6 +1575,48 @@ class WritingOrchestratorService:
             )
         return payloads
 
+    def _apply_story_asset_mutations(
+        self,
+        *,
+        project_id: str,
+        notes: str,
+        agent_output: dict[str, Any],
+        role_id: str,
+    ) -> None:
+        """解析 agent 输出中的故事资产变更标签并写入数据库。"""
+        import re
+
+        if not notes:
+            return
+        if not hasattr(self, "_character_repo") or not hasattr(self, "_timeline_repo"):
+            return
+        try:
+            new_chars = re.findall(
+                r"\[NEW_CHARACTER\]\s*名称[：:]\s*(.+?)\s*\|\s*类型[：:]\s*(.+?)\s*\|\s*描述[：:]\s*(.+)",
+                notes,
+            )
+            for name, role_type, description in new_chars:
+                self._character_repo.create(
+                    project_id=project_id,
+                    name=name.strip(),
+                    role_type=role_type.strip(),
+                )
+                logger.info("auto-created character %s for project %s", name.strip(), project_id)
+
+            timeline_events = re.findall(
+                r"\[UPDATE_TIMELINE\]\s*事件[：:]\s*(.+?)\s*\|\s*章节[：:]\s*(\d+)",
+                notes,
+            )
+            for title, chapter_no in timeline_events:
+                self._timeline_repo.create(
+                    project_id=project_id,
+                    event_title=title.strip(),
+                    chapter_no=int(chapter_no),
+                )
+                logger.info("auto-created timeline event '%s' ch%s for project %s", title.strip(), chapter_no, project_id)
+        except Exception:
+            logger.warning("故事资产自动变更失败", exc_info=True)
+
     def _build_agent_notes(
         self,
         *,
@@ -1594,7 +1679,7 @@ class WritingOrchestratorService:
         *,
         row,
         step,
-        state: dict[str, dict],
+        raw_state: dict[str, dict],
         role_id: str,
     ) -> dict[str, Any]:
         workflow_type = str((step.input_json or {}).get("workflow_type") or step.step_type)
@@ -1606,34 +1691,45 @@ class WritingOrchestratorService:
             "premise": getattr(project, "premise", None),
             "metadata_json": getattr(project, "metadata_json", None) or {},
         }
-        retrieval_output = self._extract_step_agent_output(state, "retrieval_context")
-        retrieval_summary = dict(retrieval_output.get("writing_context_summary") or {})
-        key_facts = [str(x).strip() for x in list(retrieval_summary.get("key_facts") or []) if str(x).strip()]
-        current_states = [
-            str(x).strip()
-            for x in list(retrieval_summary.get("current_states") or [])
-            if str(x).strip()
-        ]
-        outline_state = dict(state.get("outline_generation") or {})
+        outline_state = dict(raw_state.get("outline_generation") or {})
         outline_structure = outline_state.get("structure_json")
         if not isinstance(outline_structure, dict):
             outline_structure = {}
 
+        retrieval_bundle = build_retrieval_bundle_from_raw_state(raw_state)
+        wn_raw = (row.input_json or {}).get("working_notes")
+        working_notes_arg = wn_raw if isinstance(wn_raw, (list, dict)) else None
+
+        core = self.prompt_payload_assembler.build(
+            role_id=role_id,
+            step_key=str(step.step_key),
+            workflow_type=workflow_type,
+            project_context=project_context,
+            raw_state=raw_state,
+            retrieval_bundle=retrieval_bundle,
+            outline_state=outline_state,
+            working_notes=working_notes_arg,
+        )
+
+        retrieval_view = dict(core.get("retrieval") or {})
+        key_facts = [str(x).strip() for x in list(retrieval_view.get("key_facts") or []) if str(x).strip()]
+        current_states = [
+            str(x).strip()
+            for x in list(retrieval_view.get("current_states") or [])
+            if str(x).strip()
+        ]
+
         base_payload = {
-            "step_key": step.step_key,
-            "workflow_type": workflow_type,
+            **core,
             "goal": (row.input_json or {}).get("writing_goal"),
-            "role_id": role_id,
-            "project": project_context,
-            "state": state,
+            "local_data_tools": (
+                self.agent_registry.local_data_tools_catalog()
+                if self.agent_registry is not None
+                else []
+            ),
             "retrieval_summary": {
                 "key_facts": key_facts,
                 "current_states": current_states,
-            },
-            "outline": {
-                "title": outline_state.get("title"),
-                "content": outline_state.get("content"),
-                "structure_json": outline_structure,
             },
         }
         rid = str(role_id or "").strip().lower()
@@ -1682,19 +1778,22 @@ class WritingOrchestratorService:
         return base_payload
 
     @staticmethod
-    def _extract_step_agent_output(state: dict[str, dict], step_key: str) -> dict[str, Any]:
-        step = dict(state.get(step_key) or {})
+    def _extract_step_agent_output(raw_state: dict[str, dict], step_key: str) -> dict[str, Any]:
+        step = dict(raw_state.get(step_key) or {})
+        view = step.get("view")
+        if isinstance(view, dict):
+            return dict(view)
         output = step.get("agent_output")
         if isinstance(output, dict):
             return dict(output)
         return {}
 
-    def _build_writer_guidance(self, *, state: dict[str, dict]) -> dict[str, Any]:
-        plot_output = self._extract_step_agent_output(state, "plot_alignment")
-        character_output = self._extract_step_agent_output(state, "character_alignment")
-        world_output = self._extract_step_agent_output(state, "world_alignment")
-        style_output = self._extract_step_agent_output(state, "style_alignment")
-        retrieval_output = self._extract_step_agent_output(state, "retrieval_context")
+    def _build_writer_guidance(self, *, raw_state: dict[str, dict]) -> dict[str, Any]:
+        plot_output = self._extract_step_agent_output(raw_state, "plot_alignment")
+        character_output = self._extract_step_agent_output(raw_state, "character_alignment")
+        world_output = self._extract_step_agent_output(raw_state, "world_alignment")
+        style_output = self._extract_step_agent_output(raw_state, "style_alignment")
+        retrieval_output = self._extract_step_agent_output(raw_state, "retrieval_context")
 
         lines: list[str] = []
         working_notes: list[str] = []
@@ -1812,8 +1911,8 @@ class WritingOrchestratorService:
             "retrieval_context_addon": retrieval_text,
         }
 
-    def _run_outline_step(self, *, row, step, state: dict[str, dict]) -> dict[str, Any]:
-        del state
+    def _run_outline_step(self, *, row, step, raw_state: dict[str, dict]) -> dict[str, Any]:
+        del raw_state
         base_goal = str((row.input_json or {}).get("writing_goal") or "")
         retrieval = self._run_retrieval_loop(
             row=row,
@@ -1846,11 +1945,11 @@ class WritingOrchestratorService:
             **self._serialize_retrieval_summary(retrieval),
         }
 
-    def _run_chapter_step(self, *, row, step, state: dict[str, dict]) -> dict[str, Any]:
-        outline_title = str(state.get("outline_generation", {}).get("title") or "")
+    def _run_chapter_step(self, *, row, step, raw_state: dict[str, dict]) -> dict[str, Any]:
+        outline_title = str(raw_state.get("outline_generation", {}).get("title") or "")
         base_goal = str((row.input_json or {}).get("writing_goal") or "")
         goal = base_goal if not outline_title else f"{base_goal}；参考大纲：{outline_title}"
-        writer_guidance = self._build_writer_guidance(state=state)
+        writer_guidance = self._build_writer_guidance(raw_state=raw_state)
 
         retrieval = self._run_retrieval_loop(
             row=row,
@@ -1866,21 +1965,31 @@ class WritingOrchestratorService:
         if retrieval_addon:
             retrieval_context_parts.append(retrieval_addon)
         combined_retrieval_context = "\n\n".join(part for part in retrieval_context_parts if part).strip() or None
-        if combined_retrieval_context:
-            goal = f"{goal}\n\n检索证据：\n{combined_retrieval_context}"
 
         guidance_text = str(writer_guidance.get("guidance_text") or "").strip()
-        if guidance_text:
-            goal = f"{goal}\n\n角色化约束与风格护栏：\n{guidance_text}"
 
         working_notes = [str(x).strip() for x in list((row.input_json or {}).get("working_notes") or []) if str(x).strip()]
         working_notes.extend([str(x).strip() for x in list(writer_guidance.get("working_notes") or []) if str(x).strip()])
+        if guidance_text:
+            working_notes.append(f"角色化约束与风格护栏：{guidance_text}")
 
         base_style_hint = str((row.input_json or {}).get("style_hint") or "").strip()
         style_suffix = str(writer_guidance.get("style_hint_suffix") or "").strip()
         style_hint = base_style_hint
         if style_suffix:
             style_hint = f"{base_style_hint}；{style_suffix}" if base_style_hint else style_suffix
+
+        def _writer_live_progress(payload: dict[str, Any]) -> None:
+            try:
+                if not payload or str(payload.get("kind") or "").lower() == "idle":
+                    self.workflow_step_repo.merge_live_progress(step_id=step.id, live_progress=None)
+                else:
+                    self.workflow_step_repo.merge_live_progress(
+                        step_id=step.id,
+                        live_progress=payload,
+                    )
+            except Exception:
+                logger.debug("writer live_progress 写入步骤失败 step_id=%s", step.id, exc_info=True)
 
         result = self.chapter_tool.run(
             ChapterGenerationRequest(
@@ -1902,14 +2011,22 @@ class WritingOrchestratorService:
                 request_id=row.request_id,
                 trace_id=row.trace_id,
                 retrieval_context=combined_retrieval_context,
+                live_progress_callback=_writer_live_progress,
             )
         )
         chapter = dict(result.chapter or {})
-        chapter_no = int(
+        _chapter_repo = self.chapter_tool.workflow_service.chapter_repo
+        raw_chapter_no = (
             chapter.get("chapter_no")
             or (row.input_json or {}).get("chapter_no")
-            or 1
         )
+        if raw_chapter_no is not None:
+            try:
+                chapter_no = int(raw_chapter_no)
+            except (TypeError, ValueError):
+                chapter_no = _chapter_repo.get_next_chapter_no(row.project_id)
+        else:
+            chapter_no = _chapter_repo.get_next_chapter_no(row.project_id)
         expire_at = datetime.now(tz=timezone.utc) + timedelta(hours=max(1, int(self.runtime_config.review_expire_hours)))
         candidate = self.chapter_candidate_repo.create_candidate(
             project_id=row.project_id,
@@ -1988,10 +2105,10 @@ class WritingOrchestratorService:
             **self._serialize_retrieval_summary(retrieval),
         }
 
-    def _run_consistency_step(self, *, row, step, state: dict[str, dict]) -> dict[str, Any]:
+    def _run_consistency_step(self, *, row, step, raw_state: dict[str, dict]) -> dict[str, Any]:
         chapter = dict(
-            state.get("writer_draft", {}).get("chapter")
-            or state.get("chapter_generation", {}).get("chapter")
+            raw_state.get("writer_draft", {}).get("chapter")
+            or raw_state.get("chapter_generation", {}).get("chapter")
             or {}
         )
         chapter_id = chapter.get("id")
@@ -2074,19 +2191,19 @@ class WritingOrchestratorService:
             **self._serialize_retrieval_summary(retrieval),
         }
 
-    def _run_revision_step(self, *, row, step, state: dict[str, dict]) -> dict[str, Any]:
+    def _run_revision_step(self, *, row, step, raw_state: dict[str, dict]) -> dict[str, Any]:
         chapter = dict(
-            state.get("writer_draft", {}).get("chapter")
-            or state.get("chapter_generation", {}).get("chapter")
+            raw_state.get("writer_draft", {}).get("chapter")
+            or raw_state.get("chapter_generation", {}).get("chapter")
             or {}
         )
         chapter_id = chapter.get("id")
         if not chapter_id:
             raise RuntimeError("revision 缺少 chapter_id")
 
-        consistency = dict(state.get("consistency_review", {}) or {})
+        consistency = dict(raw_state.get("consistency_review", {}) or {})
         force = str(consistency.get("status") or "warning") in {"warning", "failed"}
-        writer_guidance = self._build_writer_guidance(state=state)
+        writer_guidance = self._build_writer_guidance(raw_state=raw_state)
         retrieval = self._run_retrieval_loop(
             row=row,
             step=step,
@@ -2198,11 +2315,11 @@ class WritingOrchestratorService:
 
     def _build_state(self, run_id) -> dict[str, dict]:
         steps = self.workflow_step_repo.list_by_run(workflow_run_id=run_id)
-        state: dict[str, dict] = {}
+        raw_state: dict[str, dict] = {}
         for step in steps:
             if str(step.status) == "success":
-                state[str(step.step_key)] = dict(step.output_json or {})
-        return state
+                raw_state[str(step.step_key)] = dict(step.output_json or {})
+        return raw_state
 
     @staticmethod
     def _plan_to_json(plan: PlannerPlan) -> dict[str, Any]:

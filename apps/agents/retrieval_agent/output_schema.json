@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
     "writing_context_summary": {
@@ -20,7 +19,6 @@
     },
     "key_evidence": {
       "type": "array",
-      "deprecated": true,
       "items": {
         "type": "object",
         "properties": {
@@ -52,6 +50,7 @@
   },
   "required": [
     "writing_context_summary",
+    "key_evidence",
     "potential_conflicts",
     "information_gaps"
   ],

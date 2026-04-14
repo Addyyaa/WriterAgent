@@ -4,6 +4,7 @@
     "status": "code",
     "segments": "code",
     "segments[].beat_id": "code",
+    "segments[].type": "code",
     "segments[].content": "code",
     "word_count": "code",
     "chapter": "code",

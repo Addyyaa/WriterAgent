@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import select
 
@@ -65,6 +66,30 @@ class WorkflowStepRepository(BaseRepository):
             .order_by(WorkflowStep.id.asc())
         )
         return list(self.db.execute(stmt).scalars().all())
+
+    def merge_live_progress(
+        self,
+        *,
+        step_id,
+        live_progress: dict[str, Any] | None,
+        auto_commit: bool = True,
+    ) -> WorkflowStep | None:
+        """合并或清除步骤 input_json.live_progress，供运行中 UI 展示（如草稿字数重试）。"""
+        row = self.get(step_id)
+        if row is None:
+            return None
+        base = dict(row.input_json or {})
+        if live_progress is None or str(live_progress.get("kind") or "").lower() == "idle":
+            base.pop("live_progress", None)
+        else:
+            base["live_progress"] = dict(live_progress)
+        row.input_json = base
+        if auto_commit:
+            self.db.commit()
+            self.db.refresh(row)
+        else:
+            self.db.flush()
+        return row
 
     def update_output_json(
         self,

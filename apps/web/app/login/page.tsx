@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import type { FormEvent } from "react";
 
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +28,8 @@ export default function LoginPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(String(body?.detail || "登录失败"));
-      window.location.href = "/projects";
+      const next = String(searchParams.get("next") || "").trim();
+      window.location.href = next || "/projects";
     } catch (err) {
       setError(String((err as Error)?.message || "登录失败"));
     } finally {
@@ -45,6 +48,7 @@ export default function LoginPage() {
             onChange={(e) => setUsername(e.target.value)}
             placeholder="username"
             className="w-full rounded-xl border border-ink/20 px-3 py-2"
+            required
           />
           <input
             type="password"
@@ -52,6 +56,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="password"
             className="w-full rounded-xl border border-ink/20 px-3 py-2"
+            required
           />
           {error ? <p className="text-sm text-rose-700">{error}</p> : null}
           <Button className="w-full" type="submit" disabled={loading}>
@@ -66,5 +71,13 @@ export default function LoginPage() {
         </p>
       </Card>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="mx-auto flex min-h-screen w-full max-w-md items-center px-6" />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

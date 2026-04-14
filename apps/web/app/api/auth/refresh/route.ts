@@ -1,32 +1,23 @@
 import { NextResponse } from "next/server";
 
-import { getBackendBaseUrl } from "@/server/bff/config";
+import { resolveBackendBaseUrl } from "@/server/bff/config";
 import { clearAuthCookies, getRefreshTokenFromCookie, setAuthCookies } from "@/server/bff/cookies";
+import { refreshAuthFromCookiesSingleFlight } from "@/server/bff/refresh-single-flight";
 
 export async function POST() {
-  const refreshToken = await getRefreshTokenFromCookie();
-  if (!refreshToken) {
+  if (!(await getRefreshTokenFromCookie())) {
     return NextResponse.json({ detail: "缺少 refresh token" }, { status: 401 });
   }
 
-  const res = await fetch(`${getBackendBaseUrl()}/v2/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: "no-store"
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const out = NextResponse.json({ detail: data?.detail || "刷新失败" }, { status: res.status });
+  const backendBaseUrl = await resolveBackendBaseUrl();
+  const result = await refreshAuthFromCookiesSingleFlight(backendBaseUrl);
+  if (!result.ok) {
+    const out = NextResponse.json({ detail: result.detail }, { status: 401 });
     clearAuthCookies(out);
     return out;
   }
 
-  const out = NextResponse.json({ ok: true, user: data.user });
-  setAuthCookies(out, {
-    access_token: String(data.access_token || ""),
-    refresh_token: String(data.refresh_token || ""),
-    expires_in: Number(data.expires_in || 3600)
-  });
+  const out = NextResponse.json({ ok: true, user: result.user });
+  setAuthCookies(out, result.tokens);
   return out;
 }

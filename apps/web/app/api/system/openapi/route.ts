@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getBackendBaseUrl } from "@/server/bff/config";
+import { resolveBackendBaseUrl } from "@/server/bff/config";
 import { getAccessTokenFromCookie } from "@/server/bff/cookies";
 
 export async function GET() {
@@ -9,7 +9,8 @@ export async function GET() {
     return NextResponse.json({ detail: "未登录" }, { status: 401 });
   }
 
-  const res = await fetch(`${getBackendBaseUrl()}/openapi.json`, {
+  const backendBaseUrl = await resolveBackendBaseUrl();
+  const res = await fetch(`${backendBaseUrl}/openapi.json`, {
     method: "GET",
     cache: "no-store",
     headers: {

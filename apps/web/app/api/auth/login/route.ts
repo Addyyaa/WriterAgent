@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { getBackendBaseUrl } from "@/server/bff/config";
+import { parseAuthTokens } from "@/server/bff/auth-tokens";
+import { resolveBackendBaseUrl } from "@/server/bff/config";
 import { setAuthCookies } from "@/server/bff/cookies";
 
 export async function POST(req: Request) {
   const payload = await req.json().catch(() => ({}));
-  const res = await fetch(`${getBackendBaseUrl()}/v2/auth/login`, {
+  const backendBaseUrl = await resolveBackendBaseUrl();
+  const res = await fetch(`${backendBaseUrl}/v2/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -16,14 +18,16 @@ export async function POST(req: Request) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    return NextResponse.json({ detail: data?.detail || "登录失败" }, { status: res.status });
+    const detail = String(data?.detail || data?.error || "登录失败");
+    return NextResponse.json({ detail }, { status: res.status });
+  }
+
+  const tokens = parseAuthTokens(data);
+  if (!tokens) {
+    return NextResponse.json({ detail: "登录成功但未返回有效 token" }, { status: 502 });
   }
 
   const out = NextResponse.json({ ok: true, user: data.user });
-  setAuthCookies(out, {
-    access_token: String(data.access_token || ""),
-    refresh_token: String(data.refresh_token || ""),
-    expires_in: Number(data.expires_in || 3600)
-  });
+  setAuthCookies(out, tokens);
   return out;
 }

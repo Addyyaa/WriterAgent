@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import asdict
 
-from packages.core.utils import ensure_non_empty_string
 from packages.llm.text_generation.base import (
     TextGenerationProvider,
     TextGenerationRequest,
@@ -18,12 +18,26 @@ class MockTextGenerationProvider(TextGenerationProvider):
         self.model = model
 
     def generate(self, request: TextGenerationRequest) -> TextGenerationResult:
-        goal = ensure_non_empty_string(request.user_prompt, field_name="user_prompt")
+        fn = str(request.function_name or "").lower()
+        if "consistency" in fn:
+            return self._generate_consistency_mock(request)
+
+        goal = self._resolve_goal(request)
         title = self._build_title(goal)
         content = self._build_content(goal=goal, target_words=self._target_words(request))
         summary = self._build_summary(content)
 
         payload = {
+            "mode": "draft",
+            "status": "success",
+            "segments": [],
+            "word_count": len(content),
+            "notes": "",
+            "chapter": {
+                "title": title,
+                "content": content,
+                "summary": summary,
+            },
             "title": title,
             "content": content,
             "summary": summary,
@@ -41,6 +55,56 @@ class MockTextGenerationProvider(TextGenerationProvider):
             },
         )
 
+    def _generate_consistency_mock(self, request: TextGenerationRequest) -> TextGenerationResult:
+        payload = {
+            "overall_status": "warning",
+            "audit_summary": "[Mock] 基于规则引擎的基础审查已完成，LLM 深层审查处于模拟模式。",
+            "issues": [
+                {
+                    "category": "character",
+                    "severity": "warning",
+                    "evidence_context": "[Mock] 无法获取真实上下文比对",
+                    "evidence_draft": "[Mock] 无法获取真实草稿比对",
+                    "reasoning": "当前为 Mock 模式，无法进行真实的一致性检查。请配置真实 LLM 以获得有效审查结果。",
+                    "revision_suggestion": "设置 WRITER_LLM_USE_MOCK=0 并配置有效的 LLM API，然后重新运行一致性审校。",
+                }
+            ],
+        }
+        return TextGenerationResult(
+            text=json.dumps(payload, ensure_ascii=False),
+            json_data=payload,
+            model=self.model,
+            provider="mock",
+            is_mock=True,
+            raw_response_json={"mock": True, "output": payload},
+        )
+
+    @staticmethod
+    def _resolve_goal(request: TextGenerationRequest) -> str:
+        goal_keys = ("goal", "writing_goal", "task")
+        payload = request.input_payload
+        if isinstance(payload, dict):
+            for key in goal_keys:
+                value = str(payload.get(key) or "").strip()
+                if value:
+                    return value
+
+        raw_prompt = str(request.user_prompt or "").strip()
+        if raw_prompt.startswith("{"):
+            try:
+                parsed = json.loads(raw_prompt)
+            except Exception:
+                parsed = None
+            if isinstance(parsed, dict):
+                for key in goal_keys:
+                    value = str(parsed.get(key) or "").strip()
+                    if value:
+                        return value
+
+        if len(raw_prompt) > 200:
+            return raw_prompt[:200]
+        return raw_prompt or "mock writing goal"
+
     @staticmethod
     def _target_words(request: TextGenerationRequest) -> int:
         raw = request.metadata_json.get("target_words")
@@ -55,19 +119,28 @@ class MockTextGenerationProvider(TextGenerationProvider):
     @staticmethod
     def _build_title(goal: str) -> str:
         digest = hashlib.md5(goal.encode("utf-8")).hexdigest()[:6]
-        return f"第X章·{goal[:18]}（{digest}）"
+        short = goal[:18].replace("\n", " ")
+        return f"[Mock] {short} ({digest})"
 
     @staticmethod
     def _build_content(*, goal: str, target_words: int) -> str:
-        sentence = (
-            f"围绕“{goal}”，主角推进冲突并触发关键转折，"
-            "同时保持人物动机清晰、场景细节可视化、叙事节奏渐进。"
-        )
-        target_chars = max(600, target_words * 2)
-        parts: list[str] = []
-        while sum(len(item) for item in parts) < target_chars:
-            parts.append(sentence)
-        return "\n".join(parts)
+        safe_goal = goal[:40].replace("\n", " ")
+        paragraphs = [
+            f"天色微暗，城市的轮廓在薄雾中若隐若现。关于「{safe_goal}」的故事在此刻悄然展开。",
+            "主角站在街角，深吸一口气，感受到体内某种沉睡已久的力量正在苏醒。那是一种难以言喻的感觉——仿佛世界的运转规则在他眼中变得清晰可见。",
+            "「你终于醒了。」身后传来一个低沉的声音，带着几分不耐烦，却又藏着深深的期待。主角猛然回头，看到一个身着灰色风衣的陌生人正靠在墙上，嘴角挂着似笑非笑的弧度。",
+            "「你是谁？」主角警惕地后退一步。",
+            "「这不重要。重要的是，你现在拥有的能力——它既是礼物，也是诅咒。」陌生人直起身子，目光锐利如刀，「而你将要面对的困境，远比你想象的要严酷。」",
+            "话音未落，远处传来一声低沉的轰鸣。地面微微震颤，街灯开始闪烁。主角感到一股巨大的压迫感从四面八方涌来，像是有什么庞然大物正在接近。",
+            "危机来得比预想的更快。主角来不及多想，本能地调动刚刚觉醒的力量。一道微弱但坚定的光芒从掌心浮现，将周围的黑暗撕开一道口子。",
+            "陌生人退后几步，眼中闪过一丝赞许：「不错，但还远远不够。记住——力量的真正用途，不是战斗，而是选择。」",
+            f"在这一刻，关于「{safe_goal}」的旅程才真正开始。前方的道路充满未知，而主角已经踏出了不可回头的第一步。",
+            "街灯在夜色中摇曳，远处传来隐约的钟声。主角抬头望向天际，一颗流星划过厚重的云层，仿佛在预示着什么。身后的陌生人已经消失无踪，只留下一阵若有似无的风。",
+            "主角握紧拳头，掌心的光芒逐渐稳定。他知道，从这一刻起，自己的命运已经彻底改变。无论前方等待着什么，都不能回头了。",
+            "城市的喧嚣渐渐远去，主角踏上了一条从未走过的路。黑暗中，那股新生的力量如同心跳一般稳定地脉动着，指引着前行的方向。",
+        ]
+        parts: list[str] = list(paragraphs)
+        return "\n\n".join(parts)
 
     @staticmethod
     def _build_summary(content: str) -> str:
