@@ -30,6 +30,10 @@ export interface WorkflowStep {
   step_key: string;
   step_type: string;
   workflow_type?: string;
+  role_id?: string | null;
+  strategy_version?: string | null;
+  prompt_hash?: string | null;
+  schema_version?: string | null;
   status: string;
   attempt_count: number;
   error_code?: string | null;
@@ -38,6 +42,21 @@ export interface WorkflowStep {
   finished_at?: string | null;
   input_json?: Record<string, unknown>;
   output_json?: Record<string, unknown>;
+  checkpoint_json?: Record<string, unknown>;
+  heartbeat_at?: string | null;
+  last_progress_at?: string | null;
+}
+
+/** Run 级 Agent 消息（含 workflow_step_id 便于按步骤查看） */
+export interface WorkflowRunMessage {
+  id: number;
+  workflow_step_id?: number | null;
+  role: string;
+  sender?: string | null;
+  receiver?: string | null;
+  content: string;
+  metadata_json?: Record<string, unknown>;
+  created_at?: string | null;
 }
 
 export interface ChapterCandidate {
@@ -68,8 +87,14 @@ export interface WorkflowRunDetail {
   error_code: string | null;
   error_message: string | null;
   output_json: Record<string, unknown>;
+  claimed_by?: string | null;
+  claimed_at?: string | null;
+  heartbeat_at?: string | null;
+  lease_expires_at?: string | null;
   steps: WorkflowStep[];
   candidates: ChapterCandidate[];
+  /** 后端 get_run_detail 返回的多 Agent 消息 */
+  messages?: WorkflowRunMessage[];
 }
 
 export interface MetricsJson {

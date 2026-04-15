@@ -29,7 +29,8 @@ class TestOpenAICompatiblePayloadBasicFC(unittest.TestCase):
             )
         )
         self.assertIn("tools", payload)
-        self.assertIn("tool_choice", payload)
+        # DashScope 不接受强制 function tool_choice（会报 InvalidParameter / required）
+        self.assertEqual(payload["tool_choice"], "auto")
         self.assertNotIn("response_format", payload)
         self.assertIn("JSON Schema", payload["messages"][1]["content"])
 

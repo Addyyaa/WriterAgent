@@ -65,3 +65,7 @@ class ProjectMemoryService:
             working_notes=working_notes,
             token_budget=token_budget,
         )
+
+    def build_context_as_retrieval_bundle(self, **kwargs: Any) -> dict[str, Any]:
+        """`build_context` 的便捷封装，返回与检索循环一致的 context_bundle 字典。"""
+        return self.build_context(**kwargs).to_retrieval_bundle()

@@ -53,6 +53,8 @@ class ChapterGenerationWorkflowError(RuntimeError):
 class ChapterGenerationWorkflowService:
     AGENT_NAME = "chapter_writer_agent"
     WORKFLOW_NAME = "chapter_generation"
+    # 章节草稿链路仍用本处 CHAPTER_INPUT_SCHEMA + _build_user_prompt 大包，
+    # 未接入 orchestration 的 PromptPayloadAssembler / StepInputSpec 投影；后续迁移时可对齐 writer_draft 步骤规格。
     CHAPTER_INPUT_SCHEMA = {
         "type": "object",
         "required": [
@@ -143,6 +145,17 @@ class ChapterGenerationWorkflowService:
             cb(payload)
         except Exception:
             logger.debug("live_progress_callback 更新失败", exc_info=True)
+
+    @staticmethod
+    def _notify_checkpoint(request: ChapterGenerationRequest, payload: dict[str, Any]) -> None:
+        """将可恢复草稿快照推送给编排层（写入 workflow_step.checkpoint_json）。"""
+        cb = request.checkpoint_callback
+        if cb is None:
+            return
+        try:
+            cb(payload)
+        except Exception:
+            logger.debug("checkpoint_callback 更新失败", exc_info=True)
 
     def run(self, request: ChapterGenerationRequest) -> ChapterGenerationResult:
         started_at = perf_counter()
@@ -744,6 +757,20 @@ class ChapterGenerationWorkflowService:
                         w_high - wc,
                         "ok" if (w_low <= wc <= w_high) else ("too_short" if wc < w_low else "too_long"),
                     )
+                    self._notify_checkpoint(
+                        request,
+                        {
+                            "kind": "writer_draft_partial",
+                            "draft_title": (draft_title or "")[:2000],
+                            "draft_summary": (draft_summary or "")[:4000],
+                            "draft_content": (draft_content or "")[:12000],
+                            "word_attempt_index": int(word_attempt),
+                            "generation_mode": generation_mode,
+                            "effective_wc": wc,
+                            "schema_min_content_len": int(schema_min_content_len),
+                            "last_issue": last_issue,
+                        },
+                    )
                     if w_low <= wc <= w_high:
                         break
 
@@ -1060,8 +1087,17 @@ class ChapterGenerationWorkflowService:
         if not isinstance(schema_payload, dict) or not schema_payload:
             schema_payload = dict(self.CHAPTER_OUTPUT_SCHEMA)
 
+        system_prompt = profile.prompt or self._legacy_system_prompt()
+        mode = str(strategy_mode or "").strip().lower()
+        if mode == "draft" and self.agent_registry is not None:
+            draft_path = self.agent_registry.root / "writer_agent" / "prompt_draft.md"
+            if draft_path.is_file():
+                system_prompt = self.agent_registry.compose_prompt_with_shared_tools(
+                    draft_path.read_text(encoding="utf-8").strip(),
+                )
+
         return {
-            "system_prompt": profile.prompt or self._legacy_system_prompt(),
+            "system_prompt": system_prompt,
             "response_schema": schema_payload,
             "temperature": float(strategy.temperature),
             "max_tokens": int(strategy.max_tokens),

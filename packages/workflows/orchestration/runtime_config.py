@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 from packages.core.config import env_bool, env_float, env_int, env_str
@@ -10,6 +11,11 @@ class OrchestratorRuntimeConfig:
     worker_poll_interval_seconds: float = 1.0
     worker_batch_size: int = 3
     max_step_seconds: int = 300
+    worker_instance_id: str = "pid-0"
+    run_initial_lease_seconds: int = 900
+    run_lease_extend_seconds: int = 900
+    recover_heartbeat_stale_seconds: int = 900
+    enable_startup_lease_recover: bool = True
     default_max_retries: int = 2
     default_retry_delay_seconds: int = 30
     enable_auto_worker: bool = True
@@ -48,10 +54,20 @@ class OrchestratorRuntimeConfig:
 
     @classmethod
     def from_env(cls) -> "OrchestratorRuntimeConfig":
+        wid = env_str("WRITER_WORKER_ID", "").strip() or f"pid-{os.getpid()}"
         return cls(
             worker_poll_interval_seconds=env_float("WRITER_ORCH_WORKER_POLL_INTERVAL", 1.0, minimum=0.1),
             worker_batch_size=env_int("WRITER_ORCH_WORKER_BATCH_SIZE", 3),
             max_step_seconds=env_int("WRITER_ORCH_MAX_STEP_SECONDS", 300),
+            worker_instance_id=wid,
+            run_initial_lease_seconds=env_int("WRITER_ORCH_RUN_INITIAL_LEASE_SECONDS", 900, minimum=60),
+            run_lease_extend_seconds=env_int("WRITER_ORCH_RUN_LEASE_EXTEND_SECONDS", 900, minimum=60),
+            recover_heartbeat_stale_seconds=env_int(
+                "WRITER_ORCH_RECOVER_HEARTBEAT_STALE_SECONDS",
+                900,
+                minimum=60,
+            ),
+            enable_startup_lease_recover=env_bool("WRITER_ORCH_ENABLE_STARTUP_LEASE_RECOVER", True),
             default_max_retries=env_int("WRITER_ORCH_DEFAULT_MAX_RETRIES", 2),
             default_retry_delay_seconds=env_int("WRITER_ORCH_DEFAULT_RETRY_DELAY", 30),
             enable_auto_worker=env_bool("WRITER_ORCH_ENABLE_AUTO_WORKER", True),

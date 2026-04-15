@@ -8,9 +8,11 @@ from packages.core.utils import parse_simple_yaml
 from packages.schemas.registry import SchemaRegistry, SchemaValidationError
 from packages.skills.registry import SkillRegistry, SkillSpec
 from packages.workflows.orchestration.schema_consumption import (
+    SchemaConsumptionContract,
     SchemaConsumptionCoverage,
     SchemaConsumptionValidator,
 )
+from packages.workflows.orchestration.agent_output_envelope import wrap_view_schema_for_consumption
 from packages.workflows.orchestration.types import AgentProfile, AgentStrategy
 
 
@@ -81,6 +83,13 @@ class AgentRegistry:
         """与 apps/agents/_shared/local_data_tools_catalog.json 一致，供请求 payload 使用。"""
         return list(self._shared_local_tools_catalog)
 
+    def compose_prompt_with_shared_tools(self, base: str) -> str:
+        """在角色专属 prompt 后追加 _shared/local_data_tools.md（与 prompt.md 加载逻辑一致）。"""
+        text = str(base or "").strip()
+        if not self._shared_local_tools_markdown:
+            return text
+        return f"{text.rstrip()}\n\n{self._shared_local_tools_markdown}"
+
     def resolve(
         self,
         *,
@@ -136,15 +145,24 @@ class AgentRegistry:
             output_schema_data=output_schema_data,
         )
 
-        schema_for_consumption = dict(inline_schema or {})
-        if not schema_for_consumption:
+        schema_inner = dict(inline_schema or {})
+        if not schema_inner:
             loaded = self.schema_registry.get(schema_ref)
             if isinstance(loaded, dict):
-                schema_for_consumption = dict(loaded)
+                schema_inner = dict(loaded)
+        schema_for_consumption = wrap_view_schema_for_consumption(schema_inner)
 
         consumption_contract = self._consumption_validator.load_contract(
             role_id=path.name,
             contract_path=consumption_path if consumption_path.exists() else None,
+        )
+        decl = dict(consumption_contract.declarations)
+        if "view" not in decl:
+            decl["view"] = "code"
+        consumption_contract = SchemaConsumptionContract(
+            role_id=consumption_contract.role_id,
+            declarations=decl,
+            source_path=consumption_contract.source_path,
         )
         consumption_coverage, consumption_warnings = self._consumption_validator.validate(
             role_id=path.name,

@@ -62,6 +62,17 @@ def run_worker_loop() -> None:
         bool(cfg.webhook_enabled),
     )
     text_provider = create_text_generation_provider()
+    db_boot = session_factory()
+    try:
+        boot_svc = WritingOrchestratorService.build_default(db_boot, text_provider=text_provider)
+        n_rec = boot_svc.startup_recover_stale_runs()
+        if n_rec:
+            logger.info("worker startup: recovered %s stale runs (lease/heartbeat)", int(n_rec))
+    except Exception:
+        logger.exception("worker startup recover failed")
+    finally:
+        db_boot.close()
+
     while True:
         db = session_factory()
         try:

@@ -7,6 +7,7 @@ from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
+from packages.core.utils import estimate_token_count
 from packages.workflows.orchestration.runtime_config import OrchestratorRuntimeConfig
 from packages.workflows.orchestration.types import (
     EvidenceCoverageReport,
@@ -52,6 +53,7 @@ class RetrievalLoopSummary:
     stop_reason: str = "no_rounds"
     context_text: str = ""
     context_budget_usage: dict[str, Any] = field(default_factory=dict)
+    context_bundle: dict[str, Any] = field(default_factory=dict)
 
 
 class RetrievalLoopService:
@@ -243,7 +245,23 @@ class RetrievalLoopService:
             if should_stop:
                 break
 
-        context_text = self._build_context_text(accepted_items)
+        context_text, truncated, bundle_items = self._build_context_lines(accepted_items)
+        used_tokens = int(estimate_token_count(context_text))
+        max_context_items = 24
+        context_bundle = {
+            "summary": {"key_facts": [], "current_states": []},
+            "items": bundle_items,
+            "meta": {
+                "used_tokens": used_tokens,
+                "truncated": bool(truncated),
+                "token_budget": None,
+                "context_chars": len(context_text),
+                "rounds": len(rounds),
+                "unique_evidence": len(accepted_items),
+                "max_unique_evidence": max_unique_evidence,
+                "max_context_items": max_context_items,
+            },
+        }
         return RetrievalLoopSummary(
             retrieval_trace_id=retrieval_trace_id,
             rounds=rounds,
@@ -257,12 +275,8 @@ class RetrievalLoopService:
             ),
             stop_reason=stop_reason,
             context_text=context_text,
-            context_budget_usage={
-                "rounds": len(rounds),
-                "unique_evidence": len(accepted_items),
-                "context_chars": len(context_text),
-                "max_unique_evidence": max_unique_evidence,
-            },
+            context_budget_usage=dict(context_bundle.get("meta") or {}),
+            context_bundle=context_bundle,
         )
 
     def _build_structured_evidence(
@@ -711,9 +725,13 @@ class RetrievalLoopService:
         return f"{source_type}:{source_id}:{chunk_id}"
 
     @staticmethod
-    def _build_context_text(evidence_items: list[EvidenceItem], max_items: int = 24) -> str:
+    def _build_context_lines(
+        evidence_items: list[EvidenceItem],
+        max_items: int = 24,
+    ) -> tuple[str, bool, list[dict[str, Any]]]:
+        """拼装注入模型的上下文文本、是否截断、与专家 bundle.items 对齐的条目。"""
         if not evidence_items:
-            return ""
+            return "", False, []
         priority = {
             "project": 10,
             "outline": 9,
@@ -733,12 +751,26 @@ class RetrievalLoopService:
                 -(float(item.score) if item.score is not None else 0.0),
             ),
         )
+        cap = max(1, int(max_items))
+        truncated = len(sorted_items) > cap
         lines: list[str] = []
-        for item in sorted_items[: max(1, int(max_items))]:
+        bundle_items: list[dict[str, Any]] = []
+        for item in sorted_items[:cap]:
             text = str(item.text or "").strip()
             if not text:
                 continue
             compact = " ".join(_TOKEN_RE.findall(text))
             final_text = compact if compact else text
-            lines.append(f"[{item.source_type}] {final_text[:240]}")
-        return "\n".join(lines)
+            if len(final_text) > 240:
+                truncated = True
+            display = final_text[:240]
+            line = f"[{item.source_type}] {display}"
+            lines.append(line)
+            bundle_items.append(
+                {
+                    "source": str(item.source_type),
+                    "score": item.score,
+                    "text": line,
+                }
+            )
+        return "\n".join(lines), truncated, bundle_items

@@ -50,6 +50,7 @@ class WorkflowStep(Base):
     depends_on_keys = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     input_json = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     output_json = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    checkpoint_json = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     status = Column(
         Enum(
@@ -72,6 +73,8 @@ class WorkflowStep(Base):
 
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)
+    heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    last_progress_at = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(

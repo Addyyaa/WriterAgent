@@ -1,13 +1,14 @@
 {
   "consumed_by": {
-    "overall_status": "code",
-    "audit_summary": "code",
-    "issues": "code",
-    "issues[].category": "code",
-    "issues[].severity": "code",
-    "issues[].evidence_context": "code",
-    "issues[].evidence_draft": "code",
-    "issues[].reasoning": "code",
-    "issues[].revision_suggestion": "code"
+    "view.overall_status": "code",
+    "view.audit_summary": "code",
+    "view.issues": "code",
+    "view.issues[].category": "code",
+    "view.issues[].severity": "code",
+    "view.issues[].evidence_context": "code",
+    "view.issues[].evidence_draft": "code",
+    "view.issues[].reasoning": "code",
+    "view.issues[].revision_suggestion": "code",
+    "view": "code"
   }
 }

@@ -19,6 +19,7 @@ from packages.llm.text_generation.base import (
     TextGenerationRequest,
     TextGenerationResult,
 )
+from packages.llm.text_generation.provider_registry import MatchResult
 from packages.llm.text_generation.schema_errors import ResponseSchemaValidationError
 from packages.memory.working_memory.hybrid_compressor import HybridContextCompressor
 
@@ -250,7 +251,9 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         self.prompt_guard_overhead_tokens = max(64, int(prompt_guard_overhead_tokens))
         self.prompt_guard_max_attempts = max(1, int(prompt_guard_max_attempts))
         self.prompt_guard_llm_max_input_chars = max(500, int(prompt_guard_llm_max_input_chars))
-        self.compat_mode = self._resolve_compat_mode(compat_mode, self.base_url, self.model)
+        self.compat_mode, self._provider_match = self._resolve_compat_mode(
+            compat_mode, self.base_url, self.model
+        )
         logger.info(
             "[LLM] provider init | pid=%s model=%s base_url=%s compat_mode=%s timeout=%.1fs",
             os.getpid(),
@@ -261,7 +264,7 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         )
 
     @staticmethod
-    def _resolve_compat_mode(mode: str, base_url: str, model: str = "") -> str:
+    def _resolve_compat_mode(mode: str, base_url: str, model: str = "") -> tuple[str, MatchResult]:
         """
         通过 provider_registry 自动匹配厂商并确定兼容模式。
         - "full": 完全支持 json_schema + function_calling
@@ -269,11 +272,20 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         - "auto": 根据 base_url + model 自动判断
         """
         from packages.llm.text_generation.provider_registry import log_provider_detection
-        return log_provider_detection(
+
+        compat, match = log_provider_detection(
             base_url=base_url,
             model=model,
             user_override=str(mode or "auto").strip().lower(),
         )
+        return compat, match
+
+    def _forced_function_tool_choice_supported(self) -> bool:
+        """是否可使用 OpenAI 风格强制指定函数的 tool_choice（部分兼容网关不支持）。"""
+        profile = self._provider_match.profile
+        if profile is None:
+            return True
+        return bool(profile.supports_forced_function_tool_choice)
 
     def generate(self, request: TextGenerationRequest) -> TextGenerationResult:
         effective_request = request
@@ -454,10 +466,14 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
                 },
             }
         ]
-        payload["tool_choice"] = {
-            "type": "function",
-            "function": {"name": function_name},
-        }
+        # DashScope 等网关拒绝「强制工具调用」语义（报 tool_choice 不支持 required）
+        if self._forced_function_tool_choice_supported():
+            payload["tool_choice"] = {
+                "type": "function",
+                "function": {"name": function_name},
+            }
+        else:
+            payload["tool_choice"] = "auto"
 
     def _post_chat_payload(
         self,
@@ -548,7 +564,43 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         except Exception:
             return
 
+    @staticmethod
+    def _writer_json_richness_score(data: dict[str, Any]) -> int:
+        """用于在多个可解析候选中选更完整的一份（避免 tool_calls 截断短于 message.content）。"""
+        score = 0
+        ch = data.get("chapter")
+        if isinstance(ch, dict):
+            score += len(str(ch.get("content") or ""))
+        segs = data.get("segments")
+        if isinstance(segs, list):
+            for it in segs:
+                if isinstance(it, dict):
+                    score += len(str(it.get("content") or ""))
+        return score
+
+    def _try_parse_content_message_to_dict(self, raw_content: Any) -> dict[str, Any] | None:
+        content = raw_content
+        if isinstance(content, list):
+            text_parts: list[str] = []
+            for item in content:
+                if isinstance(item, dict):
+                    text = str(item.get("text") or "").strip()
+                    if text:
+                        text_parts.append(text)
+            content = "\n".join(text_parts).strip()
+        if not isinstance(content, str) or not content.strip():
+            return None
+        try:
+            parsed = json.loads(content)
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            pass
+        extracted = self._extract_json_from_text(content)
+        return extracted if isinstance(extracted, dict) else None
+
     def _parse_response_json_from_message(self, message: dict[str, Any]) -> dict[str, Any]:
+        candidates: list[dict[str, Any]] = []
+
         tool_calls = message.get("tool_calls")
         if isinstance(tool_calls, list) and tool_calls:
             for item in tool_calls:
@@ -562,31 +614,34 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
                     continue
                 try:
                     parsed = json.loads(args)
-                except Exception as exc:
-                    raise RuntimeError("LLM function arguments 不是合法 JSON") from exc
+                except Exception:
+                    continue
                 if isinstance(parsed, dict):
-                    return parsed
-            raise RuntimeError("LLM tool_calls 存在但未返回可解析的 function.arguments")
+                    candidates.append(parsed)
 
-        content = message.get("content")
-        if isinstance(content, list):
-            text_parts: list[str] = []
-            for item in content:
-                if isinstance(item, dict):
-                    text = str(item.get("text") or "").strip()
-                    if text:
-                        text_parts.append(text)
-            content = "\n".join(text_parts).strip()
-        if not isinstance(content, str) or not content.strip():
-            raise RuntimeError("LLM 响应 content 为空")
-        try:
-            return json.loads(content)
-        except Exception:
-            pass
-        extracted = self._extract_json_from_text(content)
-        if extracted is not None:
-            return extracted
-        raise RuntimeError("LLM 响应 content 不是合法 JSON")
+        from_content = self._try_parse_content_message_to_dict(message.get("content"))
+        if isinstance(from_content, dict):
+            candidates.append(from_content)
+
+        if not candidates:
+            if isinstance(tool_calls, list) and tool_calls:
+                raise RuntimeError(
+                    "LLM tool_calls 存在但未返回可解析的 function.arguments，且 message.content 也无合法 JSON"
+                )
+            raise RuntimeError("LLM 响应 content 为空或不是合法 JSON")
+
+        if len(candidates) > 1:
+            best = max(candidates, key=self._writer_json_richness_score)
+            scores = [self._writer_json_richness_score(c) for c in candidates]
+            if min(scores) != max(scores):
+                logger.info(
+                    "[LLM] 多路 JSON 候选（tool_calls 与 content 均存在）| "
+                    "richness_scores=%s | 选用最高分，避免 arguments 截断导致 chapter 偏短",
+                    scores,
+                )
+            return best
+
+        return candidates[0]
 
     @staticmethod
     def _extract_json_from_text(text: str) -> dict[str, Any] | None:
@@ -666,8 +721,34 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
                     downgraded_fc = True
                     continue
                 raise
+            parsed_obj = parsed.json_data
+            # Schema 校验前对照 chapter / segments 长度，便于排查 tool_calls 与 content 不一致等问题。
+            if isinstance(parsed_obj, dict) and (
+                "chapter" in parsed_obj or "segments" in parsed_obj
+            ):
+                chapter = parsed_obj.get("chapter", {})
+                content = chapter.get("content") if isinstance(chapter, dict) else ""
+                segments = parsed_obj.get("segments", [])
+                segments_join = "".join(
+                    str(x.get("content") or "")
+                    for x in segments
+                    if isinstance(x, dict)
+                )
+                logger.info(
+                    "writer_length_debug | "
+                    "chapter_raw_len=%s | "
+                    "chapter_non_ws=%s | "
+                    "segments_join_raw_len=%s | "
+                    "segments_join_non_ws=%s | "
+                    "word_count_field=%s",
+                    len(content or ""),
+                    count_fiction_word_units(content or ""),
+                    len(segments_join),
+                    count_fiction_word_units(segments_join),
+                    parsed_obj.get("word_count"),
+                )
             errors = self._validate_response_schema(
-                payload=parsed.json_data,
+                payload=parsed_obj,
                 schema=effective_request.response_schema,
             )
             if not errors:

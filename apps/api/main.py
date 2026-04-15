@@ -111,6 +111,24 @@ from packages.workflows.orchestration.types import WorkflowRunRequest
 logger = logging.getLogger("writeragent.api")
 
 
+def _repo_root() -> Path:
+    """仓库根目录：优先 WRITER_REPO_ROOT，否则为 apps/api/main.py 上溯两层。"""
+    env = os.getenv("WRITER_REPO_ROOT", "").strip()
+    if env:
+        p = Path(env).expanduser().resolve()
+        if p.is_dir():
+            return p
+    return Path(__file__).resolve().parents[2]
+
+
+def _resolve_repo_data_path(path_str: str) -> Path:
+    """相对路径相对仓库根解析，避免 uvicorn 在子目录启动时写到别的 data/worker.log。"""
+    p = Path(path_str).expanduser()
+    if p.is_absolute():
+        return p.resolve()
+    return (_repo_root() / p).resolve()
+
+
 class ChapterGeneratePayload(BaseModel):
     writing_goal: str = Field(..., min_length=1, description="写作目标，建议包含剧情推进目标、冲突点或本章任务。")
     chapter_no: int | None = Field(default=None, ge=1, description="目标章节号。为空时由 workflow 自行决定写入章节序号。")
@@ -1134,13 +1152,63 @@ def _ensure_llm_file_logger() -> None:
     llm_logger = logging.getLogger("writeragent.llm")
     if any(isinstance(h, logging.FileHandler) for h in llm_logger.handlers):
         return
-    llm_log_path = Path(os.getenv("WRITER_LLM_LOG_FILE", "data/llm.log"))
+    llm_log_path = _resolve_repo_data_path(str(os.getenv("WRITER_LLM_LOG_FILE", "data/llm.log")))
     llm_log_path.parent.mkdir(parents=True, exist_ok=True)
     fh = logging.FileHandler(llm_log_path, encoding="utf-8")
     fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s - %(message)s"))
     fh.setLevel(logging.DEBUG)
     llm_logger.addHandler(fh)
     llm_logger.setLevel(logging.DEBUG)
+
+
+# 同一文件只建一个 FileHandler，挂到 worker 与 workflows 命名空间，避免重复写入
+_WORKER_LOG_FILE_HANDLERS_BY_PATH: dict[str, logging.FileHandler] = {}
+_WORKER_LOG_BOOTSTRAP_PATHS: set[str] = set()
+
+
+def _ensure_worker_file_logger() -> None:
+    """将编排调度与 workflows 日志写入文件（默认 data/worker.log），仅启动 API 时也可 tail。
+
+    - 路径：WRITER_WORKER_LOG_FILE（空字符串则关闭）
+    - 级别：WRITER_WORKER_LOG_LEVEL（默认 INFO）
+    - 关闭 API 侧落盘：WRITER_API_WORKER_LOG_DISABLE=1
+    """
+    if str(os.getenv("WRITER_API_WORKER_LOG_DISABLE", "")).strip().lower() in {"1", "true", "yes"}:
+        return
+    raw = os.getenv("WRITER_WORKER_LOG_FILE", "data/worker.log")
+    target = str(raw or "").strip()
+    if not target:
+        return
+    path = _resolve_repo_data_path(target)
+    path_key = str(path)
+    level_name = str(os.getenv("WRITER_WORKER_LOG_LEVEL", "INFO")).strip().upper()
+    file_level = getattr(logging, level_name, logging.INFO)
+    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s - %(message)s")
+
+    fh = _WORKER_LOG_FILE_HANDLERS_BY_PATH.get(path_key)
+    if fh is None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fh = logging.FileHandler(path, encoding="utf-8")
+        fh.setFormatter(fmt)
+        fh.setLevel(file_level)
+        _WORKER_LOG_FILE_HANDLERS_BY_PATH[path_key] = fh
+
+    for name in ("writeragent.worker", "packages.workflows"):
+        log = logging.getLogger(name)
+        if fh not in log.handlers:
+            log.addHandler(fh)
+        eff = log.getEffectiveLevel()
+        if eff > file_level:
+            log.setLevel(file_level)
+
+    if path_key not in _WORKER_LOG_BOOTSTRAP_PATHS:
+        _WORKER_LOG_BOOTSTRAP_PATHS.add(path_key)
+        logging.getLogger("writeragent.worker").info(
+            "API worker 文件日志已启用 path=%s level=%s repo_root=%s",
+            path_key,
+            level_name,
+            str(_repo_root()),
+        )
 
 
 def create_app(
@@ -1150,6 +1218,7 @@ def create_app(
     evaluation_factory: Callable[[Session], OnlineEvaluationService] | None = None,
 ) -> FastAPI:
     _ensure_llm_file_logger()
+    _ensure_worker_file_logger()
     app = FastAPI(
         title="WriterAgent API",
         version="2.0.0",
@@ -1300,13 +1369,14 @@ def create_app(
             if not lock.acquire(blocking=False):
                 return
             db = None
+            wlog = logging.getLogger("writeragent.worker")
             try:
                 db = session_factory()
                 service = app.state.orchestrator_factory(db)
                 processed = int(service.process_once(limit=max(1, int(limit))))
-                logger.info("auto_worker_tick processed=%s", processed)
+                wlog.info("auto_worker_tick processed=%s", processed)
             except Exception:
-                logger.exception("auto_worker_tick failed")
+                wlog.exception("auto_worker_tick failed")
             finally:
                 try:
                     if db is not None:
@@ -4162,6 +4232,30 @@ def create_app(
             payload_json=result,
         )
         return {"ok": True, **result}
+
+    @app.on_event("startup")
+    def _orchestrator_lease_recover_on_startup() -> None:
+        """--reload / 崩溃后可能留下 running；启动时按租约/心跳回收（条件见 recover_stale_running）。"""
+        cfg = app.state.orchestrator_cfg
+        if not bool(getattr(cfg, "enable_startup_lease_recover", True)):
+            return
+        nonlocal session_factory
+        if session_factory is None:
+            session_factory = create_session_factory()
+            app.state.session_factory = session_factory
+        db = session_factory()
+        try:
+            orch = app.state.orchestrator_factory(db)
+            n = orch.startup_recover_stale_runs()
+            if n:
+                logging.getLogger("writeragent.api").info(
+                    "API 启动: 已回收 %s 条僵尸 running（租约/心跳）",
+                    n,
+                )
+        except Exception:
+            logging.getLogger("writeragent.api").exception("API 启动租约回收失败")
+        finally:
+            db.close()
 
     return app
 

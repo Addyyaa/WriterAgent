@@ -1,30 +1,31 @@
 {
   "consumed_by": {
-    "hard_constraints": "code",
-    "hard_constraints[].rule_type": "code",
-    "hard_constraints[].rule_description": "code",
-    "hard_constraints[].limitation": "code",
-    "reusable_assets": "code",
-    "reusable_assets.locations": "code",
-    "reusable_assets.factions": "code",
-    "reusable_assets.items_concepts": "code",
-    "world_logic_summary": {
+    "view.hard_constraints": "code",
+    "view.hard_constraints[].rule_type": "code",
+    "view.hard_constraints[].rule_description": "code",
+    "view.hard_constraints[].limitation": "code",
+    "view.reusable_assets": "code",
+    "view.reusable_assets.locations": "code",
+    "view.reusable_assets.factions": "code",
+    "view.reusable_assets.items_concepts": "code",
+    "view.world_logic_summary": {
       "consumed_by": "audit_only",
       "rationale": "历史摘要字段",
       "retire_by": "2026-12-31"
     },
-    "potential_conflicts": {
+    "view.potential_conflicts": {
       "consumed_by": "audit_only",
       "rationale": "历史冲突预演字段",
       "retire_by": "2026-12-31"
     },
-    "potential_conflicts[].risk_scenario": {
+    "view.potential_conflicts[].risk_scenario": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "potential_conflicts[].prevention_guide": {
+    "view.potential_conflicts[].prevention_guide": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
-    }
+    },
+    "view": "code"
   }
 }

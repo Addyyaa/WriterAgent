@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import or_, select
+import os
+
+from sqlalchemy import and_, or_, select
 
 from .base import BaseRepository
 from packages.storage.postgres.models.workflow_run import WorkflowRun
@@ -10,6 +12,13 @@ from packages.storage.postgres.models.workflow_run import WorkflowRun
 
 class WorkflowRunRepository(BaseRepository):
     _TERMINAL_STATUSES = {"success", "failed", "cancelled"}
+
+    @staticmethod
+    def _clear_lease_fields(row: WorkflowRun) -> None:
+        row.claimed_by = None
+        row.claimed_at = None
+        row.heartbeat_at = None
+        row.lease_expires_at = None
 
     def create_run(
         self,
@@ -63,8 +72,16 @@ class WorkflowRunRepository(BaseRepository):
         stmt = select(WorkflowRun).where(WorkflowRun.idempotency_key == idempotency_key)
         return self.db.execute(stmt).scalar_one_or_none()
 
-    def claim_next(self, *, limit: int = 1) -> list[WorkflowRun]:
+    def claim_next(
+        self,
+        *,
+        limit: int = 1,
+        worker_id: str | None = None,
+        initial_lease_seconds: int | None = None,
+    ) -> list[WorkflowRun]:
         now = datetime.now(tz=timezone.utc)
+        wid = (worker_id or os.getenv("WRITER_WORKER_ID", "").strip() or f"pid-{os.getpid()}").strip()
+        initial = max(60, int(initial_lease_seconds or int(os.getenv("WRITER_ORCH_RUN_INITIAL_LEASE_SECONDS", "900"))))
         stmt = (
             select(WorkflowRun)
             .where(
@@ -81,35 +98,82 @@ class WorkflowRunRepository(BaseRepository):
             row.started_at = row.started_at or now
             row.error_code = None
             row.error_message = None
+            row.claimed_by = wid
+            row.claimed_at = now
+            row.heartbeat_at = now
+            row.lease_expires_at = now + timedelta(seconds=initial)
         if rows:
             self.db.commit()
             for row in rows:
                 self.db.refresh(row)
         return rows
 
+    def touch_execution_lease(
+        self,
+        run_id,
+        *,
+        worker_id: str | None = None,
+        extend_seconds: int = 900,
+        auto_commit: bool = True,
+    ) -> WorkflowRun | None:
+        """延长 running run 的租约并刷新心跳（步骤开始 / live_progress 等路径调用）。"""
+        row = self.get(run_id)
+        if row is None or str(row.status) != "running":
+            return None
+        now = datetime.now(tz=timezone.utc)
+        ext = max(60, int(extend_seconds))
+        row.heartbeat_at = now
+        if worker_id:
+            row.claimed_by = worker_id.strip() or row.claimed_by
+        if row.claimed_at is None:
+            row.claimed_at = now
+        row.lease_expires_at = now + timedelta(seconds=ext)
+        if auto_commit:
+            self.db.commit()
+            self.db.refresh(row)
+        else:
+            self.db.flush()
+        return row
+
     def recover_stale_running(
         self,
         *,
-        stale_after_seconds: int,
+        heartbeat_stale_seconds: int,
+        legacy_run_started_stale_seconds: int | None = None,
         auto_commit: bool = True,
     ) -> list[WorkflowRun]:
+        """回收僵尸 running：租约到期、心跳过旧，或无新列时的 legacy started_at 兜底。"""
         now = datetime.now(tz=timezone.utc)
-        stale_after = max(1, int(stale_after_seconds))
-        threshold = now - timedelta(seconds=stale_after)
+        hb_sec = max(1, int(heartbeat_stale_seconds))
+        legacy_sec = max(1, int(legacy_run_started_stale_seconds or heartbeat_stale_seconds))
+        heartbeat_threshold = now - timedelta(seconds=hb_sec)
+        legacy_threshold = now - timedelta(seconds=legacy_sec)
 
         stmt = (
             select(WorkflowRun)
             .where(
                 WorkflowRun.status == "running",
-                WorkflowRun.started_at.is_not(None),
-                WorkflowRun.started_at <= threshold,
+                or_(
+                    and_(WorkflowRun.lease_expires_at.isnot(None), WorkflowRun.lease_expires_at < now),
+                    and_(WorkflowRun.heartbeat_at.isnot(None), WorkflowRun.heartbeat_at < heartbeat_threshold),
+                    and_(
+                        WorkflowRun.lease_expires_at.is_(None),
+                        WorkflowRun.heartbeat_at.is_(None),
+                        WorkflowRun.started_at.isnot(None),
+                        WorkflowRun.started_at <= legacy_threshold,
+                    ),
+                ),
             )
             .with_for_update(skip_locked=True)
         )
         rows = list(self.db.execute(stmt).scalars().all())
         for row in rows:
-            row.error_code = "RUN_TIMEOUT"
-            row.error_message = f"run 超时回收，超过 {stale_after} 秒未完成"
+            row.error_code = "RUN_LEASE_STALE"
+            row.error_message = (
+                f"运行租约/心跳回收（lease到期或超过 {hb_sec}s 无心跳；"
+                f"详见 WRITER_ORCH_RECOVER_HEARTBEAT_STALE_SECONDS）"
+            )
+            self._clear_lease_fields(row)
             if int(row.retry_count or 0) < int(row.max_retries or 0):
                 row.retry_count = int(row.retry_count or 0) + 1
                 row.status = "queued"
@@ -148,6 +212,7 @@ class WorkflowRunRepository(BaseRepository):
         row.error_code = None
         row.error_message = None
         row.finished_at = datetime.now(tz=timezone.utc)
+        self._clear_lease_fields(row)
         if auto_commit:
             self.db.commit()
             self.db.refresh(row)
@@ -177,9 +242,11 @@ class WorkflowRunRepository(BaseRepository):
             row.status = "queued"
             row.next_attempt_at = datetime.now(tz=timezone.utc).replace(microsecond=0)
             row.next_attempt_at = row.next_attempt_at + timedelta(seconds=max(1, int(retry_delay_seconds)))
+            self._clear_lease_fields(row)
         else:
             row.status = "failed"
             row.finished_at = datetime.now(tz=timezone.utc)
+            self._clear_lease_fields(row)
 
         if auto_commit:
             self.db.commit()
@@ -196,6 +263,7 @@ class WorkflowRunRepository(BaseRepository):
             return row
         row.status = "cancelled"
         row.finished_at = datetime.now(tz=timezone.utc)
+        self._clear_lease_fields(row)
         if auto_commit:
             self.db.commit()
             self.db.refresh(row)
@@ -211,6 +279,7 @@ class WorkflowRunRepository(BaseRepository):
             return row
         row.status = "waiting_review"
         row.next_attempt_at = None
+        self._clear_lease_fields(row)
         if auto_commit:
             self.db.commit()
             self.db.refresh(row)
@@ -228,6 +297,7 @@ class WorkflowRunRepository(BaseRepository):
         row.next_attempt_at = datetime.now(tz=timezone.utc)
         row.error_code = None
         row.error_message = None
+        self._clear_lease_fields(row)
         if auto_commit:
             self.db.commit()
             self.db.refresh(row)
@@ -246,6 +316,7 @@ class WorkflowRunRepository(BaseRepository):
         row.error_message = None
         row.next_attempt_at = datetime.now(tz=timezone.utc)
         row.finished_at = None
+        self._clear_lease_fields(row)
         if auto_commit:
             self.db.commit()
             self.db.refresh(row)

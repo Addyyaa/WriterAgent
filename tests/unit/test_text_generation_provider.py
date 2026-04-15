@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from unittest.mock import patch
 
@@ -38,7 +39,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         payload = provider.build_chat_payload(
             TextGenerationRequest(
@@ -60,7 +60,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         body = {
             "model": "demo-model",
@@ -83,7 +82,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         body = {
             "model": "demo-model",
@@ -98,12 +96,64 @@ class TestTextGenerationProviders(unittest.TestCase):
         parsed = provider.parse_chat_response(body)
         self.assertEqual(parsed.text, "仅有 notes 字段")
 
+    def test_openai_parse_prefers_richer_payload_when_tool_calls_and_content_diverge(self) -> None:
+        """模拟厂商同时返回截断的 function.arguments 与完整的 message.content。"""
+        provider = OpenAICompatibleTextProvider(
+            api_key="k",
+            model="m",
+            base_url="http://example.com/v1",
+        )
+        long_chapter = "正文" * 800
+        long_payload = {
+            "mode": "draft",
+            "status": "success",
+            "segments": [],
+            "word_count": 1600,
+            "chapter": {
+                "title": "胶带与霜",
+                "content": long_chapter,
+                "summary": "摘要",
+            },
+        }
+        short_payload = {
+            "mode": "draft",
+            "status": "success",
+            "segments": [],
+            "word_count": 2,
+            "chapter": {
+                "title": "胶带与霜",
+                "content": "短",
+                "summary": "摘要",
+            },
+        }
+        body = {
+            "model": "demo-model",
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(long_payload, ensure_ascii=False),
+                        "tool_calls": [
+                            {
+                                "type": "function",
+                                "function": {
+                                    "name": "chapter_generation_output",
+                                    "arguments": json.dumps(short_payload, ensure_ascii=False),
+                                },
+                            }
+                        ],
+                    }
+                }
+            ],
+        }
+        parsed = provider.parse_chat_response(body)
+        self.assertEqual(parsed.json_data["chapter"]["content"], long_chapter)
+        self.assertGreater(len(parsed.json_data["chapter"]["content"]), 1000)
+
     def test_openai_payload_build_with_json_schema(self) -> None:
         provider = OpenAICompatibleTextProvider(
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         payload = provider.build_chat_payload(
             TextGenerationRequest(
@@ -128,7 +178,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         payload = provider.build_chat_payload(
             TextGenerationRequest(
@@ -156,7 +205,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         with self.assertRaises(RuntimeError):
             provider.parse_chat_response(
@@ -181,8 +229,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=False,
-            fallback_to_mock_on_error=False,
         )
         req = TextGenerationRequest(
             system_prompt="sys",
@@ -204,34 +250,12 @@ class TestTextGenerationProviders(unittest.TestCase):
         self.assertEqual(result.text, "C")
         self.assertEqual(result.json_data["title"], "T")
 
-    def test_openai_generate_fallback_to_mock_on_error(self) -> None:
+    def test_openai_generate_raises_on_transport_error(self) -> None:
+        """网络/传输失败时不再回退 mock，应向调用方抛出异常。"""
         provider = OpenAICompatibleTextProvider(
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=False,
-            fallback_to_mock_on_error=True,
-        )
-        req = TextGenerationRequest(
-            system_prompt="sys",
-            user_prompt="测试失败回退",
-            temperature=0.3,
-        )
-        with patch(
-            "packages.llm.text_generation.openai_compatible.httpx.post",
-            side_effect=RuntimeError("network down"),
-        ):
-            result = provider.generate(req)
-        self.assertTrue(result.is_mock)
-        self.assertIn("mock_fallback_after_error", result.provider)
-
-    def test_openai_generate_raise_when_fallback_disabled(self) -> None:
-        provider = OpenAICompatibleTextProvider(
-            api_key="k",
-            model="m",
-            base_url="http://example.com/v1",
-            bypass_to_mock=False,
-            fallback_to_mock_on_error=False,
         )
         req = TextGenerationRequest(
             system_prompt="sys",
@@ -250,8 +274,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=False,
-            fallback_to_mock_on_error=False,
             prompt_guard_enabled=True,
             model_context_window_tokens=220,
             prompt_guard_output_reserve_tokens=80,
@@ -299,8 +321,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=False,
-            fallback_to_mock_on_error=False,
             prompt_guard_enabled=True,
             model_context_window_tokens=64000,
             prompt_guard_output_reserve_tokens=1024,
@@ -356,8 +376,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=False,
-            fallback_to_mock_on_error=False,
             prompt_guard_enabled=False,
         )
         req = TextGenerationRequest(
@@ -402,7 +420,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         body = {
             "model": "demo-model",
@@ -431,7 +448,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         req = TextGenerationRequest(
             system_prompt="sys",
@@ -454,7 +470,6 @@ class TestTextGenerationProviders(unittest.TestCase):
             api_key="k",
             model="m",
             base_url="http://example.com/v1",
-            bypass_to_mock=True,
         )
         req = TextGenerationRequest(
             system_prompt="sys",
@@ -468,7 +483,17 @@ class TestTextGenerationProviders(unittest.TestCase):
             input_schema_name="chapter_input",
             input_schema_strict=False,
         )
-        result = provider.generate(req)
+        body = {
+            "model": "m",
+            "choices": [
+                {"message": {"content": '{"title":"T","content":"C","summary":"S"}'}}
+            ],
+        }
+        with patch(
+            "packages.llm.text_generation.openai_compatible.httpx.post",
+            return_value=self._DummyResponse(status_code=200, body=body),
+        ):
+            result = provider.generate(req)
         input_validation = dict(result.raw_response_json.get("input_validation") or {})
         self.assertTrue(input_validation.get("applied"))
         self.assertEqual(input_validation.get("schema_name"), "chapter_input")

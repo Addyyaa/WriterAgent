@@ -22,6 +22,7 @@ class ChapterGenerationRequest:
     request_id: str | None = None
     trace_id: str | None = None
     live_progress_callback: Callable[[dict[str, Any]], None] | None = None
+    checkpoint_callback: Callable[[dict[str, Any]], None] | None = None
 
 
 @dataclass(frozen=True)

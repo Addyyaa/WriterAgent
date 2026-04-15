@@ -1,15 +1,16 @@
 {
   "consumed_by": {
-    "mode": "code",
-    "status": "code",
-    "segments": "code",
-    "segments[].beat_id": "code",
-    "segments[].type": "code",
-    "segments[].content": "code",
-    "word_count": "code",
-    "chapter": "code",
-    "chapter.title": "code",
-    "chapter.content": "code",
-    "chapter.summary": "code"
+    "view.mode": "code",
+    "view.status": "code",
+    "view.segments": "code",
+    "view.segments[].beat_id": "code",
+    "view.segments[].type": "code",
+    "view.segments[].content": "code",
+    "view.word_count": "code",
+    "view.chapter": "code",
+    "view.chapter.title": "code",
+    "view.chapter.content": "code",
+    "view.chapter.summary": "code",
+    "view": "code"
   }
 }

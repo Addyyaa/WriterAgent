@@ -122,6 +122,20 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         self.assertEqual(bundle["summary"]["key_facts"], ["a"])
         self.assertTrue(any("hello" in str(i.get("text")) for i in bundle["items"]))
 
+    def test_retrieval_bundle_prefers_view_over_agent_output(self) -> None:
+        raw_state = {
+            "retrieval_context": {
+                "view": {
+                    "writing_context_summary": {"key_facts": ["from_view"], "current_states": []},
+                },
+                "agent_output": {
+                    "writing_context_summary": {"key_facts": ["legacy"], "current_states": []},
+                },
+            }
+        }
+        bundle = build_retrieval_bundle_from_raw_state(raw_state)
+        self.assertEqual(bundle["summary"]["key_facts"], ["from_view"])
+
     def test_retrieval_view_compact_items_respects_max(self) -> None:
         specs = {
             "r": StepInputSpec(

@@ -74,6 +74,10 @@ from packages.webhooks.service import WebhookService
 from packages.workflows.chapter_generation.context_provider import (
     SQLAlchemyStoryContextProvider,
 )
+from packages.workflows.orchestration.agent_output_envelope import (
+    build_agent_step_meta_raw,
+    step_agent_view,
+)
 from packages.workflows.orchestration.agent_registry import AgentRegistry
 from packages.workflows.chapter_generation.service import ChapterGenerationWorkflowService
 from packages.workflows.chapter_generation.types import ChapterGenerationRequest
@@ -532,6 +536,10 @@ class WritingOrchestratorService:
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
             "started_at": row.started_at.isoformat() if row.started_at else None,
             "finished_at": row.finished_at.isoformat() if row.finished_at else None,
+            "claimed_by": row.claimed_by,
+            "claimed_at": row.claimed_at.isoformat() if row.claimed_at else None,
+            "heartbeat_at": row.heartbeat_at.isoformat() if row.heartbeat_at else None,
+            "lease_expires_at": row.lease_expires_at.isoformat() if row.lease_expires_at else None,
             "role_trace": [str(step.role_id) for step in steps if step.role_id],
             "strategy_versions": {
                 str(step.step_key): str(step.strategy_version)
@@ -558,6 +566,9 @@ class WritingOrchestratorService:
                     "depends_on": list(step.depends_on_keys or []),
                     "input_json": dict(step.input_json or {}),
                     "output_json": dict(step.output_json or {}),
+                    "checkpoint_json": dict(step.checkpoint_json or {}),
+                    "heartbeat_at": step.heartbeat_at.isoformat() if step.heartbeat_at else None,
+                    "last_progress_at": step.last_progress_at.isoformat() if step.last_progress_at else None,
                     "error_code": step.error_code,
                     "error_message": step.error_message,
                     "started_at": step.started_at.isoformat() if step.started_at else None,
@@ -588,6 +599,7 @@ class WritingOrchestratorService:
             "messages": [
                 {
                     "id": int(msg.id),
+                    "workflow_step_id": int(msg.workflow_step_id) if msg.workflow_step_id is not None else None,
                     "role": str(msg.role),
                     "sender": msg.sender,
                     "receiver": msg.receiver,
@@ -811,17 +823,30 @@ class WritingOrchestratorService:
             "run_status": run_status,
         }
 
-    def process_once(self, *, limit: int | None = None) -> int:
+    def _recover_stale_runs(self) -> list[Any]:
         recovered = self.workflow_run_repo.recover_stale_running(
-            stale_after_seconds=self.runtime_config.max_step_seconds
+            heartbeat_stale_seconds=self.runtime_config.recover_heartbeat_stale_seconds,
+            legacy_run_started_stale_seconds=self.runtime_config.max_step_seconds,
         )
         if recovered:
-            logger.info("recovered %d stale runs", len(recovered))
+            logger.info("recovered %d stale runs (lease/heartbeat)", len(recovered))
         for row in recovered:
             if str(row.status) == "queued":
                 self.workflow_step_repo.reset_for_retry(workflow_run_id=row.id)
+        return recovered
 
-        claimed = self.workflow_run_repo.claim_next(limit=limit or self.runtime_config.worker_batch_size)
+    def startup_recover_stale_runs(self) -> int:
+        """进程启动时回收僵尸 running（worker / API 入口可调用）。"""
+        return len(self._recover_stale_runs())
+
+    def process_once(self, *, limit: int | None = None) -> int:
+        self._recover_stale_runs()
+
+        claimed = self.workflow_run_repo.claim_next(
+            limit=limit or self.runtime_config.worker_batch_size,
+            worker_id=self.runtime_config.worker_instance_id,
+            initial_lease_seconds=self.runtime_config.run_initial_lease_seconds,
+        )
         processed = 0
         for row in claimed:
             processed += 1
@@ -1081,6 +1106,11 @@ class WritingOrchestratorService:
         logger.info("step start run=%s step=%s key=%s type=%s", run_id, step.id, step.step_key, step.step_type)
         step_started_at = perf_counter()
         self.workflow_step_repo.start(step.id)
+        self.workflow_run_repo.touch_execution_lease(
+            run_id,
+            worker_id=self.runtime_config.worker_instance_id,
+            extend_seconds=self.runtime_config.run_lease_extend_seconds,
+        )
         workflow_type = str((step.input_json or {}).get("workflow_type") or step.step_type)
         role_id = str(step.role_id or step.agent_name or "unknown_agent")
         strategy_version = step.strategy_version
@@ -1397,10 +1427,10 @@ class WritingOrchestratorService:
                 mode=str((step.input_json or {}).get("strategy_mode") or ""),
             ),
         )
-        agent_output = dict(after.output_payload or {})
+        view_payload = dict(after.output_payload or {})
         notes = self._build_agent_notes(
             role_id=role_id,
-            agent_output=agent_output,
+            agent_output=view_payload,
             fallback_text=str(result.text or "").strip(),
         )
         all_warnings = []
@@ -1412,6 +1442,14 @@ class WritingOrchestratorService:
             before_runs=list(before.runs or []),
             after_runs=list(after.runs or []),
         )
+        step_meta, step_raw = build_agent_step_meta_raw(
+            result=result,
+            schema_ref=schema_ref,
+            schema_version=schema_version,
+            prompt_hash=prompt_hash,
+            strategy_version=strategy_version,
+            skills_executed_count=len(skill_runs),
+        )
         output = {
             "step_key": step.step_key,
             "agent_name": step.agent_name,
@@ -1420,7 +1458,10 @@ class WritingOrchestratorService:
             "prompt_hash": prompt_hash,
             "schema_version": schema_version,
             "schema_ref": schema_ref,
-            "agent_output": agent_output,
+            "view": view_payload,
+            "meta": step_meta,
+            "raw": step_raw,
+            "agent_output": view_payload,
             "notes": notes,
             "mock_mode": bool(result.is_mock),
             "warnings": all_warnings,
@@ -1428,13 +1469,23 @@ class WritingOrchestratorService:
             "skills_effective_delta": int(sum(int(item.get("effective_delta") or 0) for item in skill_runs)),
             "skill_runs": skill_runs,
         }
-        if self.schema_registry is not None and not schema_is_inline:
-            validation_warnings = self.schema_registry.validate(
-                schema_ref=schema_ref,
-                payload=agent_output,
-                strict=self.runtime_config.schema_strict,
-                degrade_mode=self.runtime_config.schema_degrade_mode,
-            )
+        if self.schema_registry is not None:
+            if schema_is_inline and isinstance(generation_schema, dict) and generation_schema:
+                validation_warnings = self.schema_registry.validate_inline(
+                    schema=generation_schema,
+                    payload=view_payload,
+                    strict=self.runtime_config.schema_strict,
+                    degrade_mode=self.runtime_config.schema_degrade_mode,
+                )
+            elif not schema_is_inline:
+                validation_warnings = self.schema_registry.validate(
+                    schema_ref=schema_ref,
+                    payload=view_payload,
+                    strict=self.runtime_config.schema_strict,
+                    degrade_mode=self.runtime_config.schema_degrade_mode,
+                )
+            else:
+                validation_warnings = []
             if validation_warnings:
                 output["warnings"] = list(output.get("warnings") or []) + validation_warnings
 
@@ -1459,7 +1510,7 @@ class WritingOrchestratorService:
         self._apply_story_asset_mutations(
             project_id=row.project_id,
             notes=notes,
-            agent_output=agent_output,
+            agent_output=view_payload,
             role_id=role_id,
         )
         return output
@@ -1780,13 +1831,7 @@ class WritingOrchestratorService:
     @staticmethod
     def _extract_step_agent_output(raw_state: dict[str, dict], step_key: str) -> dict[str, Any]:
         step = dict(raw_state.get(step_key) or {})
-        view = step.get("view")
-        if isinstance(view, dict):
-            return dict(view)
-        output = step.get("agent_output")
-        if isinstance(output, dict):
-            return dict(output)
-        return {}
+        return step_agent_view(step)
 
     def _build_writer_guidance(self, *, raw_state: dict[str, dict]) -> dict[str, Any]:
         plot_output = self._extract_step_agent_output(raw_state, "plot_alignment")
@@ -1982,14 +2027,32 @@ class WritingOrchestratorService:
         def _writer_live_progress(payload: dict[str, Any]) -> None:
             try:
                 if not payload or str(payload.get("kind") or "").lower() == "idle":
-                    self.workflow_step_repo.merge_live_progress(step_id=step.id, live_progress=None)
+                    self.workflow_step_repo.merge_live_progress(
+                        step_id=step.id,
+                        live_progress=None,
+                        lease_extend_seconds=self.runtime_config.run_lease_extend_seconds,
+                        worker_id=self.runtime_config.worker_instance_id,
+                    )
                 else:
                     self.workflow_step_repo.merge_live_progress(
                         step_id=step.id,
                         live_progress=payload,
+                        lease_extend_seconds=self.runtime_config.run_lease_extend_seconds,
+                        worker_id=self.runtime_config.worker_instance_id,
                     )
             except Exception:
                 logger.debug("writer live_progress 写入步骤失败 step_id=%s", step.id, exc_info=True)
+
+        def _writer_checkpoint(payload: dict[str, Any]) -> None:
+            try:
+                self.workflow_step_repo.merge_checkpoint(step_id=step.id, checkpoint=payload)
+                self.workflow_run_repo.touch_execution_lease(
+                    row.id,
+                    worker_id=self.runtime_config.worker_instance_id,
+                    extend_seconds=self.runtime_config.run_lease_extend_seconds,
+                )
+            except Exception:
+                logger.debug("writer checkpoint 写入步骤失败 step_id=%s", step.id, exc_info=True)
 
         result = self.chapter_tool.run(
             ChapterGenerationRequest(
@@ -2012,6 +2075,7 @@ class WritingOrchestratorService:
                 trace_id=row.trace_id,
                 retrieval_context=combined_retrieval_context,
                 live_progress_callback=_writer_live_progress,
+                checkpoint_callback=_writer_checkpoint,
             )
         )
         chapter = dict(result.chapter or {})
@@ -2271,7 +2335,14 @@ class WritingOrchestratorService:
         must_have_slots: list[str] | None = None,
     ) -> RetrievalLoopSummary:
         if self.retrieval_loop is None:
-            return RetrievalLoopSummary(retrieval_trace_id=f"{row.trace_id}:{step.step_key}:disabled")
+            return RetrievalLoopSummary(
+                retrieval_trace_id=f"{row.trace_id}:{step.step_key}:disabled",
+                context_bundle={
+                    "summary": {"key_facts": [], "current_states": []},
+                    "items": [],
+                    "meta": {},
+                },
+            )
         return self.retrieval_loop.run(
             RetrievalLoopRequest(
                 workflow_run_id=row.id,
@@ -2311,6 +2382,7 @@ class WritingOrchestratorService:
             "evidence_coverage": float(summary.coverage.coverage_score),
             "open_slots": list(summary.coverage.open_slots),
             "context_budget_usage": dict(summary.context_budget_usage or {}),
+            "retrieval_context_bundle": dict(summary.context_bundle or {}),
         }
 
     def _build_state(self, run_id) -> dict[str, dict]:

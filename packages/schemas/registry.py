@@ -65,6 +65,23 @@ class SchemaRegistry:
             raise SchemaValidationError(f"schema 校验失败({schema_ref}):\n{joined}")
         return messages
 
+    def validate_inline(
+        self,
+        *,
+        schema: dict[str, Any],
+        payload: Any,
+        strict: bool = True,
+        degrade_mode: bool = False,
+    ) -> list[str]:
+        """对内存中的 JSON Schema 字典校验 payload（用于 inline 角色 schema）。"""
+        issues: list[SchemaValidationIssue] = []
+        self._validate_node(schema=schema, payload=payload, path="$", issues=issues)
+        messages = [item.format() for item in issues]
+        if messages and strict and not degrade_mode:
+            joined = "\n".join(messages)
+            raise SchemaValidationError(f"schema 校验失败(inline):\n{joined}")
+        return messages
+
     def _validate_node(
         self,
         *,

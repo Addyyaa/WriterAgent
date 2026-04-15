@@ -25,6 +25,9 @@ class ProviderProfile:
     supports_json_schema: bool = False
     supports_function_calling: bool = False
     supports_json_object: bool = True
+    # OpenAI 风格 {"type":"function","function":{"name":...}} 会强制走工具调用；
+    # 部分兼容网关（如 DashScope）不接受，仅支持 auto/none。
+    supports_forced_function_tool_choice: bool = True
     default_timeout: float = 60.0
     default_context_window: int = 128000
     notes: str = ""
@@ -60,6 +63,7 @@ _REGISTRY: list[ProviderProfile] = [
         supports_json_schema=False,
         supports_function_calling=True,
         supports_json_object=True,
+        supports_forced_function_tool_choice=False,
         default_timeout=120.0,
         default_context_window=262144,
         notes="通义千问系列，function_calling 可用但 json_schema 不支持",
@@ -229,9 +233,9 @@ def _derive_compat_mode(p: ProviderProfile) -> str:
     return "basic"
 
 
-def log_provider_detection(*, base_url: str, model: str, user_override: str) -> str:
+def log_provider_detection(*, base_url: str, model: str, user_override: str) -> tuple[str, MatchResult]:
     """
-    在启动时执行检测并输出日志，返回最终 compat_mode。
+    在启动时执行检测并输出日志，返回最终 compat_mode 与匹配结果。
 
     如果用户通过 WRITER_LLM_COMPAT_MODE 显式指定了 full/basic，
     则尊重用户选择并在日志中说明。
@@ -245,7 +249,7 @@ def log_provider_detection(*, base_url: str, model: str, user_override: str) -> 
             result.profile.display_name if result.profile else "未知",
             result.matched_by,
         )
-        return user_override
+        return user_override, result
 
     if result.profile:
         logger.info(
@@ -269,7 +273,7 @@ def log_provider_detection(*, base_url: str, model: str, user_override: str) -> 
             base_url, model,
         )
 
-    return result.compat_mode
+    return result.compat_mode, result
 
 
 def get_registry() -> list[ProviderProfile]:

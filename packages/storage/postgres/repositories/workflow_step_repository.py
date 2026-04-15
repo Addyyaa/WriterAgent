@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
 
 from .base import BaseRepository
+from packages.storage.postgres.models.workflow_run import WorkflowRun
 from packages.storage.postgres.models.workflow_step import WorkflowStep
 
 
@@ -72,6 +73,8 @@ class WorkflowStepRepository(BaseRepository):
         *,
         step_id,
         live_progress: dict[str, Any] | None,
+        lease_extend_seconds: int = 900,
+        worker_id: str | None = None,
         auto_commit: bool = True,
     ) -> WorkflowStep | None:
         """合并或清除步骤 input_json.live_progress，供运行中 UI 展示（如草稿字数重试）。"""
@@ -84,6 +87,39 @@ class WorkflowStepRepository(BaseRepository):
         else:
             base["live_progress"] = dict(live_progress)
         row.input_json = base
+        now = datetime.now(tz=timezone.utc)
+        row.last_progress_at = now
+        row.heartbeat_at = now
+        run_row = self.db.get(WorkflowRun, row.workflow_run_id)
+        if run_row is not None and str(run_row.status) == "running":
+            ext = max(60, int(lease_extend_seconds))
+            run_row.heartbeat_at = now
+            run_row.lease_expires_at = now + timedelta(seconds=ext)
+            if worker_id:
+                run_row.claimed_by = worker_id.strip() or run_row.claimed_by
+            if run_row.claimed_at is None:
+                run_row.claimed_at = now
+        if auto_commit:
+            self.db.commit()
+            self.db.refresh(row)
+        else:
+            self.db.flush()
+        return row
+
+    def merge_checkpoint(
+        self,
+        *,
+        step_id,
+        checkpoint: dict[str, Any],
+        auto_commit: bool = True,
+    ) -> WorkflowStep | None:
+        """合并可恢复中间产物（writer_draft 等）；reset_for_retry 默认保留。"""
+        row = self.get(step_id)
+        if row is None:
+            return None
+        base = dict(row.checkpoint_json or {})
+        base.update(dict(checkpoint or {}))
+        row.checkpoint_json = base
         if auto_commit:
             self.db.commit()
             self.db.refresh(row)
@@ -129,6 +165,7 @@ class WorkflowStepRepository(BaseRepository):
         row.status = "running"
         row.attempt_count = int(row.attempt_count or 0) + 1
         row.started_at = row.started_at or datetime.now(tz=timezone.utc)
+        row.heartbeat_at = datetime.now(tz=timezone.utc)
         row.error_code = None
         row.error_message = None
         if auto_commit:
@@ -144,6 +181,7 @@ class WorkflowStepRepository(BaseRepository):
             return None
         row.status = "success"
         row.output_json = output_json or {}
+        row.checkpoint_json = {}
         row.error_code = None
         row.error_message = None
         row.finished_at = datetime.now(tz=timezone.utc)
@@ -217,6 +255,8 @@ class WorkflowStepRepository(BaseRepository):
             step.started_at = None
             step.finished_at = None
             step.output_json = {}
+            step.heartbeat_at = None
+            step.last_progress_at = None
             count += 1
         if auto_commit:
             self.db.commit()

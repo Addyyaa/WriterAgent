@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any
 
+from packages.workflows.orchestration.agent_output_envelope import step_agent_view
 from packages.workflows.orchestration.prompt_payload_types import StepInputSpec
 from packages.workflows.orchestration.step_input_specs import STEP_INPUT_SPECS
 
@@ -36,6 +37,9 @@ _STEP_OUTPUT_ENVELOPE_KEYS = frozenset(
         "role_id",
         "agent_name",
         "step_key",
+        "view",
+        "meta",
+        "raw",
     }
 )
 
@@ -164,12 +168,9 @@ class PromptPayloadAssembler:
             return dict(meta) if isinstance(meta, dict) else {}
 
         if fs == "view":
-            view = raw_step_output.get("view")
-            if isinstance(view, dict):
-                return dict(view)
-            agent_out = raw_step_output.get("agent_output")
-            if isinstance(agent_out, dict):
-                return dict(agent_out)
+            merged = step_agent_view(raw_step_output)
+            if merged:
+                return merged
             return {
                 k: v
                 for k, v in raw_step_output.items()
@@ -319,8 +320,8 @@ class PromptPayloadAssembler:
 def build_retrieval_bundle_from_raw_state(raw_state: dict[str, dict]) -> dict[str, Any]:
     """从 retrieval_context 步骤构造双层检索包：summary + items + meta。"""
     step = dict(raw_state.get("retrieval_context") or {})
-    agent_out = step.get("agent_output")
-    if not isinstance(agent_out, dict):
+    agent_out = step_agent_view(step)
+    if not isinstance(agent_out, dict) or not agent_out:
         return {
             "summary": {"key_facts": [], "current_states": []},
             "items": [],

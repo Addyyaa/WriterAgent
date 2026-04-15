@@ -24,6 +24,25 @@ class ContextPackage:
     truncated: bool
     items: list[ContextItem]
 
+    def to_retrieval_bundle(self) -> dict[str, Any]:
+        """与编排检索 context_bundle 形状对齐：summary / items / meta（summary 由 retrieval_agent 负责语义）。"""
+        return {
+            "summary": {"key_facts": [], "current_states": []},
+            "items": [
+                {
+                    "source": it.source,
+                    "score": it.priority,
+                    "text": it.text,
+                }
+                for it in self.items
+            ],
+            "meta": {
+                "used_tokens": int(self.used_tokens),
+                "truncated": bool(self.truncated),
+                "token_budget": int(self.token_budget),
+            },
+        }
+
 
 class ContextBuilder:
     """工作记忆构建器：做预算裁剪、去重与优先级编排。"""

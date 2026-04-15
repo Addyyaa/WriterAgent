@@ -1460,7 +1460,7 @@ export function ProjectWorkbench() {
           ) : (
             <span className="ml-1 font-medium text-graphite/80">Run Timeline（创建 run 后可点）</span>
           )}
-          查看。服务端日志默认输出到 API/Worker 进程 stdout（可重定向到 `data/api.log`、`data/worker.log`）。
+          查看。API 会将编排与 LLM 诊断分别写入 `data/worker.log`、`data/llm.log`；其余仍见进程 stdout。
         </p>
       </Card>
 

@@ -1,50 +1,51 @@
 {
   "consumed_by": {
-    "plan_summary": "code",
-    "steps": {
+    "view.plan_summary": "code",
+    "view.steps": {
       "consumed_by": "audit_only",
       "rationale": "保留旧版规划明细供排障回放",
       "retire_by": "2026-12-31"
     },
-    "steps[].step_id": {
+    "view.steps[].step_id": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].name": {
+    "view.steps[].name": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].instruction": {
+    "view.steps[].instruction": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].dependencies": {
+    "view.steps[].dependencies": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].risk_item": {
+    "view.steps[].risk_item": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].fallback_strategy": {
+    "view.steps[].fallback_strategy": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].acceptance_criteria": {
+    "view.steps[].acceptance_criteria": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].acceptance_criteria.keywords": {
+    "view.steps[].acceptance_criteria.keywords": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].acceptance_criteria.min_length": {
+    "view.steps[].acceptance_criteria.min_length": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
-    "steps[].acceptance_criteria.logic_check": {
+    "view.steps[].acceptance_criteria.logic_check": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
-    }
+    },
+    "view": "code"
   }
 }
