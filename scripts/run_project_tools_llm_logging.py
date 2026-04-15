@@ -6,7 +6,13 @@ from pathlib import Path
 
 import httpx
 
+from packages.llm.text_generation.base import TextGenerationRequest
+from packages.llm.text_generation.factory import create_text_generation_provider
 from packages.llm.text_generation.runtime_config import TextGenerationRuntimeConfig
+from packages.schemas.local_tools_summary_output import (
+    LOCAL_PROJECTS_SUMMARY_INPUT_SCHEMA,
+    LOCAL_PROJECTS_SUMMARY_OUTPUT_SCHEMA,
+)
 from packages.tools.system_tools.local_project_list_tool import LocalProjectListTool
 
 
@@ -67,38 +73,34 @@ def _call_llm_with_tool(*, cfg: TextGenerationRuntimeConfig, tool: LocalProjectL
     limit = int(args.get("limit", 20)) if isinstance(args, dict) else 20
     tool_result = tool.run(limit=limit)
 
-    second_payload = {
-        "model": cfg.model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-            {
-                "role": "assistant",
-                "content": first_msg.get("content") or "",
-                "tool_calls": tool_calls,
-            },
-            {
-                "role": "tool",
-                "tool_call_id": str(first_call.get("id") or ""),
-                "name": "get_local_projects",
-                "content": json.dumps(tool_result, ensure_ascii=False),
-            },
-            {
-                "role": "user",
-                "content": "请基于工具返回结果，输出 JSON：overview(string)、project_titles(string[])、notes(string)。",
-            },
-        ],
-        "temperature": 0.2,
-        "response_format": {"type": "json_object"},
+    summary_payload = {
+        "tool_result": tool_result if isinstance(tool_result, dict) else {"raw": tool_result},
+        "instruction": (
+            "请基于 tool_result 输出 JSON：overview(string)、project_titles(string[])、notes(string)。"
+        ),
     }
-    second_resp = httpx.post(url, headers=headers, json=second_payload, timeout=cfg.timeout_seconds)
-    second_resp.raise_for_status()
-    second_body = second_resp.json()
-    second_msg = dict(second_body.get("choices", [{}])[0].get("message") or {})
-    content = second_msg.get("content")
-    if not isinstance(content, str) or not content.strip():
-        raise RuntimeError("LLM 最终响应为空")
-    llm_output = json.loads(content)
+    provider = create_text_generation_provider()
+    final = provider.generate(
+        TextGenerationRequest(
+            system_prompt=system_prompt,
+            user_prompt=json.dumps(summary_payload, ensure_ascii=False),
+            temperature=0.2,
+            max_tokens=2048,
+            input_payload=summary_payload,
+            input_schema=LOCAL_PROJECTS_SUMMARY_INPUT_SCHEMA,
+            input_schema_name="local_projects_summary_input",
+            input_schema_strict=True,
+            response_schema=LOCAL_PROJECTS_SUMMARY_OUTPUT_SCHEMA,
+            response_schema_name="local_projects_summary_output",
+            response_schema_strict=True,
+            validation_retries=2,
+            use_function_calling=True,
+            function_name="local_projects_summary_output",
+            function_description="Return overview, project_titles, and notes from tool_result.",
+            metadata_json={"workflow": "local_project_tools_logging", "after_tool": "get_local_projects"},
+        )
+    )
+    llm_output = final.json_data
     if not isinstance(llm_output, dict):
         raise RuntimeError("LLM 最终输出不是 JSON 对象")
     return {

@@ -5,6 +5,10 @@ from types import SimpleNamespace
 
 from packages.llm.text_generation.base import TextGenerationProvider, TextGenerationRequest, TextGenerationResult
 from packages.workflows.chapter_generation.service import ChapterGenerationWorkflowService
+from packages.workflows.writer_output import (
+    WRITER_OUTPUT_CONTRACT_DRAFT,
+    WRITER_OUTPUT_SCHEMA_REF_DRAFT,
+)
 from packages.workflows.chapter_generation.types import ChapterGenerationRequest
 
 
@@ -352,6 +356,44 @@ class TestChapterGenerationWorkflowUnit(unittest.TestCase):
         self.assertIn("outline", payload)
         self.assertIn("plot_alignment", payload["state"])
         self.assertIn("story_assets", payload["state"])
+
+    def test_writer_output_format_follows_runtime_schema_hint(self) -> None:
+        """草稿链路 runtime 传入的 schema_ref/contract 应原样进入 user payload，与硬校验一致。"""
+        service, _, _, _ = self._build_service()
+        project = SimpleNamespace(
+            id="p1",
+            title="项目",
+            genre="科幻",
+            premise="前提",
+            metadata_json={},
+        )
+        memory_context = SimpleNamespace(items=[])
+        story_context = SimpleNamespace(
+            chapters=[],
+            characters=[],
+            world_entries=[],
+            timeline_events=[],
+            foreshadowings=[],
+        )
+        payload = service._build_chapter_writer_prompt_payload(
+            project=project,
+            writing_goal="目标",
+            target_words=1200,
+            style_hint=None,
+            memory_context=memory_context,
+            story_context=story_context,
+            working_notes=None,
+            retrieval_context=None,
+            chapter_no=1,
+            word_count_min=1080,
+            word_count_max=1320,
+            using_writer_schema=True,
+            output_format_schema_ref=WRITER_OUTPUT_SCHEMA_REF_DRAFT,
+            output_format_contract=WRITER_OUTPUT_CONTRACT_DRAFT,
+        )
+        fmt = payload.get("output_format") or {}
+        self.assertEqual(fmt.get("schema_ref"), WRITER_OUTPUT_SCHEMA_REF_DRAFT)
+        self.assertEqual(fmt.get("contract"), WRITER_OUTPUT_CONTRACT_DRAFT)
 
     def test_success_path(self) -> None:
         service, _, run_repo, skill_repo = self._build_service()

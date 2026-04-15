@@ -86,6 +86,7 @@ from packages.storage.postgres.repositories.world_entry_repository import WorldE
 from packages.storage.postgres.session import create_session_factory
 from packages.observability import InMemoryMetrics, render_prometheus
 from packages.schemas import SchemaRegistry, SchemaValidationError
+from packages.schemas.asset_generator_outputs import asset_generator_schema_bundle
 from packages.sessions import SessionService
 from packages.system import AuditService, BackupService
 from packages.transfer import ProjectTransferService
@@ -152,7 +153,10 @@ class ChapterGenerateResponse(BaseModel):
     mock_mode: bool = Field(..., description="是否使用了 mock 文本生成。")
     chapter: dict = Field(..., description="章节产物（id/chapter_no/title/content/version 等）。")
     memory_ingestion: dict = Field(..., description="记忆摄入统计。")
-    writer_structured: dict | None = Field(default=None, description="WriterOutputV2 结构化输出。")
+    writer_structured: dict | None = Field(
+        default=None,
+        description="writer.output.v2 / writer.output.draft 信封结构化输出（见 writer_agent output_schema）。",
+    )
     warnings: list[str] | None = Field(default=None, description="运行时警告。")
     skill_runs: list[dict] | None = Field(default=None, description="技能执行摘要。")
 
@@ -1888,6 +1892,11 @@ def create_app(
         if not user_prompt_path.exists():
             raise HTTPException(status_code=400, detail=f"不支持的资产类型: {asset_type}")
 
+        try:
+            schema_bundle = asset_generator_schema_bundle(asset_type)
+        except KeyError:
+            raise HTTPException(status_code=400, detail=f"不支持的资产类型: {asset_type}") from None
+
         system_prompt_text = system_prompt_path.read_text(encoding="utf-8").strip() if system_prompt_path.exists() else "你是一位专业的小说创作助手。请严格按照要求输出 JSON 格式结果。"
         user_prompt = user_prompt_path.read_text(encoding="utf-8").strip().replace("{{ context }}", context_str)
 
@@ -1898,6 +1907,13 @@ def create_app(
                     user_prompt=user_prompt,
                     temperature=0.8,
                     max_tokens=max_tokens,
+                    response_schema=schema_bundle.response_schema,
+                    response_schema_name=schema_bundle.response_schema_name,
+                    response_schema_strict=True,
+                    validation_retries=2,
+                    use_function_calling=True,
+                    function_name=schema_bundle.function_name,
+                    function_description=schema_bundle.function_description,
                     metadata_json={"role_id": "ai_asset_generator", "step_key": f"generate_{asset_type}"},
                 )
             )

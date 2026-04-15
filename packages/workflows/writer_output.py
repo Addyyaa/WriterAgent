@@ -48,9 +48,21 @@ WRITER_OUTPUT_V2_SCHEMA: dict[str, Any] = {
     "additionalProperties": True,
 }
 
+# ---------------------------------------------------------------------------
+# User JSON：output_format.schema_ref / output_format.contract（全仓唯一真源）
+# 契约 ID 统一为 writer.output.<variant>，与 prompt、校验、日志引用一致。
+# ---------------------------------------------------------------------------
+WRITER_OUTPUT_SCHEMA_REF_V2 = "apps/agents/writer_agent/output_schema.json"
+WRITER_OUTPUT_SCHEMA_REF_DRAFT = "apps/agents/writer_agent/output_schema_draft.json"
+WRITER_OUTPUT_SCHEMA_REF_LEGACY_INLINE = "inline://chapter_generation/legacy_output"
+
+WRITER_OUTPUT_CONTRACT_V2 = "writer.output.v2"
+WRITER_OUTPUT_CONTRACT_DRAFT = "writer.output.draft"
+WRITER_OUTPUT_CONTRACT_LEGACY_FLAT = "writer.output.legacy_flat"
+
 
 class WriterOutputAdapter:
-    """将 writer 输出归一化为可消费的 WriterOutputV2。"""
+    """将 writer 输出归一化为可消费的 writer.output.v2 形态（见 WRITER_OUTPUT_CONTRACT_V2）。"""
 
     _SEGMENT_TYPES = {"action", "dialogue", "description", "internal_monologue"}
 

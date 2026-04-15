@@ -10,6 +10,7 @@ from packages.core.utils import (
     normalize_whitespace,
 )
 from packages.llm.text_generation.base import TextGenerationProvider, TextGenerationRequest
+from packages.schemas.context_compression_output import CONTEXT_COMPRESSION_OUTPUT_SCHEMA
 
 
 _NUM_RE = re.compile(r"\d[\d,\.]*")
@@ -249,6 +250,13 @@ class HybridContextCompressor:
                     user_prompt=user_prompt,
                     temperature=0.1,
                     max_tokens=max(64, token_budget * 2),
+                    response_schema=CONTEXT_COMPRESSION_OUTPUT_SCHEMA,
+                    response_schema_name="context_compression_output",
+                    response_schema_strict=True,
+                    validation_retries=2,
+                    use_function_calling=True,
+                    function_name="context_compression_output",
+                    function_description="Return a single JSON object with key compressed (abstractive summary text).",
                     metadata_json={
                         "workflow": "context_compression",
                         "mode": "abstractive",

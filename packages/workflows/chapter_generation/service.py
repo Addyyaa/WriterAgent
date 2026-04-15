@@ -40,7 +40,15 @@ from packages.workflows.orchestration.prompt_payload_assembler import (
     PromptPayloadAssembler,
     build_retrieval_bundle_from_raw_state,
 )
-from packages.workflows.writer_output import WriterOutputAdapter
+from packages.workflows.writer_output import (
+    WRITER_OUTPUT_CONTRACT_DRAFT,
+    WRITER_OUTPUT_CONTRACT_LEGACY_FLAT,
+    WRITER_OUTPUT_CONTRACT_V2,
+    WRITER_OUTPUT_SCHEMA_REF_DRAFT,
+    WRITER_OUTPUT_SCHEMA_REF_LEGACY_INLINE,
+    WRITER_OUTPUT_SCHEMA_REF_V2,
+    WriterOutputAdapter,
+)
 
 if TYPE_CHECKING:
     from packages.workflows.orchestration.agent_registry import AgentRegistry
@@ -108,6 +116,37 @@ class ChapterGenerationWorkflowService:
             "content": {"type": "string", "minLength": 1},
             "summary": {"type": "string"},
             "notes": {"type": "string"},
+        },
+        "additionalProperties": True,
+    }
+    CHAPTER_EXPAND_INPUT_SCHEMA = {
+        "type": "object",
+        "required": [
+            "task",
+            "project",
+            "goal",
+            "target_words",
+            "allowed_min",
+            "allowed_max",
+            "previous_draft",
+            "must_keep",
+            "growth_contract",
+            "reference_constraints",
+            "output_contract",
+        ],
+        "properties": {
+            "task": {"type": "string"},
+            "project": {"type": "object"},
+            "goal": {"type": "string", "minLength": 1},
+            "style_hint": {"type": ["string", "null"]},
+            "target_words": {"type": "integer"},
+            "allowed_min": {"type": "integer"},
+            "allowed_max": {"type": "integer"},
+            "previous_draft": {"type": "object"},
+            "must_keep": {"type": "array"},
+            "growth_contract": {"type": "object"},
+            "reference_constraints": {"type": "object"},
+            "output_contract": {"type": "object"},
         },
         "additionalProperties": True,
     }
@@ -331,6 +370,8 @@ class ChapterGenerationWorkflowService:
                     word_count_min=w_low,
                     word_count_max=w_high,
                     using_writer_schema=bool(runtime.get("using_writer_schema")),
+                    output_format_schema_ref=str(runtime.get("output_format_schema_ref") or ""),
+                    output_format_contract=str(runtime.get("output_format_contract") or ""),
                     orchestrator_raw_state=request.orchestrator_raw_state,
                 )
 
@@ -472,6 +513,9 @@ class ChapterGenerationWorkflowService:
                                     temperature=min(0.45, float(runtime_temp)),
                                     max_tokens=runtime_max_tokens,
                                     input_payload=expander_prompt,
+                                    input_schema=self.CHAPTER_EXPAND_INPUT_SCHEMA,
+                                    input_schema_name="chapter_expand_input",
+                                    input_schema_strict=True,
                                     response_schema=self._build_response_schema_with_content_min(
                                         self.CHAPTER_EXPAND_OUTPUT_SCHEMA,
                                         min_content_len=schema_min_content_len,
@@ -1067,6 +1111,8 @@ class ChapterGenerationWorkflowService:
             "schema_version": "v1",
             "strategy_version": "legacy-v1",
             "using_writer_schema": False,
+            "output_format_schema_ref": WRITER_OUTPUT_SCHEMA_REF_LEGACY_INLINE,
+            "output_format_contract": WRITER_OUTPUT_CONTRACT_LEGACY_FLAT,
         }
         if self.agent_registry is None:
             return default
@@ -1096,6 +1142,7 @@ class ChapterGenerationWorkflowService:
         system_prompt = profile.prompt or self._legacy_system_prompt()
         mode = str(strategy_mode or "").strip().lower()
         draft_schema_warnings: list[str] = []
+        draft_schema_active = False
         if mode == "draft" and self.agent_registry is not None:
             draft_path = self.agent_registry.root / "writer_agent" / "prompt_draft.md"
             if draft_path.is_file():
@@ -1108,6 +1155,7 @@ class ChapterGenerationWorkflowService:
                     loaded_draft = json.loads(draft_schema_path.read_text(encoding="utf-8"))
                     if isinstance(loaded_draft, dict) and loaded_draft:
                         schema_payload = loaded_draft
+                        draft_schema_active = True
                 except Exception as exc:
                     draft_schema_warnings.append(
                         f"output_schema_draft.json 解析失败，沿用全量 schema: {exc}"
@@ -1115,6 +1163,14 @@ class ChapterGenerationWorkflowService:
 
         merged_warnings = [str(item) for item in list(warnings or []) if str(item).strip()]
         merged_warnings.extend(draft_schema_warnings)
+
+        # user payload.output_format 须与真实校验用的 response_schema 一致，避免软提示与 FC/json_schema 硬约束打架。
+        if draft_schema_active:
+            output_format_schema_ref = WRITER_OUTPUT_SCHEMA_REF_DRAFT
+            output_format_contract = WRITER_OUTPUT_CONTRACT_DRAFT
+        else:
+            output_format_schema_ref = WRITER_OUTPUT_SCHEMA_REF_V2
+            output_format_contract = WRITER_OUTPUT_CONTRACT_V2
 
         return {
             "system_prompt": system_prompt,
@@ -1127,6 +1183,8 @@ class ChapterGenerationWorkflowService:
             "schema_version": profile.schema_version,
             "strategy_version": strategy.version,
             "using_writer_schema": bool(profile.output_schema),
+            "output_format_schema_ref": output_format_schema_ref,
+            "output_format_contract": output_format_contract,
         }
 
     @staticmethod
@@ -1571,6 +1629,8 @@ class ChapterGenerationWorkflowService:
         word_count_min: int | None = None,
         word_count_max: int | None = None,
         using_writer_schema: bool,
+        output_format_schema_ref: str = "",
+        output_format_contract: str = "",
         orchestrator_raw_state: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """按 StepInputSpec 组装 LLM user JSON：编排全链路用 writer_draft，否则用 chapter_draft。"""
@@ -1661,9 +1721,11 @@ class ChapterGenerationWorkflowService:
             },
         }
         if using_writer_schema:
+            schema_ref = (output_format_schema_ref or "").strip() or WRITER_OUTPUT_SCHEMA_REF_V2
+            contract = (output_format_contract or "").strip() or WRITER_OUTPUT_CONTRACT_V2
             payload["output_format"] = {
-                "schema_ref": "apps/agents/writer_agent/output_schema.json",
-                "contract": "WriterOutputV2",
+                "schema_ref": schema_ref,
+                "contract": contract,
             }
         else:
             payload["output_format"] = {

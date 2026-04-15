@@ -81,7 +81,10 @@ class TestOrchestrationPlanner(unittest.TestCase):
             ),
             fallback=MockDynamicPlanner(),
         )
-        with patch("packages.workflows.orchestration.planner.httpx.post", side_effect=RuntimeError("boom")):
+        with patch(
+            "packages.llm.text_generation.openai_compatible.httpx.post",
+            side_effect=RuntimeError("boom"),
+        ):
             plan = planner.plan(self.request, context_json=self.context)
         self.assertEqual(plan.plan_version, "mock-v1")
         self.assertGreaterEqual(len(plan.nodes), 1)
@@ -98,7 +101,10 @@ class TestOrchestrationPlanner(unittest.TestCase):
             ),
             fallback=MockDynamicPlanner(),
         )
-        with patch("packages.workflows.orchestration.planner.httpx.post", side_effect=RuntimeError("boom")):
+        with patch(
+            "packages.llm.text_generation.openai_compatible.httpx.post",
+            side_effect=RuntimeError("boom"),
+        ):
             with self.assertRaises(RuntimeError):
                 planner.plan(self.request, context_json=self.context)
 
@@ -128,7 +134,7 @@ class TestOrchestrationPlanner(unittest.TestCase):
             ],
         }
         with patch(
-            "packages.workflows.orchestration.planner.httpx.post",
+            "packages.llm.text_generation.openai_compatible.httpx.post",
             return_value=_DummyResponse(status_code=200, body=body),
         ):
             plan = planner.plan(self.request, context_json=self.context)

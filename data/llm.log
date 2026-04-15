@@ -441,3 +441,75 @@
 2026-04-15 08:56:13,824 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
 2026-04-15 08:56:13,824 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
 2026-04-15 08:56:13,824 [INFO] writeragent.llm - [LLM] provider init | pid=33054 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:05:18,231 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:05:18,231 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:05:18,231 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:05:18,231 [INFO] writeragent.llm - [LLM] provider init | pid=40209 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:05:22,014 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:05:22,014 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:05:22,014 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:05:22,014 [INFO] writeragent.llm - [LLM] provider init | pid=40267 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:33,336 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:33,336 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:33,336 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:33,336 [INFO] writeragent.llm - [LLM] provider init | pid=41969 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:34,730 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:34,730 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:34,730 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:34,730 [INFO] writeragent.llm - [LLM] provider init | pid=41993 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:36,260 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:36,263 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:36,263 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:36,263 [INFO] writeragent.llm - [LLM] provider init | pid=42019 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:39,779 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:39,779 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:39,779 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:39,779 [INFO] writeragent.llm - [LLM] provider init | pid=42068 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:42,634 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:42,634 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:42,634 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:42,634 [INFO] writeragent.llm - [LLM] provider init | pid=42101 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:47,283 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:47,283 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:47,283 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:47,283 [INFO] writeragent.llm - [LLM] provider init | pid=42171 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:50,338 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:50,338 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:50,338 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:50,338 [INFO] writeragent.llm - [LLM] provider init | pid=42210 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:52,469 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:52,469 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:52,469 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:52,469 [INFO] writeragent.llm - [LLM] provider init | pid=42242 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:07:53,373 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:07:53,374 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:07:53,374 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:07:53,374 [INFO] writeragent.llm - [LLM] provider init | pid=42256 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:22:23,355 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:22:23,355 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:22:23,355 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:22:23,355 [INFO] writeragent.llm - [LLM] provider init | pid=53180 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:22:24,257 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:22:24,257 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:22:24,257 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:22:24,257 [INFO] writeragent.llm - [LLM] provider init | pid=53195 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:22:25,342 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:22:25,342 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:22:25,342 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:22:25,342 [INFO] writeragent.llm - [LLM] provider init | pid=53221 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:22:37,668 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:22:37,668 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:22:37,668 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:22:37,668 [INFO] writeragent.llm - [LLM] provider init | pid=53404 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:24:52,346 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:24:52,346 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:24:52,346 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:24:52,346 [INFO] writeragent.llm - [LLM] provider init | pid=55103 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:24:53,405 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:24:53,405 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:24:53,405 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:24:53,405 [INFO] writeragent.llm - [LLM] provider init | pid=55119 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s
+2026-04-15 09:24:54,801 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 120.0s（厂商建议下限=120.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-15 09:24:54,801 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url+model confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=120.0s 上下文窗口=262144
+2026-04-15 09:24:54,801 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持
+2026-04-15 09:24:54,801 [INFO] writeragent.llm - [LLM] provider init | pid=55146 model=qwen3.6-plus base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=120.0s

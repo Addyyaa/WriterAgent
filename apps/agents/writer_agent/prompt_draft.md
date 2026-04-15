@@ -26,7 +26,7 @@
 - `retrieval`：检索视图（`key_facts` / `current_states` / `items`，粒度由规格控制）。
 - `working_notes`：情节节拍与护栏（`lines[]`，有内容时才会出现）。
 - `local_data_tools`：本地数据工具目录（若启用 AgentRegistry 时附带）。
-- `output_format`：输出契约说明。
+- `output_format`：输出契约说明（`contract` 为 **`writer.output.draft`** 时须对齐 `output_schema_draft.json`）。
 
 （修订模式、Audit_Report 等由编排内其它步骤处理；**本请求不负责修订**。）
 
@@ -57,7 +57,7 @@
 
 **优先**把完整叙事写入 `chapter.content`（与字数契约一致）。`segments` / `word_count` **可选**；若不分段，可省略 `segments` 或传 `[]`，切勿只在分段里写长文而留空 `chapter.content`。
 
-请只输出符合 **`output_schema_draft.json`** 的 JSON（`mode` 恒为 `draft`），不要包含 Markdown 代码块标记：
+请只输出符合 **`output_schema_draft.json`**（契约 **`writer.output.draft`**）的 JSON（`mode` 恒为 `draft`），不要包含 Markdown 代码块标记：
 
 {
 "mode": "draft",

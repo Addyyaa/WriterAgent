@@ -5,8 +5,13 @@ import os
 from pathlib import Path
 from typing import Any
 
-import httpx
-
+from packages.llm.text_generation.base import TextGenerationRequest
+from packages.llm.text_generation.openai_compatible import OpenAICompatibleTextProvider
+from packages.llm.text_generation.runtime_config import TextGenerationRuntimeConfig
+from packages.schemas.dynamic_planner_output import (
+    DYNAMIC_PLANNER_INPUT_SCHEMA,
+    DYNAMIC_PLANNER_OUTPUT_SCHEMA,
+)
 from packages.workflows.orchestration.runtime_config import PlannerRuntimeConfig
 from packages.workflows.orchestration.types import PlannerNode, PlannerPlan, WorkflowRunRequest
 
@@ -165,47 +170,44 @@ class OpenAICompatibleDynamicPlanner(DynamicPlanner):
         if self.config.use_mock:
             return self.fallback.plan(request, context_json=context_json)
 
-        payload = {
-            "model": self.config.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": self.system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "workflow_type": request.workflow_type,
-                            "writing_goal": request.writing_goal,
-                            "context": context_json,
-                        },
-                        ensure_ascii=False,
-                    ),
-                },
-            ],
-            "temperature": self.config.temperature,
-            "response_format": {"type": "json_object"},
-        }
-
-        url = f"{self.config.base_url.rstrip('/')}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
+        user_payload = {
+            "workflow_type": request.workflow_type,
+            "writing_goal": request.writing_goal,
+            "context": context_json,
         }
 
         try:
-            resp = httpx.post(
-                url,
-                headers=headers,
-                json=payload,
-                timeout=self.config.timeout_seconds,
+            llm_cfg = TextGenerationRuntimeConfig.from_env()
+            provider = OpenAICompatibleTextProvider(
+                api_key=self.config.api_key,
+                model=self.config.model,
+                base_url=self.config.base_url,
+                timeout_seconds=self.config.timeout_seconds,
+                compat_mode=llm_cfg.compat_mode,
             )
-            body = resp.json()
-            if resp.status_code >= 400:
-                raise RuntimeError(f"planner 请求失败 status={resp.status_code}: {body}")
-            content = body["choices"][0]["message"]["content"]
-            parsed = json.loads(content)
+            llm_result = provider.generate(
+                TextGenerationRequest(
+                    system_prompt=self.system_prompt,
+                    user_prompt=json.dumps(user_payload, ensure_ascii=False),
+                    temperature=float(self.config.temperature),
+                    max_tokens=4096,
+                    input_payload=user_payload,
+                    input_schema=DYNAMIC_PLANNER_INPUT_SCHEMA,
+                    input_schema_name="dynamic_planner_input",
+                    input_schema_strict=True,
+                    response_schema=DYNAMIC_PLANNER_OUTPUT_SCHEMA,
+                    response_schema_name="dynamic_planner_output",
+                    response_schema_strict=True,
+                    validation_retries=2,
+                    use_function_calling=True,
+                    function_name="dynamic_planner_output",
+                    function_description=(
+                        "Return workflow plan JSON with nodes, retry_policy, and fallback_policy."
+                    ),
+                    metadata_json={"workflow": "dynamic_planner"},
+                )
+            )
+            parsed = llm_result.json_data
             nodes = []
             for item in parsed.get("nodes", []):
                 if not isinstance(item, dict):

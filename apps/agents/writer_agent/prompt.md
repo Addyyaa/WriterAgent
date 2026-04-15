@@ -42,7 +42,7 @@
 
 修订若引入设定变更，仍在 `notes` 中使用与草稿相同的标注惯例（如 `[UPDATE_CHARACTER]`、`[WORLD_RULE]`），便于落库。
 
-# Output Format (JSON) — 修订（全量 WriterOutputV2）
+# Output Format (JSON) — 修订（契约 `writer.output.v2`，对应 `output_schema.json`）
 
 请只输出符合以下 Schema 的 JSON，不要包含 Markdown 代码块标记：
 
