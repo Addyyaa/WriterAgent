@@ -115,6 +115,22 @@ class BaseSkillToolAdapter:
         return dict(verified or {})
 
 
+def _constraints_root(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """兼容大包 story_constraints 与 Assembler 的 state.story_assets。"""
+    raw = payload.get("story_constraints")
+    if isinstance(raw, dict):
+        return raw
+    raw = payload.get("constraints")
+    if isinstance(raw, dict):
+        return raw
+    state = payload.get("state")
+    if isinstance(state, dict):
+        sa = state.get("story_assets")
+        if isinstance(sa, dict):
+            return sa
+    return None
+
+
 class ConstraintAdapter(BaseSkillToolAdapter):
     name = "constraint"
 
@@ -130,9 +146,7 @@ class ConstraintAdapter(BaseSkillToolAdapter):
     ) -> dict[str, Any]:
         del spec, phase, prepared, executed, context
         payload = dict((verified or {}).get("payload") or {})
-        constraints = payload.get("story_constraints")
-        if not isinstance(constraints, dict):
-            constraints = payload.get("constraints")
+        constraints = _constraints_root(payload)
         if not isinstance(constraints, dict):
             return {"no_effect_reason": "未发现可解析的约束对象（story_constraints/constraints）"}
 
@@ -182,7 +196,13 @@ class TimelineAdapter(BaseSkillToolAdapter):
     ) -> dict[str, Any]:
         del spec, phase, prepared, executed, context
         payload = dict((verified or {}).get("payload") or {})
-        events = _extract_list(payload, ("story_constraints", "timeline_events"), ("timeline_events",), ("events",))
+        events = _extract_list(
+            payload,
+            ("story_constraints", "timeline_events"),
+            ("state", "story_assets", "timeline_events"),
+            ("timeline_events",),
+            ("events",),
+        )
         if not events:
             return {"no_effect_reason": "未发现 timeline events"}
 
@@ -242,12 +262,22 @@ class CanonAdapter(BaseSkillToolAdapter):
         payload = dict((verified or {}).get("payload") or {})
         canon_names: list[str] = []
 
-        for item in _extract_list(payload, ("story_constraints", "characters"), ("characters",)):
+        for item in _extract_list(
+            payload,
+            ("story_constraints", "characters"),
+            ("state", "story_assets", "characters"),
+            ("characters",),
+        ):
             if isinstance(item, dict):
                 name = str(item.get("name") or item.get("character_name") or "").strip()
                 if name:
                     canon_names.append(name)
-        for item in _extract_list(payload, ("story_constraints", "world_entries"), ("world_entries",)):
+        for item in _extract_list(
+            payload,
+            ("story_constraints", "world_entries"),
+            ("state", "story_assets", "world_entries"),
+            ("world_entries",),
+        ):
             if isinstance(item, dict):
                 name = str(item.get("term") or item.get("name") or "").strip()
                 if name:
@@ -307,7 +337,7 @@ class LogicConflictAdapter(BaseSkillToolAdapter):
     ) -> dict[str, Any]:
         del spec, phase, prepared, executed, context
         payload = dict((verified or {}).get("payload") or {})
-        constraints = dict(payload.get("constraints") or payload.get("story_constraints") or {})
+        constraints = dict(_constraints_root(payload) or {})
         overlaps: list[str] = []
         must_do = {str(item).strip() for item in list(constraints.get("must_do") or []) if str(item).strip()}
         must_not = {str(item).strip() for item in list(constraints.get("must_not") or []) if str(item).strip()}
@@ -471,7 +501,13 @@ class ContextSynthesisAdapter(BaseSkillToolAdapter):
     ) -> dict[str, Any]:
         del spec, phase, prepared, executed, context
         payload = dict((verified or {}).get("payload") or {})
-        contexts = _extract_list(payload, ("retrieved_contexts",), ("memory_context",), ("contexts",))
+        contexts = _extract_list(
+            payload,
+            ("retrieved_contexts",),
+            ("memory_context",),
+            ("state", "chapter_memory", "items"),
+            ("contexts",),
+        )
         if not contexts:
             return {
                 "findings": [

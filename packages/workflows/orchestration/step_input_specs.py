@@ -128,6 +128,124 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
         ],
         retrieval=RetrievalViewSpec(mode="summary_only", allowed_sources=["memory", "summary"]),
     ),
+    # 编排全链路 writer_draft：依赖大纲 + 四路 alignment + 检索上下文 + DB 注入的 story_assets / chapter_memory。
+    "writer_agent:writer_draft": StepInputSpec(
+        role_id="writer_agent",
+        include_project=True,
+        include_outline=True,
+        include_working_notes=True,
+        dependencies=[
+            StateDependencySpec(
+                step_key="outline_generation",
+                required=True,
+                fields=["title", "content", "structure_json"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="plot_alignment",
+                required=True,
+                fields=["chapter_goal", "core_conflict", "narcotic_arc", "climax_twist"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="character_alignment",
+                required=True,
+                fields=["motivation_analysis", "tone_audit", "constraints"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="world_alignment",
+                required=True,
+                fields=[
+                    "world_logic_summary",
+                    "hard_constraints",
+                    "reusable_assets",
+                    "potential_conflicts",
+                ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="style_alignment",
+                required=True,
+                fields=[
+                    "style_mission",
+                    "micro_constraints",
+                    "rhythm_strategy",
+                    "anti_drift_checks",
+                    "tonal_keywords",
+                ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="retrieval_context",
+                required=False,
+                fields=[
+                    "writing_context_summary",
+                    "key_evidence",
+                    "potential_conflicts",
+                    "information_gaps",
+                ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="chapter_memory",
+                required=False,
+                fields=["items"],
+                compact=False,
+            ),
+            StateDependencySpec(
+                step_key="story_assets",
+                required=True,
+                fields=[
+                    "chapters",
+                    "characters",
+                    "world_entries",
+                    "timeline_events",
+                    "foreshadowings",
+                ],
+                compact=True,
+            ),
+        ],
+        retrieval=RetrievalViewSpec(
+            mode="compact_items",
+            max_items=12,
+            max_chars_per_item=6000,
+            allowed_sources=[],
+        ),
+    ),
+    # 独立章节生成（ChapterGenerationWorkflowService）：无编排 raw_state，由服务注入合成步骤视图。
+    "writer_agent:chapter_draft": StepInputSpec(
+        role_id="writer_agent",
+        include_project=True,
+        include_outline=False,
+        include_working_notes=True,
+        dependencies=[
+            StateDependencySpec(
+                step_key="chapter_memory",
+                required=True,
+                fields=["items"],
+                compact=False,
+            ),
+            StateDependencySpec(
+                step_key="story_assets",
+                required=True,
+                fields=[
+                    "chapters",
+                    "characters",
+                    "world_entries",
+                    "timeline_events",
+                    "foreshadowings",
+                ],
+                compact=True,
+            ),
+        ],
+        retrieval=RetrievalViewSpec(
+            mode="compact_items",
+            max_items=12,
+            max_chars_per_item=6000,
+            allowed_sources=[],
+        ),
+    ),
     "writer_agent:persist_artifacts": StepInputSpec(
         role_id="writer_agent",
         include_project=True,

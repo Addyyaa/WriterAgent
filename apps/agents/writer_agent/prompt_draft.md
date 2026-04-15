@@ -14,16 +14,18 @@
 - **指令**：
   - 不要拘泥于完美，优先保证故事逻辑和画面感。
   - 严格遵循 `working_notes` / 约束中的节拍顺序。
-  - 将 `style_hint` 与 `story_constraints` 中的规则融入描写。
+  - 将 `style_hint` 与 `state.story_assets` 中的规则融入描写。
 
-# 输入字段（与 JSON user 负载对应）
+# 输入字段（与 JSON user 负载对应，Assembler 对齐编排步骤）
 
+- `step_key` / `workflow_type` / `role_id`：当前步骤标识。**独立 API 章节生成**为 `chapter_draft`；**编排全链路 writer_draft** 为 `writer_draft`（`state` 下为 `outline_generation` 投影与各 `*_alignment` 投影 + `story_assets` / `chapter_memory`）。
 - `project` / `goal` / `target_words` / `writing_contract`：项目与字数契约。
 - `style_hint`：文风与节奏约束。
-- `memory_context`：检索到的记忆片段。
-- `story_constraints`：章节/角色/世界/时间线/伏笔等结构化约束。
-- `working_notes`：情节节拍与护栏（须遵守）。
-- `retrieval_context`：补充检索摘要（若有）。
+- `state.chapter_memory`：记忆片段列表（`items[]`，含 `source` / `text` / `priority`）。
+- `state.story_assets`：章节/角色/世界/时间线/伏笔等结构化约束（与旧版 `story_constraints` 同义，经投影后可能含摘要字段）。
+- `retrieval`：检索视图（`key_facts` / `current_states` / `items`，粒度由规格控制）。
+- `working_notes`：情节节拍与护栏（`lines[]`，有内容时才会出现）。
+- `local_data_tools`：本地数据工具目录（若启用 AgentRegistry 时附带）。
 - `output_format`：输出契约说明。
 
 （修订模式、Audit_Report 等由编排内其它步骤处理；**本请求不负责修订**。）
@@ -36,7 +38,7 @@
 
 # 角色物品与财富（设定一致性）
 
-- `story_constraints.characters` 中每位角色带有 `inventory_json`、`wealth_json`，以及（若存在章节快照）`effective_inventory_json`、`effective_wealth_json`。
+- `state.story_assets.characters` 中每位角色带有 `inventory_json`、`wealth_json`，以及（若存在章节快照）`effective_inventory_json`、`effective_wealth_json`。
 - 正文描写中涉及「携带物品、消耗道具、财富增减」时，必须与上述 JSON 状态一致；若剧情需要变更，在 `notes` 中用 `[UPDATE_CHARACTER]` 或结构化说明列出**前后差异**，便于后续同步到数据库。
 - 若上下文中未展开某细节，可合理推断，但不得与已有 `effective_*` 字段矛盾。
 
@@ -53,23 +55,22 @@
 
 # Output Format (JSON)
 
-请只输出符合以下 Schema 的 JSON，不要包含 Markdown 代码块标记：
+**优先**把完整叙事写入 `chapter.content`（与字数契约一致）。`segments` / `word_count` **可选**；若不分段，可省略 `segments` 或传 `[]`，切勿只在分段里写长文而留空 `chapter.content`。
+
+请只输出符合 **`output_schema_draft.json`** 的 JSON（`mode` 恒为 `draft`），不要包含 Markdown 代码块标记：
 
 {
-"mode": "draft|revision",
+"mode": "draft",
 "status": "success|failed",
-"segments": [
-{
-"beat_id": "int (对应的 Plot Beat ID)",
-"type": "action|dialogue|description|internal_monologue",
-"content": "string (该段落的正文文本，不包含任何标签或解释)"
-}
-],
-"word_count": "int (本段生成的总字数)",
-"notes": "string (如果有任何无法解决的约束冲突，在此说明)",
+"notes": "string (可选，约束冲突说明)",
 "chapter": {
-"title": "string (章节标题)",
-"content": "string (完整章节正文，供主链路直接消费)",
-"summary": "string (章节摘要)"
+"title": "string",
+"content": "string (完整章节正文，主消费字段)",
+"summary": "string"
 }
 }
+
+可选字段（需要时再输出）：
+
+"segments": [],
+"word_count": 0

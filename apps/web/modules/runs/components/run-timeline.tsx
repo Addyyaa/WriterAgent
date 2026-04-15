@@ -31,6 +31,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { toast } from "@/shared/ui/toast";
+import { writerPayloadUsesAssembler } from "@/modules/runs/lib/writer-guidance-meta";
 
 function RunFailedBanner({
   errorCode,
@@ -782,6 +783,16 @@ export function RunTimeline({ runId }: { runId: string }) {
               const writerLive = isRunning
                 ? parseWriterDraftLiveProgress(step.input_json)
                 : null;
+              const writerGuidance =
+                step.output_json &&
+                typeof step.output_json === "object" &&
+                "writer_guidance" in step.output_json
+                  ? (step.output_json as Record<string, unknown>).writer_guidance
+                  : undefined;
+              const showAssemblerContextHint =
+                stepKeyRaw === "writer_draft" &&
+                String(status).toLowerCase() === "success" &&
+                writerPayloadUsesAssembler(writerGuidance);
               return (
                 <div
                   key={step.id}
@@ -819,6 +830,16 @@ export function RunTimeline({ runId }: { runId: string }) {
                       {stepTypeRaw}
                     </span>
                   </div>
+                  {showAssemblerContextHint ? (
+                    <p
+                      className="mt-1.5 text-xs text-graphite/65"
+                      title="output_json.writer_guidance.prompt_payload_via_assembler"
+                    >
+                      草稿上下文已由 Assembler
+                      分区注入（请用 prompt_payload_via_assembler，勿依赖
+                      has_guidance_text）
+                    </p>
+                  ) : null}
                   {isRunning && (
                     <p className="mt-2 text-xs text-sky-700 animate-pulse">
                       正在执行…

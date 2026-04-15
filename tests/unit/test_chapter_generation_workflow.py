@@ -226,6 +226,133 @@ class TestChapterGenerationWorkflowUnit(unittest.TestCase):
         self.assertTrue(any(e.get("kind") == "writer_draft_llm" for e in events))
         self.assertTrue(any(e.get("kind") == "idle" for e in events))
 
+    def test_writer_prompt_payload_uses_assembler_shape(self) -> None:
+        """章节 writer user JSON 与 PromptPayloadAssembler 结构一致（state / retrieval 分区）。"""
+        service, _, _, _ = self._build_service()
+        project = SimpleNamespace(
+            id="p1",
+            title="项目",
+            genre="科幻",
+            premise="前提",
+            metadata_json={},
+        )
+        mem_item = SimpleNamespace(source="mem", text="记忆片段", priority=1)
+        memory_context = SimpleNamespace(items=[mem_item])
+        story_context = SimpleNamespace(
+            chapters=[],
+            characters=[],
+            world_entries=[],
+            timeline_events=[],
+            foreshadowings=[],
+        )
+        payload = service._build_chapter_writer_prompt_payload(
+            project=project,
+            writing_goal="目标",
+            target_words=1200,
+            style_hint=None,
+            memory_context=memory_context,
+            story_context=story_context,
+            working_notes=["护栏一行"],
+            retrieval_context="编排补充检索",
+            chapter_no=1,
+            word_count_min=1080,
+            word_count_max=1320,
+            using_writer_schema=False,
+        )
+        self.assertEqual(payload.get("step_key"), "chapter_draft")
+        self.assertEqual(payload.get("role_id"), "writer_agent")
+        self.assertIn("state", payload)
+        self.assertIn("chapter_memory", payload["state"])
+        self.assertIn("story_assets", payload["state"])
+        self.assertIn("retrieval", payload)
+        self.assertEqual(payload.get("goal"), "目标")
+        self.assertIn("writing_contract", payload)
+
+    def test_writer_draft_payload_with_orchestrator_state(self) -> None:
+        """编排 writer_draft：存在四路 alignment 时使用 writer_draft 规格并带 outline。"""
+        service, _, _, _ = self._build_service()
+        project = SimpleNamespace(
+            id="p1",
+            title="项目",
+            genre="科幻",
+            premise="前提",
+            metadata_json={},
+        )
+        memory_context = SimpleNamespace(items=[])
+        story_context = SimpleNamespace(
+            chapters=[],
+            characters=[],
+            world_entries=[],
+            timeline_events=[],
+            foreshadowings=[],
+        )
+        orch = {
+            "outline_generation": {"title": "大纲", "content": "纲要", "structure_json": {}},
+            "plot_alignment": {
+                "chapter_goal": "g",
+                "core_conflict": "c",
+                "narcotic_arc": [
+                    {
+                        "phase": "p1",
+                        "plot_beat": "beat",
+                        "conflict_level": 5,
+                        "pacing_note": "n",
+                        "outcome": "o",
+                    }
+                ],
+                "climax_twist": {"description": "d", "impact": "i"},
+            },
+            "character_alignment": {
+                "motivation_analysis": {
+                    "explicit": "e",
+                    "implicit": "i",
+                    "emotion_shift": "s",
+                },
+                "tone_audit": {"is_consistent": True},
+                "constraints": {"must_do": [], "must_not": []},
+            },
+            "world_alignment": {
+                "world_logic_summary": "w",
+                "hard_constraints": [],
+                "reusable_assets": {
+                    "locations": [],
+                    "factions": [],
+                    "items_concepts": [],
+                },
+                "potential_conflicts": [],
+            },
+            "style_alignment": {
+                "style_mission": "m",
+                "micro_constraints": {
+                    "sentence_structure": "s",
+                    "vocabulary_level": "v",
+                    "forbidden_words": [],
+                },
+                "rhythm_strategy": {"pacing": "p", "instruction": "i"},
+                "anti_drift_checks": [],
+                "tonal_keywords": [],
+            },
+        }
+        payload = service._build_chapter_writer_prompt_payload(
+            project=project,
+            writing_goal="目标",
+            target_words=1200,
+            style_hint=None,
+            memory_context=memory_context,
+            story_context=story_context,
+            working_notes=None,
+            retrieval_context="检索循环补充",
+            chapter_no=1,
+            word_count_min=1080,
+            word_count_max=1320,
+            using_writer_schema=False,
+            orchestrator_raw_state=orch,
+        )
+        self.assertEqual(payload.get("step_key"), "writer_draft")
+        self.assertIn("outline", payload)
+        self.assertIn("plot_alignment", payload["state"])
+        self.assertIn("story_assets", payload["state"])
+
     def test_success_path(self) -> None:
         service, _, run_repo, skill_repo = self._build_service()
         result = service.run(

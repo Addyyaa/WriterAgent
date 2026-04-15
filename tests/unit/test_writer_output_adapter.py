@@ -60,6 +60,22 @@ class TestWriterOutputAdapter(unittest.TestCase):
         self.assertIn("第一段", out["chapter"]["content"])
         self.assertTrue(out["chapter"]["summary"])
 
+    def test_draft_chapter_only_without_segments_key(self) -> None:
+        """草稿可省略 segments；正文仅在 chapter 时应通过 normalize。"""
+        payload = {
+            "mode": "draft",
+            "status": "success",
+            "chapter": {
+                "title": "仅章",
+                "content": "足够长的正文用于满足后续字数逻辑" * 5,
+                "summary": "摘要",
+            },
+        }
+        out = WriterOutputAdapter.normalize(payload, mode="draft")
+        self.assertEqual(out["mode"], "draft")
+        self.assertIn("足够长", out["chapter"]["content"])
+        self.assertEqual(out["segments"], [])
+
     def test_raise_when_no_content_available(self) -> None:
         payload = {
             "mode": "draft",

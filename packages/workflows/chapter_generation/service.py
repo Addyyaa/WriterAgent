@@ -36,6 +36,10 @@ from packages.workflows.chapter_generation.types import (
     ChapterGenerationRequest,
     ChapterGenerationResult,
 )
+from packages.workflows.orchestration.prompt_payload_assembler import (
+    PromptPayloadAssembler,
+    build_retrieval_bundle_from_raw_state,
+)
 from packages.workflows.writer_output import WriterOutputAdapter
 
 if TYPE_CHECKING:
@@ -53,30 +57,34 @@ class ChapterGenerationWorkflowError(RuntimeError):
 class ChapterGenerationWorkflowService:
     AGENT_NAME = "chapter_writer_agent"
     WORKFLOW_NAME = "chapter_generation"
-    # 章节草稿链路仍用本处 CHAPTER_INPUT_SCHEMA + _build_user_prompt 大包，
-    # 未接入 orchestration 的 PromptPayloadAssembler / StepInputSpec 投影；后续迁移时可对齐 writer_draft 步骤规格。
+    # 与 orchestration 一致：PromptPayloadAssembler（writer_draft / chapter_draft 规格）+
+    # 可选 output_schema_draft.json 轻量响应契约；非旧版 _build_user_prompt 大包。
     CHAPTER_INPUT_SCHEMA = {
         "type": "object",
         "required": [
+            "step_key",
+            "workflow_type",
+            "role_id",
             "project",
             "goal",
             "target_words",
-            "memory_context",
-            "story_constraints",
+            "state",
             "output_format",
         ],
         "properties": {
+            "step_key": {"type": "string"},
+            "workflow_type": {"type": "string"},
+            "role_id": {"type": "string"},
             "project": {"type": "object"},
+            "outline": {"type": "object"},
+            "state": {"type": "object"},
+            "retrieval": {"type": "object"},
+            "working_notes": {"type": "object"},
             "goal": {"type": "string", "minLength": 1},
             "target_words": {"type": "integer", "minimum": 300, "maximum": 10000},
             "style_hint": {"type": ["string", "null"]},
-            "memory_context": {"type": "array"},
-            "story_constraints": {"type": "object"},
-            "working_notes": {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-            "retrieval_context": {"type": ["string", "null"]},
+            "writing_contract": {"type": "object"},
+            "local_data_tools": {"type": "array"},
             "output_format": {"type": "object"},
         },
         "additionalProperties": True,
@@ -134,6 +142,7 @@ class ChapterGenerationWorkflowService:
         self.agent_registry = agent_registry
         self.schema_registry = schema_registry
         self.skill_runtime = skill_runtime or SkillRuntimeEngine()
+        self._prompt_assembler = PromptPayloadAssembler()
 
     @staticmethod
     def _notify_live_progress(request: ChapterGenerationRequest, payload: dict[str, Any]) -> None:
@@ -309,7 +318,7 @@ class ChapterGenerationWorkflowService:
 
                 system_prompt = str(runtime.get("system_prompt") or self._legacy_system_prompt())
                 w_low, w_high = chapter_word_count_allowed_range(tw)
-                base_prompt_payload = self._build_user_prompt(
+                base_prompt_payload = self._build_chapter_writer_prompt_payload(
                     project=project,
                     writing_goal=writing_goal,
                     target_words=request.target_words,
@@ -321,12 +330,9 @@ class ChapterGenerationWorkflowService:
                     chapter_no=request.chapter_no,
                     word_count_min=w_low,
                     word_count_max=w_high,
+                    using_writer_schema=bool(runtime.get("using_writer_schema")),
+                    orchestrator_raw_state=request.orchestrator_raw_state,
                 )
-                if runtime.get("using_writer_schema"):
-                    base_prompt_payload["output_format"] = {
-                        "schema_ref": "apps/agents/writer_agent/output_schema.json",
-                        "contract": "WriterOutputV2",
-                    }
 
                 max_word_attempts = max(1, min(10, int(os.environ.get("WRITER_CHAPTER_WORD_COUNT_MAX_ATTEMPTS", "5"))))
                 short_expand_enabled = self._env_flag("WRITER_CHAPTER_TOO_SHORT_EXPAND_ENABLED", default=True)
@@ -1089,12 +1095,26 @@ class ChapterGenerationWorkflowService:
 
         system_prompt = profile.prompt or self._legacy_system_prompt()
         mode = str(strategy_mode or "").strip().lower()
+        draft_schema_warnings: list[str] = []
         if mode == "draft" and self.agent_registry is not None:
             draft_path = self.agent_registry.root / "writer_agent" / "prompt_draft.md"
             if draft_path.is_file():
                 system_prompt = self.agent_registry.compose_prompt_with_shared_tools(
                     draft_path.read_text(encoding="utf-8").strip(),
                 )
+            draft_schema_path = self.agent_registry.root / "writer_agent" / "output_schema_draft.json"
+            if draft_schema_path.is_file():
+                try:
+                    loaded_draft = json.loads(draft_schema_path.read_text(encoding="utf-8"))
+                    if isinstance(loaded_draft, dict) and loaded_draft:
+                        schema_payload = loaded_draft
+                except Exception as exc:
+                    draft_schema_warnings.append(
+                        f"output_schema_draft.json 解析失败，沿用全量 schema: {exc}"
+                    )
+
+        merged_warnings = [str(item) for item in list(warnings or []) if str(item).strip()]
+        merged_warnings.extend(draft_schema_warnings)
 
         return {
             "system_prompt": system_prompt,
@@ -1102,7 +1122,7 @@ class ChapterGenerationWorkflowService:
             "temperature": float(strategy.temperature),
             "max_tokens": int(strategy.max_tokens),
             "skills": list(skills or []),
-            "warnings": [str(item) for item in list(warnings or []) if str(item).strip()],
+            "warnings": merged_warnings,
             "schema_ref": profile.schema_ref,
             "schema_version": profile.schema_version,
             "strategy_version": strategy.version,
@@ -1378,7 +1398,8 @@ class ChapterGenerationWorkflowService:
             },
             "reference_constraints": {
                 "writing_contract": dict(prompt_payload.get("writing_contract") or {}),
-                "story_constraints": dict(prompt_payload.get("story_constraints") or {}),
+                "state": dict(prompt_payload.get("state") or {}),
+                "retrieval": dict(prompt_payload.get("retrieval") or {}),
             },
             "output_contract": {
                 "required_fields": ["content"],
@@ -1466,7 +1487,76 @@ class ChapterGenerationWorkflowService:
             ),
         }
 
-    def _build_user_prompt(
+    @staticmethod
+    def _build_chapter_retrieval_bundle(
+        *,
+        memory_items: list[dict[str, Any]],
+        orchestrator_retrieval_text: str | None,
+    ) -> dict[str, Any]:
+        """章节独立链路：用记忆条目 + 编排侧检索摘要构造 Assembler 所需的 retrieval_bundle。"""
+        items: list[dict[str, Any]] = []
+        for it in memory_items:
+            items.append(
+                {
+                    "source": str(it.get("source") or "memory"),
+                    "score": it.get("priority"),
+                    "text": str(it.get("text") or "")[:8000],
+                }
+            )
+        key_facts: list[str] = []
+        text = str(orchestrator_retrieval_text or "").strip()
+        if text:
+            key_facts.append(text[:12000])
+        return {
+            "summary": {"key_facts": key_facts, "current_states": []},
+            "items": items,
+            "meta": {},
+        }
+
+    @staticmethod
+    def _merge_retrieval_bundles(
+        a: dict[str, Any],
+        b: dict[str, Any],
+    ) -> dict[str, Any]:
+        """合并两路检索包：summary 拼接，items 串联（由 StepInputSpec 的 max_items 再截断）。"""
+        sa = dict(a.get("summary") or {})
+        sb = dict(b.get("summary") or {})
+        kf = list(sa.get("key_facts") or []) + list(sb.get("key_facts") or [])
+        cs = list(sa.get("current_states") or []) + list(sb.get("current_states") or [])
+        items = list(a.get("items") or []) + list(b.get("items") or [])
+        meta_a = a.get("meta") if isinstance(a.get("meta"), dict) else {}
+        meta_b = b.get("meta") if isinstance(b.get("meta"), dict) else {}
+        return {
+            "summary": {"key_facts": kf, "current_states": cs},
+            "items": items,
+            "meta": {**dict(meta_a), **dict(meta_b)},
+        }
+
+    @staticmethod
+    def _should_use_writer_draft_assembler(
+        orchestrator_raw_state: dict[str, Any] | None,
+    ) -> bool:
+        """编排全链路下各 alignment 已就绪时使用 writer_agent:writer_draft 规格。"""
+        if not orchestrator_raw_state:
+            return False
+        keys = (
+            "outline_generation",
+            "plot_alignment",
+            "character_alignment",
+            "world_alignment",
+            "style_alignment",
+        )
+        return all(bool(orchestrator_raw_state.get(k)) for k in keys)
+
+    @staticmethod
+    def _snapshot_raw_state_for_chapter(raw_state: dict[str, Any]) -> dict[str, Any]:
+        """浅拷贝各步骤输出，避免后续逻辑误改编排快照。"""
+        out: dict[str, Any] = {}
+        for k, v in raw_state.items():
+            out[k] = copy.deepcopy(v) if isinstance(v, dict) else v
+        return out
+
+    def _build_chapter_writer_prompt_payload(
         self,
         *,
         project,
@@ -1480,17 +1570,85 @@ class ChapterGenerationWorkflowService:
         chapter_no: int | None = None,
         word_count_min: int | None = None,
         word_count_max: int | None = None,
+        using_writer_schema: bool,
+        orchestrator_raw_state: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        payload = {
-            "project": {
-                "id": str(project.id),
-                "title": project.title,
-                "genre": project.genre,
-                "premise": project.premise,
-                "metadata_json": project.metadata_json or {},
-            },
+        """按 StepInputSpec 组装 LLM user JSON：编排全链路用 writer_draft，否则用 chapter_draft。"""
+        project_context = {
+            "id": str(project.id),
+            "title": project.title,
+            "genre": project.genre,
+            "premise": project.premise,
+            "metadata_json": project.metadata_json or {},
+        }
+        memory_items = [
+            {"source": item.source, "text": item.text, "priority": item.priority}
+            for item in memory_context.items
+        ]
+        story_snapshot = {
+            "chapters": story_context.chapters,
+            "characters": story_context.characters,
+            "world_entries": story_context.world_entries,
+            "timeline_events": story_context.timeline_events,
+            "foreshadowings": story_context.foreshadowings,
+        }
+        use_writer_draft = self._should_use_writer_draft_assembler(orchestrator_raw_state)
+        if use_writer_draft:
+            merged_raw = self._snapshot_raw_state_for_chapter(
+                dict(orchestrator_raw_state or {})
+            )
+            merged_raw["story_assets"] = story_snapshot
+            merged_raw["chapter_memory"] = {"items": memory_items}
+            retrieval_bundle = build_retrieval_bundle_from_raw_state(merged_raw)
+            mem_bundle = self._build_chapter_retrieval_bundle(
+                memory_items=memory_items,
+                orchestrator_retrieval_text=None,
+            )
+            retrieval_bundle = self._merge_retrieval_bundles(retrieval_bundle, mem_bundle)
+            extra = str(retrieval_context or "").strip()
+            if extra:
+                summary = dict(retrieval_bundle.get("summary") or {})
+                facts = list(summary.get("key_facts") or [])
+                facts.insert(0, extra[:12000])
+                retrieval_bundle = {
+                    **retrieval_bundle,
+                    "summary": {**summary, "key_facts": facts},
+                }
+            outline_state = dict(merged_raw.get("outline_generation") or {})
+            core = self._prompt_assembler.build(
+                role_id="writer_agent",
+                step_key="writer_draft",
+                workflow_type=self.WORKFLOW_NAME,
+                project_context=project_context,
+                raw_state=merged_raw,
+                retrieval_bundle=retrieval_bundle,
+                outline_state=outline_state,
+                working_notes=working_notes,
+            )
+        else:
+            raw_state: dict[str, dict[str, Any]] = {
+                "chapter_memory": {"items": memory_items},
+                "story_assets": story_snapshot,
+            }
+            retrieval_bundle = self._build_chapter_retrieval_bundle(
+                memory_items=memory_items,
+                orchestrator_retrieval_text=retrieval_context,
+            )
+            core = self._prompt_assembler.build(
+                role_id="writer_agent",
+                step_key="chapter_draft",
+                workflow_type=self.WORKFLOW_NAME,
+                project_context=project_context,
+                raw_state=raw_state,
+                retrieval_bundle=retrieval_bundle,
+                outline_state={},
+                working_notes=working_notes,
+            )
+        payload: dict[str, Any] = {
+            **core,
             "goal": writing_goal,
             "target_words": int(target_words),
+            "style_hint": style_hint,
             "writing_contract": {
                 "word_count_metric": "非空白字符数",
                 "word_count_allowed_min": int(word_count_min) if word_count_min is not None else None,
@@ -1501,30 +1659,20 @@ class ChapterGenerationWorkflowService:
                     "若剧情需要消耗/获得物品或财富，请在输出 notes 中列出变更建议，便于后续落库。"
                 ),
             },
-            "style_hint": style_hint,
-            "memory_context": [
-                {"source": item.source, "text": item.text, "priority": item.priority}
-                for item in memory_context.items
-            ],
-            "story_constraints": {
-                "chapters": story_context.chapters,
-                "characters": story_context.characters,
-                "world_entries": story_context.world_entries,
-                "timeline_events": story_context.timeline_events,
-                "foreshadowings": story_context.foreshadowings,
-            },
-            "working_notes": [
-                str(item).strip()
-                for item in list(working_notes or [])
-                if str(item).strip()
-            ],
-            "retrieval_context": retrieval_context,
-            "output_format": {
+        }
+        if using_writer_schema:
+            payload["output_format"] = {
+                "schema_ref": "apps/agents/writer_agent/output_schema.json",
+                "contract": "WriterOutputV2",
+            }
+        else:
+            payload["output_format"] = {
                 "title": "string",
                 "content": "string",
                 "summary": "string",
-            },
-        }
+            }
+        if self.agent_registry is not None:
+            payload["local_data_tools"] = self.agent_registry.local_data_tools_catalog()
         return payload
 
     def _compensate_if_needed(

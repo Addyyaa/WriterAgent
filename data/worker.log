@@ -53,3 +53,323 @@
 2026-04-15 08:09:11,731 [INFO] packages.workflows.orchestration.service - execute_run start run=5dcb1c27-7d49-437e-b9a7-58cd9a6bd3ae project=5b490e93-577c-4742-9460-57c4ce7f1673 workflow=writing_full
 2026-04-15 08:09:11,748 [INFO] packages.workflows.orchestration.service - step start run=5dcb1c27-7d49-437e-b9a7-58cd9a6bd3ae step=1079 key=writer_draft type=workflow
 2026-04-15 08:13:18,011 [WARNING] packages.workflows.chapter_generation.service - 章节草稿生成失败，将进入下一次重试 | attempt=1/5 mode=full_regenerate error=The read operation timed out
+2026-04-15 08:17:18,404 [WARNING] packages.workflows.chapter_generation.service - 章节草稿生成失败，将进入下一次重试 | attempt=2/5 mode=full_regenerate error=The read operation timed out
+2026-04-15 08:21:00,448 [WARNING] packages.workflows.chapter_generation.service - 章节草稿生成失败，将进入下一次重试 | attempt=3/5 mode=full_regenerate error=The read operation timed out
+2026-04-15 08:25:00,823 [WARNING] packages.workflows.chapter_generation.service - 章节草稿生成失败，将进入下一次重试 | attempt=4/5 mode=full_regenerate error=The read operation timed out
+2026-04-15 08:29:01,313 [ERROR] packages.workflows.orchestration.service - step failed run=5dcb1c27-7d49-437e-b9a7-58cd9a6bd3ae step=1079 key=writer_draft: The read operation timed out
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+        self.READ_NUM_BYTES, timeout=timeout
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_backends/sync.py", line 126, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1195, in _execute_single_step
+    output = self._dispatch_step(
+        row=row,
+    ...<3 lines>...
+        skill_warnings=skill_warnings,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1288, in _dispatch_step
+    return self._run_chapter_step(row=row, step=step, raw_state=raw_state)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 2057, in _run_chapter_step
+    result = self.chapter_tool.run(
+        ChapterGenerationRequest(
+    ...<20 lines>...
+        )
+    )
+  File "/Users/shenfeng/Project/WriterAgent/packages/tools/chapter_tools/chapter_generation_tool.py", line 17, in run
+    return self.workflow_service.run(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/chapter_generation/service.py", line 553, in run
+    llm_output = self.text_provider.generate(
+        TextGenerationRequest(
+    ...<28 lines>...
+        )
+    )
+  File "/Users/shenfeng/Project/WriterAgent/packages/llm/text_generation/openai_compatible.py", line 314, in generate
+    parsed, runtime_meta = self._send_with_schema_repair(
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request=effective_request,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+        url=url,
+        ^^^^^^^^
+        headers=headers,
+        ^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/packages/llm/text_generation/openai_compatible.py", line 713, in _send_with_schema_repair
+    body = self._post_chat_payload(url=url, headers=headers, payload=payload)
+  File "/Users/shenfeng/Project/WriterAgent/packages/llm/text_generation/openai_compatible.py", line 485, in _post_chat_payload
+    resp = httpx.post(
+        url,
+    ...<2 lines>...
+        timeout=self.timeout_seconds,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_api.py", line 304, in post
+    return request(
+        "POST",
+    ...<13 lines>...
+        trust_env=trust_env,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_api.py", line 109, in request
+    return client.request(
+           ~~~~~~~~~~~~~~^
+        method=method,
+        ^^^^^^^^^^^^^^
+    ...<8 lines>...
+        follow_redirects=follow_redirects,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/anaconda3/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: The read operation timed out
+2026-04-15 08:29:01,356 [ERROR] packages.workflows.orchestration.service - run 5dcb1c27-7d49-437e-b9a7-58cd9a6bd3ae failed: ReadTimeout: The read operation timed out
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+        self.READ_NUM_BYTES, timeout=timeout
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_backends/sync.py", line 126, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 894, in _execute_run
+    self._execute_steps_loop(
+    ~~~~~~~~~~~~~~~~~~~~~~~~^
+        row.id,
+        ^^^^^^^
+        evaluation_run_id=evaluation_run.id if evaluation_run is not None else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        run_started_at=started_at,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1098, in _execute_steps_loop
+    self._execute_single_step(run_id, step.id, evaluation_run_id=evaluation_run_id)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1195, in _execute_single_step
+    output = self._dispatch_step(
+        row=row,
+    ...<3 lines>...
+        skill_warnings=skill_warnings,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1288, in _dispatch_step
+    return self._run_chapter_step(row=row, step=step, raw_state=raw_state)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 2057, in _run_chapter_step
+    result = self.chapter_tool.run(
+        ChapterGenerationRequest(
+    ...<20 lines>...
+        )
+    )
+  File "/Users/shenfeng/Project/WriterAgent/packages/tools/chapter_tools/chapter_generation_tool.py", line 17, in run
+    return self.workflow_service.run(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/chapter_generation/service.py", line 553, in run
+    llm_output = self.text_provider.generate(
+        TextGenerationRequest(
+    ...<28 lines>...
+        )
+    )
+  File "/Users/shenfeng/Project/WriterAgent/packages/llm/text_generation/openai_compatible.py", line 314, in generate
+    parsed, runtime_meta = self._send_with_schema_repair(
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request=effective_request,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+        url=url,
+        ^^^^^^^^
+        headers=headers,
+        ^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/packages/llm/text_generation/openai_compatible.py", line 713, in _send_with_schema_repair
+    body = self._post_chat_payload(url=url, headers=headers, payload=payload)
+  File "/Users/shenfeng/Project/WriterAgent/packages/llm/text_generation/openai_compatible.py", line 485, in _post_chat_payload
+    resp = httpx.post(
+        url,
+    ...<2 lines>...
+        timeout=self.timeout_seconds,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_api.py", line 304, in post
+    return request(
+        "POST",
+    ...<13 lines>...
+        trust_env=trust_env,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_api.py", line 109, in request
+    return client.request(
+           ~~~~~~~~~~~~~~^
+        method=method,
+        ^^^^^^^^^^^^^^
+    ...<8 lines>...
+        follow_redirects=follow_redirects,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/anaconda3/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: The read operation timed out
+2026-04-15 08:29:01,366 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-15 08:29:45,622 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:29:47,827 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:29:48,995 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:29:50,053 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:30:43,581 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:33:59,577 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:34:02,536 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:34:03,762 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:34:09,792 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:34:16,620 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:34:19,322 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:34:27,237 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:34:42,535 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:36:35,652 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:36:38,964 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:36:40,427 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:36:42,831 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:36:47,894 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:36:49,747 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:37:32,937 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:37:42,684 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:42:05,527 [INFO] packages.workflows.orchestration.service - claimed run a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 (workflow=writing_full)
+2026-04-15 08:42:05,527 [INFO] packages.workflows.orchestration.service - execute_run start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 project=529daf7c-b65d-46ec-8d33-43972f117a01 workflow=writing_full
+2026-04-15 08:42:06,265 [INFO] packages.workflows.orchestration.service - step start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1083 key=planner_bootstrap type=agent
+2026-04-15 08:42:06,330 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "planner_agent", "step_key": "planner_bootstrap", "raw_state_keys": [], "projected_state_keys": [], "dependency_keys": [], "retrieval_mode": "none", "payload_size_chars": 264}
+2026-04-15 08:43:29,487 [INFO] packages.workflows.orchestration.service - step done run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1083 key=planner_bootstrap latency=83221ms
+2026-04-15 08:43:29,509 [INFO] packages.workflows.orchestration.service - step start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1084 key=retrieval_context type=agent
+2026-04-15 08:43:29,544 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "retrieval_agent", "step_key": "retrieval_context", "raw_state_keys": ["planner_bootstrap"], "projected_state_keys": ["planner_bootstrap"], "dependency_keys": ["planner_bootstrap"], "retrieval_mode": "compact_items", "payload_size_chars": 2263}
+2026-04-15 08:44:31,112 [INFO] packages.workflows.orchestration.service - step done run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1084 key=retrieval_context latency=61600ms
+2026-04-15 08:44:31,129 [INFO] packages.workflows.orchestration.service - step start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1085 key=outline_generation type=workflow
+2026-04-15 08:46:27,401 [INFO] packages.workflows.orchestration.service - step done run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1085 key=outline_generation latency=116271ms
+2026-04-15 08:46:27,420 [INFO] packages.workflows.orchestration.service - step start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1086 key=plot_alignment type=agent
+2026-04-15 08:46:27,473 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "plot_agent", "step_key": "plot_alignment", "raw_state_keys": ["outline_generation", "planner_bootstrap", "retrieval_context"], "projected_state_keys": ["outline_generation", "retrieval_context"], "dependency_keys": ["outline_generation", "retrieval_context"], "retrieval_mode": "summary_only", "payload_size_chars": 2600}
+2026-04-15 08:47:04,599 [INFO] packages.workflows.orchestration.service - step done run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1086 key=plot_alignment latency=37178ms
+2026-04-15 08:47:04,612 [INFO] packages.workflows.orchestration.service - step start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1087 key=character_alignment type=agent
+2026-04-15 08:47:04,631 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "character_agent", "step_key": "character_alignment", "raw_state_keys": ["outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context"], "projected_state_keys": ["outline_generation", "retrieval_context"], "dependency_keys": ["outline_generation", "retrieval_context"], "retrieval_mode": "summary_only", "payload_size_chars": 1979}
+2026-04-15 08:47:57,127 [INFO] packages.workflows.orchestration.service - step done run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1087 key=character_alignment latency=52515ms
+2026-04-15 08:47:57,147 [INFO] packages.workflows.orchestration.service - step start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1088 key=world_alignment type=agent
+2026-04-15 08:47:57,179 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "world_agent", "step_key": "world_alignment", "raw_state_keys": ["character_alignment", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context"], "projected_state_keys": ["outline_generation", "retrieval_context"], "dependency_keys": ["outline_generation", "retrieval_context"], "retrieval_mode": "compact_items", "payload_size_chars": 2341}
+2026-04-15 08:48:18,001 [INFO] packages.workflows.orchestration.service - step done run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1088 key=world_alignment latency=20853ms
+2026-04-15 08:48:18,009 [INFO] packages.workflows.orchestration.service - step start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1089 key=style_alignment type=agent
+2026-04-15 08:48:18,038 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "style_agent", "step_key": "style_alignment", "raw_state_keys": ["character_alignment", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "world_alignment"], "projected_state_keys": ["outline_generation", "retrieval_context"], "dependency_keys": ["outline_generation", "retrieval_context"], "retrieval_mode": "summary_only", "payload_size_chars": 1967}
+2026-04-15 08:49:15,593 [INFO] packages.workflows.orchestration.service - step done run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1089 key=style_alignment latency=57583ms
+2026-04-15 08:49:15,618 [INFO] packages.workflows.orchestration.service - step start run=a7114a4b-cec0-46ab-bd6f-00a4fd9cc351 step=1090 key=writer_draft type=workflow
+2026-04-15 08:49:17,571 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "writer_agent", "step_key": "writer_draft", "raw_state_keys": ["chapter_memory", "character_alignment", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "story_assets", "style_alignment", "world_alignment"], "projected_state_keys": ["chapter_memory", "character_alignment", "outline_generation", "plot_alignment", "retrieval_context", "story_assets", "style_alignment", "world_alignment"], "dependency_keys": ["outline_generation", "plot_alignment", "character_alignment", "world_alignment", "style_alignment", "retrieval_context", "chapter_memory", "story_assets"], "retrieval_mode": "compact_items", "payload_size_chars": 8492}
+2026-04-15 08:50:54,973 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:51:08,221 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:51:27,487 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:56:10,489 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 08:56:13,780 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent

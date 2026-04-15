@@ -5,6 +5,7 @@ import unittest
 from packages.workflows.orchestration.prompt_payload_assembler import (
     PromptPayloadAssembler,
     build_retrieval_bundle_from_raw_state,
+    build_writer_alignment_supplement_text,
 )
 from packages.workflows.orchestration.prompt_payload_types import (
     RetrievalViewSpec,
@@ -82,6 +83,48 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         v = payload["state"]["w"]["world_logic_summary_summary"]
         self.assertLess(len(v), len(long_text))
         self.assertTrue(v.endswith("..."))
+
+    def test_compact_summarizes_chapters_list_content(self) -> None:
+        """story_assets 类结构：列表内章节正文过长时改为 content_summary。"""
+        specs = {
+            "w:cd": StepInputSpec(
+                role_id="w",
+                include_project=False,
+                include_outline=False,
+                dependencies=[
+                    StateDependencySpec(
+                        step_key="story_assets",
+                        required=True,
+                        fields=["chapters"],
+                        compact=True,
+                    )
+                ],
+                retrieval=RetrievalViewSpec(mode="none"),
+            )
+        }
+        asm = PromptPayloadAssembler(specs=specs)
+        long_body = "章" * 800
+        payload = asm.build(
+            role_id="w",
+            step_key="cd",
+            workflow_type="t",
+            project_context={},
+            raw_state={
+                "story_assets": {
+                    "view": {
+                        "chapters": [
+                            {"chapter_no": 1, "title": "T", "content": long_body},
+                        ]
+                    }
+                }
+            },
+            retrieval_bundle={},
+            outline_state={},
+        )
+        ch0 = payload["state"]["story_assets"]["chapters"][0]
+        self.assertNotIn("content", ch0)
+        self.assertIn("content_summary", ch0)
+        self.assertTrue(str(ch0["content_summary"]).endswith("..."))
 
     def test_missing_required_dependency_raises(self) -> None:
         asm = PromptPayloadAssembler(
@@ -166,6 +209,33 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         )
         self.assertEqual(len(payload["retrieval"]["items"]), 2)
         self.assertLessEqual(len(payload["retrieval"]["items"][0]["text"]), 10)
+
+    def test_build_writer_alignment_supplement_text(self) -> None:
+        raw_state = {
+            "plot_alignment": {
+                "view": {
+                    "narcotic_arc": [
+                        {
+                            "phase": "p1",
+                            "plot_beat": "进入冲突",
+                            "conflict_level": 5,
+                            "pacing_note": "紧",
+                            "outcome": "升级",
+                        }
+                    ]
+                }
+            },
+            "character_alignment": {
+                "view": {"constraints": {"must_do": ["守住秘密"], "must_not": []}},
+            },
+            "world_alignment": {"view": {"hard_constraints": [], "reusable_assets": {}}},
+            "style_alignment": {"view": {"micro_constraints": {}}},
+            "retrieval_context": {"view": {}},
+        }
+        text = build_writer_alignment_supplement_text(raw_state)
+        self.assertIn("Plot Beats", text)
+        self.assertIn("进入冲突", text)
+        self.assertIn("守住秘密", text)
 
 
 if __name__ == "__main__":

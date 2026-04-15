@@ -18,6 +18,8 @@ class ChapterGenerationRequest:
     chat_turns: list[dict[str, Any]] | None = None
     working_notes: list[str] | None = None
     retrieval_context: str | None = None
+    # 编排 writer_draft 步传入的各 agent 输出快照，供 PromptPayloadAssembler「writer_agent:writer_draft」投影。
+    orchestrator_raw_state: dict[str, Any] | None = None
     persist_chapter: bool = True
     request_id: str | None = None
     trace_id: str | None = None

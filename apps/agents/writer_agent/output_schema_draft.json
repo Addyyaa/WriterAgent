@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "description": "草稿专用：不要求 segments / word_count，完整叙事写入 chapter，降低分段与正文分裂概率。",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["draft"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failed"]
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "beat_id": { "type": "integer" },
+          "type": {
+            "type": "string",
+            "enum": ["action", "dialogue", "description", "internal_monologue"]
+          },
+          "content": {
+            "type": "string",
+            "description": "可选分段；若省略请把全文写入 chapter.content"
+          }
+        },
+        "required": ["beat_id", "type", "content"],
+        "additionalProperties": true
+      }
+    },
+    "word_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "可选；缺省则由服务端按 chapter.content 估算"
+    },
+    "notes": { "type": "string" },
+    "chapter": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "content": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 }
+      },
+      "required": ["title", "content", "summary"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["mode", "status", "chapter"],
+  "additionalProperties": true
+}

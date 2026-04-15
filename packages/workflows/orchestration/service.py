@@ -74,10 +74,7 @@ from packages.webhooks.service import WebhookService
 from packages.workflows.chapter_generation.context_provider import (
     SQLAlchemyStoryContextProvider,
 )
-from packages.workflows.orchestration.agent_output_envelope import (
-    build_agent_step_meta_raw,
-    step_agent_view,
-)
+from packages.workflows.orchestration.agent_output_envelope import build_agent_step_meta_raw
 from packages.workflows.orchestration.agent_registry import AgentRegistry
 from packages.workflows.chapter_generation.service import ChapterGenerationWorkflowService
 from packages.workflows.chapter_generation.types import ChapterGenerationRequest
@@ -89,6 +86,7 @@ from packages.workflows.orchestration.planner import DynamicPlanner, create_dyna
 from packages.workflows.orchestration.prompt_payload_assembler import (
     PromptPayloadAssembler,
     build_retrieval_bundle_from_raw_state,
+    build_writer_alignment_supplement_text,
 )
 from packages.workflows.orchestration.retrieval_loop import (
     RetrievalLoopRequest,
@@ -1828,134 +1826,6 @@ class WritingOrchestratorService:
             }
         return base_payload
 
-    @staticmethod
-    def _extract_step_agent_output(raw_state: dict[str, dict], step_key: str) -> dict[str, Any]:
-        step = dict(raw_state.get(step_key) or {})
-        return step_agent_view(step)
-
-    def _build_writer_guidance(self, *, raw_state: dict[str, dict]) -> dict[str, Any]:
-        plot_output = self._extract_step_agent_output(raw_state, "plot_alignment")
-        character_output = self._extract_step_agent_output(raw_state, "character_alignment")
-        world_output = self._extract_step_agent_output(raw_state, "world_alignment")
-        style_output = self._extract_step_agent_output(raw_state, "style_alignment")
-        retrieval_output = self._extract_step_agent_output(raw_state, "retrieval_context")
-
-        lines: list[str] = []
-        working_notes: list[str] = []
-        style_hint_suffix_parts: list[str] = []
-        retrieval_context_addon: list[str] = []
-
-        beats = [dict(x) for x in list(plot_output.get("narcotic_arc") or []) if isinstance(x, dict)]
-        if beats:
-            lines.append("## Plot Beats (Must Follow)")
-            for idx, beat in enumerate(beats[:6], start=1):
-                phase = str(beat.get("phase") or f"phase-{idx}").strip()
-                instruction = str(beat.get("plot_beat") or "").strip()
-                pacing = str(beat.get("pacing_note") or "").strip()
-                conflict = beat.get("conflict_level")
-                if not instruction:
-                    continue
-                lines.append(
-                    f"- [{phase}] {instruction}"
-                    + (f"（冲突等级:{conflict}）" if conflict is not None else "")
-                    + (f"；节奏:{pacing}" if pacing else "")
-                )
-            for beat in beats[:6]:
-                instruction = str(beat.get("plot_beat") or "").strip()
-                if instruction:
-                    working_notes.append("PlotBeat: " + instruction)
-
-        constraints = dict(character_output.get("constraints") or {})
-        must_do = [str(x).strip() for x in list(constraints.get("must_do") or []) if str(x).strip()]
-        must_not = [str(x).strip() for x in list(constraints.get("must_not") or []) if str(x).strip()]
-        if must_do or must_not:
-            lines.append("## Character Constraints")
-            for item in must_do[:8]:
-                lines.append(f"- 必须执行: {item}")
-                working_notes.append("CharacterMustDo: " + item)
-            for item in must_not[:8]:
-                lines.append(f"- 禁止行为: {item}")
-                working_notes.append("CharacterMustNot: " + item)
-
-        hard_rules = [dict(x) for x in list(world_output.get("hard_constraints") or []) if isinstance(x, dict)]
-        if hard_rules:
-            lines.append("## World System Constraints (ABSOLUTE)")
-            for rule in hard_rules[:8]:
-                rule_type = str(rule.get("rule_type") or "rule").strip().upper()
-                desc = str(rule.get("rule_description") or "").strip()
-                limit = str(rule.get("limitation") or "").strip()
-                if not desc:
-                    continue
-                lines.append(f"- [{rule_type}] {desc}" + (f"；限制: {limit}" if limit else ""))
-                working_notes.append(f"WorldRule: {desc}" + (f"（限制:{limit}）" if limit else ""))
-            lines.append("- 禁止机械降神：不得凭空引入违反世界规则的新设定。")
-
-        assets = dict(world_output.get("reusable_assets") or {})
-        locations = [str(x).strip() for x in list(assets.get("locations") or []) if str(x).strip()]
-        factions = [str(x).strip() for x in list(assets.get("factions") or []) if str(x).strip()]
-        items = [str(x).strip() for x in list(assets.get("items_concepts") or []) if str(x).strip()]
-        if locations or factions or items:
-            lines.append("## Available Assets (Use these first)")
-            if locations:
-                lines.append("- Locations: " + "、".join(locations[:12]))
-            if factions:
-                lines.append("- Factions: " + "、".join(factions[:12]))
-            if items:
-                lines.append("- Items: " + "、".join(items[:12]))
-
-        style_micro = dict(style_output.get("micro_constraints") or {})
-        sentence_structure = str(style_micro.get("sentence_structure") or "").strip()
-        vocab_level = str(style_micro.get("vocabulary_level") or "").strip()
-        forbidden_words = [str(x).strip() for x in list(style_micro.get("forbidden_words") or []) if str(x).strip()]
-        rhythm = dict(style_output.get("rhythm_strategy") or {})
-        rhythm_instruction = str(rhythm.get("instruction") or "").strip()
-        if sentence_structure or vocab_level or forbidden_words or rhythm_instruction:
-            lines.append("## Style Constraints")
-            if sentence_structure:
-                lines.append(f"- Sentence: {sentence_structure}")
-                style_hint_suffix_parts.append(f"句式约束：{sentence_structure}")
-            if vocab_level:
-                lines.append(f"- Vocabulary: {vocab_level}")
-                style_hint_suffix_parts.append(f"词汇等级：{vocab_level}")
-            if rhythm_instruction:
-                lines.append(f"- Rhythm: {rhythm_instruction}")
-                style_hint_suffix_parts.append(f"节奏策略：{rhythm_instruction}")
-            if forbidden_words:
-                lines.append("- Forbidden: " + "、".join(forbidden_words[:16]))
-                style_hint_suffix_parts.append("禁词: " + "、".join(forbidden_words[:16]))
-
-        retrieval_summary = dict(retrieval_output.get("writing_context_summary") or {})
-        key_facts = [str(x).strip() for x in list(retrieval_summary.get("key_facts") or []) if str(x).strip()]
-        current_states = [str(x).strip() for x in list(retrieval_summary.get("current_states") or []) if str(x).strip()]
-        conflicts = [dict(x) for x in list(retrieval_output.get("potential_conflicts") or []) if isinstance(x, dict)]
-        info_gaps = [str(x).strip() for x in list(retrieval_output.get("information_gaps") or []) if str(x).strip()]
-        if key_facts or current_states or conflicts or info_gaps:
-            lines.append("## Retrieval Synthesis")
-            for fact in key_facts[:12]:
-                lines.append(f"- Fact: {fact}")
-                retrieval_context_addon.append("Fact: " + fact)
-            for state_item in current_states[:12]:
-                lines.append(f"- State: {state_item}")
-            for conflict in conflicts[:6]:
-                desc = str(conflict.get("description") or "").strip()
-                sources = [str(x).strip() for x in list(conflict.get("conflicting_sources") or []) if str(x).strip()]
-                if desc:
-                    lines.append(
-                        f"- Conflict: {desc}" + (f"（sources: {'/'.join(sources[:4])}）" if sources else "")
-                    )
-            for gap in info_gaps[:6]:
-                lines.append(f"- Gap: {gap}")
-
-        guidance_text = "\n".join(lines).strip()
-        style_hint_suffix = "；".join(style_hint_suffix_parts).strip()
-        retrieval_text = "\n".join(retrieval_context_addon).strip()
-        return {
-            "guidance_text": guidance_text,
-            "style_hint_suffix": style_hint_suffix,
-            "working_notes": working_notes,
-            "retrieval_context_addon": retrieval_text,
-        }
-
     def _run_outline_step(self, *, row, step, raw_state: dict[str, dict]) -> dict[str, Any]:
         del raw_state
         base_goal = str((row.input_json or {}).get("writing_goal") or "")
@@ -1994,7 +1864,6 @@ class WritingOrchestratorService:
         outline_title = str(raw_state.get("outline_generation", {}).get("title") or "")
         base_goal = str((row.input_json or {}).get("writing_goal") or "")
         goal = base_goal if not outline_title else f"{base_goal}；参考大纲：{outline_title}"
-        writer_guidance = self._build_writer_guidance(raw_state=raw_state)
 
         retrieval = self._run_retrieval_loop(
             row=row,
@@ -2003,26 +1872,16 @@ class WritingOrchestratorService:
             writing_goal=goal,
             chapter_no=(row.input_json or {}).get("chapter_no"),
         )
-        retrieval_context_parts: list[str] = []
-        if retrieval.context_text:
-            retrieval_context_parts.append(str(retrieval.context_text))
-        retrieval_addon = str(writer_guidance.get("retrieval_context_addon") or "").strip()
-        if retrieval_addon:
-            retrieval_context_parts.append(retrieval_addon)
-        combined_retrieval_context = "\n\n".join(part for part in retrieval_context_parts if part).strip() or None
+        combined_retrieval_context = str(retrieval.context_text or "").strip() or None
 
-        guidance_text = str(writer_guidance.get("guidance_text") or "").strip()
+        working_notes = [
+            str(x).strip() for x in list((row.input_json or {}).get("working_notes") or []) if str(x).strip()
+        ]
+        style_hint = str((row.input_json or {}).get("style_hint") or "").strip() or None
 
-        working_notes = [str(x).strip() for x in list((row.input_json or {}).get("working_notes") or []) if str(x).strip()]
-        working_notes.extend([str(x).strip() for x in list(writer_guidance.get("working_notes") or []) if str(x).strip()])
-        if guidance_text:
-            working_notes.append(f"角色化约束与风格护栏：{guidance_text}")
-
-        base_style_hint = str((row.input_json or {}).get("style_hint") or "").strip()
-        style_suffix = str(writer_guidance.get("style_hint_suffix") or "").strip()
-        style_hint = base_style_hint
-        if style_suffix:
-            style_hint = f"{base_style_hint}；{style_suffix}" if base_style_hint else style_suffix
+        chapter_raw_snapshot: dict[str, Any] = {
+            k: dict(v) if isinstance(v, dict) else v for k, v in raw_state.items()
+        }
 
         def _writer_live_progress(payload: dict[str, Any]) -> None:
             try:
@@ -2060,7 +1919,7 @@ class WritingOrchestratorService:
                 writing_goal=goal,
                 chapter_no=(row.input_json or {}).get("chapter_no"),
                 target_words=int((row.input_json or {}).get("target_words") or 1200),
-                style_hint=style_hint or None,
+                style_hint=style_hint,
                 include_memory_top_k=int((row.input_json or {}).get("include_memory_top_k") or 8),
                 context_token_budget=(
                     int((row.input_json or {}).get("context_token_budget"))
@@ -2069,11 +1928,12 @@ class WritingOrchestratorService:
                 ),
                 temperature=float((row.input_json or {}).get("temperature") or 0.7),
                 chat_turns=list((row.input_json or {}).get("chat_turns") or []),
-                working_notes=working_notes,
+                working_notes=working_notes or None,
                 persist_chapter=False,
                 request_id=row.request_id,
                 trace_id=row.trace_id,
                 retrieval_context=combined_retrieval_context,
+                orchestrator_raw_state=chapter_raw_snapshot,
                 live_progress_callback=_writer_live_progress,
                 checkpoint_callback=_writer_checkpoint,
             )
@@ -2164,7 +2024,9 @@ class WritingOrchestratorService:
             "writer_guidance": {
                 "style_hint": style_hint or None,
                 "working_notes_count": len(working_notes),
-                "has_guidance_text": bool(guidance_text),
+                "prompt_payload_via_assembler": True,
+                # 兼容旧前端：Markdown 护栏已弃用，章节草稿上下文见 Assembler 分区 JSON
+                "has_guidance_text": False,
             },
             **self._serialize_retrieval_summary(retrieval),
         }
@@ -2267,7 +2129,7 @@ class WritingOrchestratorService:
 
         consistency = dict(raw_state.get("consistency_review", {}) or {})
         force = str(consistency.get("status") or "warning") in {"warning", "failed"}
-        writer_guidance = self._build_writer_guidance(raw_state=raw_state)
+        alignment_supplement = build_writer_alignment_supplement_text(raw_state)
         retrieval = self._run_retrieval_loop(
             row=row,
             step=step,
@@ -2290,12 +2152,10 @@ class WritingOrchestratorService:
         retrieval_context_parts: list[str] = []
         if retrieval.context_text:
             retrieval_context_parts.append(str(retrieval.context_text))
-        retrieval_addon = str(writer_guidance.get("retrieval_context_addon") or "").strip()
-        if retrieval_addon:
-            retrieval_context_parts.append(retrieval_addon)
-        guidance_text = str(writer_guidance.get("guidance_text") or "").strip()
-        if guidance_text:
-            retrieval_context_parts.append("角色化约束与风格护栏：\n" + guidance_text)
+        if alignment_supplement:
+            retrieval_context_parts.append(
+                "角色化约束与风格护栏（alignment / retrieval 摘要）：\n" + alignment_supplement
+            )
         combined_retrieval_context = "\n\n".join(part for part in retrieval_context_parts if part).strip() or None
 
         result = self.revision_service.run(
