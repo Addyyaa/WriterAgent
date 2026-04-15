@@ -63,10 +63,24 @@ class ChapterGenerationWorkflowError(RuntimeError):
 
 
 class ChapterGenerationWorkflowService:
+    """章节草稿/扩写工作流。
+
+    主链路 user JSON 由 :meth:`_build_chapter_writer_prompt_payload` 组装：先
+    :class:`~packages.workflows.orchestration.prompt_payload_assembler.PromptPayloadAssembler`
+    按 ``step_input_specs.STEP_INPUT_SPECS`` 中 ``writer_agent:writer_draft``（编排）或
+    ``writer_agent:chapter_draft``（独立 API）做 **投影视图**（含 ``state`` / ``retrieval`` 等），
+    再合并 ``goal`` / ``target_words`` / ``writing_contract`` / ``output_format`` 等。
+    请求参数 ``retrieval_context`` 只参与构造 ``retrieval_bundle``，**不会**作为顶层字段塞进模型。
+
+    ``consumption.json`` 仅在 :class:`~packages.workflows.orchestration.agent_registry.AgentRegistry`
+    侧解析，不进入本 user JSON。``output_format`` 仅含 ``schema_ref`` + ``contract``（
+    ``writer.output.v2`` / ``writer.output.draft`` 等，见 ``packages.workflows.writer_output``），
+    不内联整份 schema 文本。
+    """
+
     AGENT_NAME = "chapter_writer_agent"
     WORKFLOW_NAME = "chapter_generation"
-    # 与 orchestration 一致：PromptPayloadAssembler（writer_draft / chapter_draft 规格）+
-    # 可选 output_schema_draft.json 轻量响应契约；非旧版 _build_user_prompt 大包。
+    # 描述「Assembler 核心 + 服务层合并字段」后的 LLM 输入；用于 input_schema 校验（与 orchestration 对齐）。
     CHAPTER_INPUT_SCHEMA = {
         "type": "object",
         "required": [
@@ -97,7 +111,7 @@ class ChapterGenerationWorkflowService:
         },
         "additionalProperties": True,
     }
-    # 兼容旧链路；当启用 writer_agent registry 时会使用 writer_agent/output_schema.json。
+    # 无 registry 时的扁平回退输出（非 writer 信封）；有 registry 时用 runtime response_schema。
     CHAPTER_OUTPUT_SCHEMA = {
         "type": "object",
         "required": ["title", "content", "summary"],
@@ -1633,7 +1647,11 @@ class ChapterGenerationWorkflowService:
         output_format_contract: str = "",
         orchestrator_raw_state: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """按 StepInputSpec 组装 LLM user JSON：编排全链路用 writer_draft，否则用 chapter_draft。"""
+        """按 StepInputSpec 组装 LLM user JSON：先 PromptPayloadAssembler.build（writer_draft / chapter_draft），再合并 goal 等。
+
+        ``retrieval_context`` 只写入 retrieval_bundle（见 ``retrieval`` 键），不作为顶层字段。
+        ``output_format`` 由 runtime 的 ``writer.output.*`` 与 schema 路径常量决定，与 ``response_schema`` 一致。
+        """
         project_context = {
             "id": str(project.id),
             "title": project.title,

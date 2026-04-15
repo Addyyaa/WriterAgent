@@ -392,3 +392,5 @@ httpx.ReadTimeout: The read operation timed out
 2026-04-15 09:24:52,269 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
 2026-04-15 09:24:53,342 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
 2026-04-15 09:24:54,739 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 09:29:50,880 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-15 09:29:58,168 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
