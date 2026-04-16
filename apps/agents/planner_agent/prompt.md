@@ -53,6 +53,19 @@
    - 槽位用 **snake_case**，与下游检索循环对齐（如 `character`、`world_rule`、`current_inventory`、`power_rules`、`chapter_neighborhood`、`recent_trigger_events`、`scene_constraints`）。
    - **验收示例**：若目标为「主角研究异能并尝试使用」，则至少应显式提出：`current_inventory`（当前物品）、`power_rules`（异能规则边界）、`memory_fact` 或自定义槽如 `recent_power_activations`（最近触发记录）、`scene_constraints`（场景限制）等中的若干项，并配合 `must_verify_facts` 与 `preferred_tools`（如 `character_inventory`）。
 
+# Bootstrap JSON：知识合同（必选键）
+
+每个 `steps[]` 元素**必须**包含以下键（数组可为 `[]`，`fallback_when_missing` 可为空字符串，但键不可省略）：
+
+- `required_slots`
+- `preferred_tools`
+- `must_verify_facts`
+- `allowed_assumptions`
+- `fallback_when_missing`
+
+根对象**应当**包含 `global_required_slots`（可为 `[]`）；建议包含 `global_preferred_tools`（可为 `[]`）。  
+动态 `nodes[]` 模式下，每个节点**应当**在对象顶层给出与上表同名的知识字段（无则 `[]` / 省略 `fallback_when_missing`），**不要**只塞进未约定的 `input_json` 自由字段。
+
 # Output Format — bootstrap JSON 示例
 
 若当前步骤要求输出 bootstrap 结构，请只输出符合 Schema 的 JSON，不要包含 Markdown 代码块标记：

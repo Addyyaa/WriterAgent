@@ -106,6 +106,7 @@ from packages.workflows.consistency_review.service import (
 )
 from packages.workflows.orchestration.planner import DynamicPlanner, create_dynamic_planner
 from packages.workflows.orchestration.planner_knowledge import (
+    merge_planner_preferred_tools,
     merge_planner_retrieval_slots,
     merge_planner_verify_facts,
     planner_knowledge_meta,
@@ -2381,6 +2382,21 @@ class WritingOrchestratorService:
             step_input=step_input,
         )
 
+    @staticmethod
+    def _planner_preferred_tools_from_state(
+        raw_state: dict[str, dict] | None,
+        step_input: dict[str, Any] | None,
+    ) -> list[str]:
+        bootstrap: dict[str, Any] | None = None
+        if raw_state:
+            b = raw_state.get("planner_bootstrap")
+            if isinstance(b, dict):
+                bootstrap = b
+        return merge_planner_preferred_tools(
+            planner_bootstrap_output=bootstrap,
+            step_input=step_input,
+        )
+
     def _run_retrieval_loop(
         self,
         *,
@@ -2411,6 +2427,7 @@ class WritingOrchestratorService:
         step_inp = dict(step.input_json or {}) if step is not None else {}
         planner_hints = self._planner_slot_hints_from_state(raw_state, step_inp)
         verify_facts = self._planner_verify_facts_from_state(raw_state, step_inp)
+        preferred_tools = self._planner_preferred_tools_from_state(raw_state, step_inp)
         relevance_blob = RetrievalLoopService.build_relevance_blob(
             writing_goal=writing_goal,
             planner_slots=planner_hints,
@@ -2435,14 +2452,17 @@ class WritingOrchestratorService:
                 must_have_slots=must_have_slots,
                 relevance_blob=relevance_blob,
                 planner_verify_facts=verify_facts or None,
+                planner_preferred_tools=preferred_tools or None,
                 focus_character_id=focus_character_id,
             )
         )
 
     @staticmethod
     def _serialize_retrieval_summary(summary: RetrievalLoopSummary) -> dict[str, Any]:
+        meta_cb = dict((summary.context_bundle or {}).get("meta") or {})
         return {
             "retrieval_trace_id": summary.retrieval_trace_id,
+            "planner_preferred_tools": list(meta_cb.get("planner_preferred_tools") or []),
             "retrieval_rounds": [
                 {
                     "round_index": int(item.round_index),
@@ -2450,6 +2470,7 @@ class WritingOrchestratorService:
                     "intent": item.decision.intent,
                     "source_types": list(item.decision.source_types),
                     "must_have_slots": list(item.decision.must_have_slots),
+                    "slot_query_fragments": dict(item.decision.slot_query_fragments or {}),
                     "coverage_score": float(item.coverage.coverage_score),
                     "resolved_slots": list(item.coverage.resolved_slots),
                     "open_slots": list(item.coverage.open_slots),

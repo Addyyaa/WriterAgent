@@ -75,6 +75,11 @@
           "dependencies",
           "risk_item",
           "fallback_strategy",
+          "required_slots",
+          "preferred_tools",
+          "must_verify_facts",
+          "allowed_assumptions",
+          "fallback_when_missing",
           "acceptance_criteria"
         ]
       }

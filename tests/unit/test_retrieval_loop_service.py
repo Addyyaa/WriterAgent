@@ -260,6 +260,28 @@ class TestRetrievalLoopService(unittest.TestCase):
         self.assertTrue(sources)
         self.assertIn("memory_fact", sources)
 
+    def test_build_relevance_blob_includes_open_slots(self) -> None:
+        blob = RetrievalLoopService.build_relevance_blob(
+            writing_goal="续写",
+            planner_slots=["inventory"],
+            verify_facts=["是否暴露"],
+            open_slots=["power_rules", "timeline"],
+        )
+        self.assertIsNotNone(blob)
+        assert blob is not None
+        self.assertIn("still_open_slots", blob)
+        self.assertIn("power_rules", blob)
+
+    def test_select_round_sources_prefers_planner_tools(self) -> None:
+        src = RetrievalLoopService._DEFAULT_SOURCE_TYPES
+        picked = RetrievalLoopService._select_round_sources(
+            open_slots=["inventory"],
+            source_types=src,
+            preferred_tools=["character_inventory"],
+        )
+        self.assertGreaterEqual(len(picked), 1)
+        self.assertEqual(picked[0], "character_inventory")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

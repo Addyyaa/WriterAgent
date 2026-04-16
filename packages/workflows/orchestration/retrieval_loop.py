@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
@@ -39,6 +39,7 @@ class RetrievalLoopRequest:
     # 聚焦加载：goal + slots + 核验事实；过短则回退宽池 load()
     relevance_blob: str | None = None
     planner_verify_facts: list[str] | None = None
+    planner_preferred_tools: list[str] | None = None
     # 库存类槽位结构化工具（CharacterInventoryTool）
     focus_character_id: str | None = None
 
@@ -183,8 +184,12 @@ class RetrievalLoopService:
         writing_goal: str,
         planner_slots: list[str] | None,
         verify_facts: list[str] | None,
+        open_slots: list[str] | None = None,
     ) -> str | None:
-        """组装 load_focused 的 relevance_blob；信息量过低时返回 None 以触发宽池回退。"""
+        """组装 load_focused 的 relevance_blob；信息量过低时返回 None 以触发宽池回退。
+
+        ``open_slots``：多轮检索时并入仍未覆盖的槽位，驱动聚焦补查。
+        """
         parts: list[str] = []
         g = str(writing_goal or "").strip()
         if g:
@@ -195,6 +200,9 @@ class RetrievalLoopService:
         facts = [str(x).strip() for x in list(verify_facts or []) if str(x).strip()]
         if facts:
             parts.append("must_verify: " + " | ".join(facts[:16]))
+        open_sl = [str(x).strip() for x in list(open_slots or []) if str(x).strip()]
+        if open_sl:
+            parts.append("still_open_slots: " + ", ".join(open_sl[:16]))
         blob = "\n".join(parts).strip()
         if len(blob) < 8:
             return None
@@ -240,9 +248,23 @@ class RetrievalLoopService:
 
         for round_index in range(1, max_rounds + 1):
             open_slots = list(last_coverage.open_slots or slots)
+            if round_index > 1 and open_slots and hasattr(self.story_context_provider, "load_focused"):
+                aug_blob = self.build_relevance_blob(
+                    writing_goal=request.writing_goal,
+                    planner_slots=request.planner_slot_hints,
+                    verify_facts=request.planner_verify_facts,
+                    open_slots=open_slots,
+                )
+                if aug_blob and len(str(aug_blob).strip()) >= 12:
+                    structured_items = self._build_structured_evidence(
+                        request=replace(request, relevance_blob=aug_blob),
+                        allowed_source_types=set(source_types),
+                        focus_slots=slots,
+                    )
             selected_sources = self._select_round_sources(
                 open_slots=open_slots,
                 source_types=source_types,
+                preferred_tools=request.planner_preferred_tools,
             )
             query, slot_frags = self._build_round_query_and_fragments(
                 base_query=base_query,
@@ -368,6 +390,7 @@ class RetrievalLoopService:
                 "max_context_items": max_context_items,
                 "relevance_blob_chars": len(str(request.relevance_blob or "")),
                 "planner_slots_count": len(list(request.planner_slot_hints or [])),
+                "planner_preferred_tools": list(request.planner_preferred_tools or []),
             },
         }
         return RetrievalLoopSummary(
@@ -601,18 +624,29 @@ class RetrievalLoopService:
             for character in list(context.characters or []):
                 name = str(character.get("name") or "").strip()
                 profile = character.get("profile_json") or {}
-                text = f"{name}：{json.dumps(profile, ensure_ascii=False)}" if name else ""
+                inv = character.get("effective_inventory_json") or character.get("inventory_json")
+                wealth = character.get("effective_wealth_json") or character.get("wealth_json")
+                payload: dict[str, Any] = {"profile": profile}
+                if inv:
+                    payload["inventory"] = inv
+                if wealth:
+                    payload["wealth"] = wealth
+                body = json.dumps(payload, ensure_ascii=False)
+                text = f"{name}：{body}" if name else body
                 if not text:
                     continue
+                meta_ch: dict[str, Any] = {}
+                if character.get("chapter_inventory_snapshot"):
+                    meta_ch["has_chapter_inventory_snapshot"] = True
                 items.append(
                     EvidenceItem(
                         source_type="character",
                         source_id=str(character.get("id")) if character.get("id") is not None else None,
                         chunk_id=f"character:{character.get('id')}",
-                        text=text[:1200],
+                        text=text[:1600],
                         score=0.85,
                         adopted=True,
-                        metadata_json={},
+                        metadata_json=meta_ch,
                     )
                 )
         if "world_entry" in allowed_source_types:
@@ -840,6 +874,7 @@ class RetrievalLoopService:
                     "resolved_slots": list(result.coverage.resolved_slots),
                     "open_slots": list(result.coverage.open_slots),
                     "slot_query_fragments": dict(result.decision.slot_query_fragments or {}),
+                    "planner_preferred_tools": list(request.planner_preferred_tools or []),
                 },
             )
 
@@ -1003,22 +1038,51 @@ class RetrievalLoopService:
         *,
         open_slots: list[str],
         source_types: list[str],
+        preferred_tools: list[str] | None = None,
     ) -> list[str]:
-        if not open_slots:
-            return list(source_types[:4])
+        allowed = set(source_types)
+        boosted: list[str] = []
+        for raw in list(preferred_tools or []):
+            t = str(raw or "").strip().lower().replace("-", "_")
+            if t in ("character_inventory", "inventory_tool", "characterinventorytool"):
+                if "character_inventory" in allowed:
+                    boosted.append("character_inventory")
+            elif t in (
+                "memory",
+                "project_memory",
+                "vector_memory",
+                "long_term_search",
+                "memory_search",
+            ):
+                if "memory_fact" in allowed:
+                    boosted.append("memory_fact")
+            elif t in ("story_state", "story_state_snapshot", "snapshot"):
+                if "story_state_snapshot" in allowed:
+                    boosted.append("story_state_snapshot")
+        boosted = list(dict.fromkeys(boosted))
+
+        def _take(dest: list[str], cand: str) -> bool:
+            if cand in allowed and cand not in dest:
+                dest.append(cand)
+            return len(dest) >= 4
 
         selected: list[str] = []
-        allowed = set(source_types)
+        for b in boosted:
+            if _take(selected, b):
+                return selected
+
+        if not open_slots:
+            for source_type in source_types:
+                if _take(selected, source_type):
+                    break
+            return selected
+
         for slot in open_slots:
             for source_type in sorted(cls._sources_for_slot(slot)):
-                if source_type in allowed and source_type not in selected:
-                    selected.append(source_type)
-                    if len(selected) >= 4:
-                        return selected
+                if _take(selected, source_type):
+                    return selected
         for source_type in source_types:
-            if source_type not in selected:
-                selected.append(source_type)
-            if len(selected) >= 4:
+            if _take(selected, source_type):
                 break
         return selected
 

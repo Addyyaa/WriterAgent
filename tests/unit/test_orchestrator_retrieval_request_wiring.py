@@ -23,6 +23,7 @@ class TestOrchestratorRetrievalRequestWiring(unittest.TestCase):
         def capture_run(req: RetrievalLoopRequest) -> RetrievalLoopSummary:
             captured["planner_slot_hints"] = list(req.planner_slot_hints or [])
             captured["planner_verify_facts"] = list(req.planner_verify_facts or [])
+            captured["planner_preferred_tools"] = list(req.planner_preferred_tools or [])
             captured["relevance_blob"] = req.relevance_blob
             captured["focus_character_id"] = req.focus_character_id
             return RetrievalLoopSummary(
@@ -60,16 +61,19 @@ class TestOrchestratorRetrievalRequestWiring(unittest.TestCase):
             input_json={
                 "plan_required_slots": ["inventory"],
                 "plan_must_verify_facts": ["主角是否已暴露能力"],
+                "plan_preferred_tools": ["memory_search"],
             },
         )
         raw_state = {
             "planner_bootstrap": {
                 "view": {
                     "global_required_slots": ["power_rules"],
+                    "global_preferred_tools": ["character_inventory"],
                     "steps": [
                         {
                             "required_slots": ["timeline"],
                             "must_verify_facts": ["失火日是否一致"],
+                            "preferred_tools": ["project_memory"],
                         }
                     ],
                 }
@@ -95,6 +99,9 @@ class TestOrchestratorRetrievalRequestWiring(unittest.TestCase):
         self.assertIn("写第3章高潮", blob)
         self.assertIn("inventory", blob)
         self.assertEqual(captured["focus_character_id"], "char-protagonist")
+        pt = captured["planner_preferred_tools"]
+        self.assertIn("character_inventory", pt)
+        self.assertIn("memory_search", pt)
 
     def test_retrieval_round_decision_includes_slot_query_fragments(self) -> None:
         """开放槽位时首轮 decision 带 per-slot query 片段，便于回放。"""

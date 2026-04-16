@@ -1,6 +1,8 @@
 {
   "consumed_by": {
     "view.plan_summary": "code",
+    "view.global_required_slots": "code",
+    "view.global_preferred_tools": "code",
     "view.steps": {
       "consumed_by": "audit_only",
       "rationale": "保留旧版规划明细供排障回放",
@@ -30,6 +32,11 @@
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"
     },
+    "view.steps[].required_slots": "code",
+    "view.steps[].preferred_tools": "code",
+    "view.steps[].must_verify_facts": "code",
+    "view.steps[].allowed_assumptions": "code",
+    "view.steps[].fallback_when_missing": "code",
     "view.steps[].acceptance_criteria": {
       "consumed_by": "audit_only",
       "retire_by": "2026-12-31"

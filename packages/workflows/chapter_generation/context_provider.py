@@ -39,8 +39,9 @@ class SQLAlchemyStoryContextProvider:
     ``packages.workflows.consistency_review.context_builder`` 中的切片与聚焦逻辑
     再进入 ``PromptPayloadAssembler``。
 
-    ``load()`` 为宽池候选；``load_focused()`` 在 relevance_blob（写作目标 + alignment 等）
-    中按名称/标题命中优先筛选，减少无关行进入后续摘要/切片。
+    ``load()`` 为宽池候选；``load_focused()`` 在 relevance_blob（写作目标、规划槽位、核验事实、
+    多轮仍未覆盖的 open_slots 等，由编排层拼接）中按名称/标题命中优先筛选章节/角色/世界/时间线，
+    减少无关行进入后续摘要/切片。
     """
 
     def __init__(self, db: Session) -> None:
