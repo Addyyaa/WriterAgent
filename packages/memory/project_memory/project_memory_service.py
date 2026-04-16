@@ -66,6 +66,16 @@ class ProjectMemoryService:
             token_budget=token_budget,
         )
 
-    def build_context_as_retrieval_bundle(self, **kwargs: Any) -> dict[str, Any]:
-        """`build_context` 的便捷封装，返回与检索循环一致的 context_bundle 字典。"""
-        return self.build_context(**kwargs).to_retrieval_bundle()
+    def build_context_as_retrieval_bundle(
+        self,
+        *,
+        retrieval_context_step: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """`build_context` 的便捷封装，返回与检索循环一致的 context_bundle 字典。
+
+        若提供 ``retrieval_context_step``，则合并 retrieval_agent 步骤的 conflicts / gaps 等决策字段。
+        """
+        return self.build_context(**kwargs).to_retrieval_bundle(
+            retrieval_context_step=retrieval_context_step,
+        )

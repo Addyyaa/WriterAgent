@@ -24,10 +24,17 @@ class ContextPackage:
     truncated: bool
     items: list[ContextItem]
 
-    def to_retrieval_bundle(self) -> dict[str, Any]:
+    def to_retrieval_bundle(
+        self,
+        *,
+        retrieval_context_step: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """与编排检索 context_bundle 形状对齐：summary / items / meta。
 
         无 retrieval_agent 视图时，按来源粗分层，便于 Writer 与评测消费统一合同字段。
+        若传入 ``retrieval_context_step``（与 raw_state['retrieval_context'] 同形），则用
+        ``build_retrieval_bundle_from_raw_state`` 中的摘要层覆盖 conflicts / information_gaps
+        等决策字段，与工作流检索步骤输出保持一致。
         """
         confirmed: list[str] = []
         states: list[str] = []
@@ -45,7 +52,7 @@ class ContextPackage:
                 support.append(f"[{src}] {txt[:900]}")
         key_facts = confirmed[:16] or [it.text[:900] for it in self.items[:8] if str(it.text or "").strip()]
         current_states = states[:16]
-        return {
+        bundle: dict[str, Any] = {
             "summary": {
                 "key_facts": key_facts,
                 "current_states": current_states,
@@ -68,6 +75,33 @@ class ContextPackage:
                 "token_budget": int(self.token_budget),
             },
         }
+        if retrieval_context_step:
+            # 懒加载：与 retrieval_context 步骤摘要合同对齐，并避免 memory 包初始化期循环依赖
+            from packages.workflows.orchestration.prompt_payload_assembler import (
+                build_retrieval_bundle_from_raw_state,
+            )
+
+            agent = build_retrieval_bundle_from_raw_state(
+                {"retrieval_context": retrieval_context_step}
+            )
+            a_sum = dict(agent.get("summary") or {})
+            summary = bundle["summary"]
+            if a_sum.get("conflicts"):
+                summary["conflicts"] = list(a_sum["conflicts"])
+            if a_sum.get("information_gaps"):
+                summary["information_gaps"] = list(a_sum["information_gaps"])
+            if a_sum.get("key_facts"):
+                summary["key_facts"] = list(a_sum["key_facts"])
+            if a_sum.get("current_states"):
+                summary["current_states"] = list(a_sum["current_states"])
+            if a_sum.get("confirmed_facts"):
+                summary["confirmed_facts"] = list(a_sum["confirmed_facts"])
+            if a_sum.get("supporting_evidence"):
+                summary["supporting_evidence"] = list(a_sum["supporting_evidence"])
+            agent_items = list(agent.get("items") or [])
+            if agent_items:
+                bundle["items"] = list(bundle["items"]) + agent_items
+        return bundle
 
 
 class ContextBuilder:

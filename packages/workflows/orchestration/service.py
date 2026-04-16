@@ -135,6 +135,7 @@ from packages.workflows.revision.service import RevisionRequest, RevisionWorkflo
 
 class WritingOrchestratorService:
     """异步写作编排器（DB 队列 + 动态 Planner + 多 Agent 步骤执行）。"""
+    # 与 create_step 落库的 plan_* 对齐：均为可选，便于工具链/校验而不破坏历史 run
     AGENT_STEP_INPUT_SCHEMA = {
         "type": "object",
         "required": ["step_key", "workflow_type", "goal", "state", "role_id"],
@@ -144,6 +145,19 @@ class WritingOrchestratorService:
             "goal": {"type": ["string", "null"]},
             "state": {"type": "object"},
             "role_id": {"type": "string", "minLength": 1},
+            "plan_required_slots": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "动态规划节点写入的检索槽位，供 planner_knowledge 合并",
+            },
+            "plan_preferred_tools": {"type": "array", "items": {"type": "string"}},
+            "plan_must_verify_facts": {"type": "array", "items": {"type": "string"}},
+            "plan_allowed_assumptions": {"type": "array", "items": {"type": "string"}},
+            "plan_fallback_when_missing": {"type": ["string", "null"]},
+            "focus_character_id": {
+                "type": ["string", "null"],
+                "description": "库存类槽位注入时的主角/焦点角色 ID（与 run.input_json 二选一）",
+            },
         },
         "additionalProperties": True,
     }

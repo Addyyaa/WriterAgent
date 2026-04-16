@@ -23,7 +23,6 @@ from packages.llm.text_generation.base import (
 from packages.llm.text_generation.provider_registry import MatchResult
 from packages.llm.text_generation.schema_errors import ResponseSchemaValidationError
 from packages.llm.prompt_audit import record_llm_prompt_audit
-from packages.memory.working_memory.hybrid_compressor import HybridContextCompressor
 
 logger = logging.getLogger("writeragent.llm")
 
@@ -1090,6 +1089,9 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         query: str,
         token_budget: int,
     ) -> tuple[str, str, bool]:
+        # 懒加载：避免 packages.llm.text_generation ↔ hybrid_compressor 与 working_memory 包循环导入
+        from packages.memory.working_memory.hybrid_compressor import HybridContextCompressor
+
         compressor = HybridContextCompressor(
             text_provider=self,
             enable_llm=True,
