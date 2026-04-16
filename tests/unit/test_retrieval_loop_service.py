@@ -221,6 +221,7 @@ class TestRetrievalLoopService(unittest.TestCase):
             writing_goal="写一章",
             planner_hints=["inventory", "power_rules"],
             explicit_extra=["character"],
+            merge_workflow_defaults_when_planner_nonempty=True,
         )
         self.assertEqual(
             merged[:3],
@@ -228,6 +229,17 @@ class TestRetrievalLoopService(unittest.TestCase):
         )
         self.assertIn("outline", merged)
         self.assertIn("foreshadowing", merged)
+
+    def test_merge_planner_nonempty_skips_workflow_when_disabled(self) -> None:
+        merged = RetrievalLoopService._merge_inference_slots(
+            workflow_type="chapter_generation",
+            writing_goal="写一章",
+            planner_hints=["character"],
+            explicit_extra=["power_rules"],
+            merge_workflow_defaults_when_planner_nonempty=False,
+        )
+        self.assertEqual(merged, ["character", "power_rules"])
+        self.assertNotIn("outline", merged)
 
     def test_merge_without_planner_or_explicit_matches_workflow_base_only(self) -> None:
         base = RetrievalLoopService._workflow_base_slots(
@@ -239,6 +251,7 @@ class TestRetrievalLoopService(unittest.TestCase):
             writing_goal="写一章",
             planner_hints=None,
             explicit_extra=None,
+            merge_workflow_defaults_when_planner_nonempty=False,
         )
         self.assertEqual(merged, base)
 

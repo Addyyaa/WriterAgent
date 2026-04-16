@@ -1,5 +1,12 @@
 {
   "consumed_by": {
+    "retrieval.confirmed_facts": "code",
+    "retrieval.current_states": "code",
+    "retrieval.supporting_evidence": "code",
+    "retrieval.conflicts": "code",
+    "retrieval.information_gaps": "code",
+    "retrieval.key_facts": "code",
+    "retrieval.items": "code",
     "view.mode": "code",
     "view.status": "code",
     "view.segments": "code",

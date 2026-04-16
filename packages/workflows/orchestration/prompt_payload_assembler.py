@@ -312,12 +312,27 @@ class PromptPayloadAssembler:
         current_states = list(
             summary.get("current_states") or retrieval_bundle.get("current_states") or []
         )
+        confirmed_facts = list(summary.get("confirmed_facts") or [])
+        supporting_evidence = list(summary.get("supporting_evidence") or [])
+        conflicts = list(summary.get("conflicts") or [])
+        information_gaps = list(summary.get("information_gaps") or [])
+
+        def _layered_retrieval_view(*, items_payload: list[dict[str, Any]] | None) -> dict[str, Any]:
+            """决策型分层：与 retrieval_agent / ContextPackage 合同对齐。"""
+            out: dict[str, Any] = {
+                "key_facts": key_facts[:32],
+                "current_states": current_states[:32],
+                "confirmed_facts": confirmed_facts[:36],
+                "supporting_evidence": supporting_evidence[:40],
+                "conflicts": conflicts[:16],
+                "information_gaps": information_gaps[:16],
+            }
+            if items_payload is not None:
+                out["items"] = items_payload
+            return out
 
         if rv.mode == "summary_only":
-            return {
-                "key_facts": key_facts,
-                "current_states": current_states,
-            }
+            return _layered_retrieval_view(items_payload=None)
 
         raw_items = list(retrieval_bundle.get("items") or [])
         if rv.mode == "compact_items":
@@ -336,11 +351,7 @@ class PromptPayloadAssembler:
                 )
                 if len(items) >= rv.max_items:
                     break
-            return {
-                "key_facts": key_facts,
-                "current_states": current_states,
-                "items": items,
-            }
+            return _layered_retrieval_view(items_payload=items)
 
         if rv.mode == "full_items":
             items_full: list[dict[str, Any]] = []
@@ -352,7 +363,7 @@ class PromptPayloadAssembler:
                 items_full.append(dict(item))
                 if len(items_full) >= rv.max_items:
                     break
-            return {"items": items_full}
+            return _layered_retrieval_view(items_payload=items_full)
 
         return {}
 

@@ -42,6 +42,8 @@ class OrchestratorRuntimeConfig:
     workflow_run_timeout_seconds: int = 900
     context_chapter_window_before: int = 2
     context_chapter_window_after: int = 1
+    # planner 已提供槽位时是否仍并入 workflow 默认槽位（默认 false：以 planner 为主）
+    retrieval_merge_workflow_when_planner_slots: bool = False
     api_v1_enabled: bool = False
     lifecycle_enabled: bool = False
     lifecycle_embedding_limit: int = 200
@@ -113,6 +115,10 @@ class OrchestratorRuntimeConfig:
             workflow_run_timeout_seconds=env_int("WRITER_WORKFLOW_RUN_TIMEOUT_SECONDS", 900),
             context_chapter_window_before=env_int("WRITER_CONTEXT_CHAPTER_WINDOW_BEFORE", 2),
             context_chapter_window_after=env_int("WRITER_CONTEXT_CHAPTER_WINDOW_AFTER", 1),
+            retrieval_merge_workflow_when_planner_slots=env_bool(
+                "WRITER_RETRIEVAL_MERGE_WORKFLOW_WHEN_PLANNER_SLOTS",
+                False,
+            ),
             api_v1_enabled=env_bool("WRITER_API_V1_ENABLED", False),
             lifecycle_enabled=env_bool("WRITER_LIFECYCLE_ENABLED", False),
             lifecycle_embedding_limit=env_int("WRITER_LIFECYCLE_EMBEDDING_LIMIT", 200),

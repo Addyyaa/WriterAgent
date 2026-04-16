@@ -48,6 +48,7 @@ from packages.storage.postgres.repositories.workflow_step_repository import (
 from packages.schemas import SchemaRegistry
 from packages.skills import SkillRegistry, SkillRuntimeEngine
 from packages.tools.chapter_tools.chapter_generation_tool import ChapterGenerationTool
+from packages.tools.character_tools.inventory_tool import CharacterInventoryTool
 from packages.workflows.chapter_generation.context_provider import (
     SQLAlchemyStoryContextProvider,
 )
@@ -144,6 +145,7 @@ def build_test_orchestrator_service(db: Session) -> WritingOrchestratorService:
     revision_service.schema_registry = schema_registry
     revision_service.skill_runtime = skill_runtime
     retrieval_trace_repo = RetrievalTraceRepository(db)
+    story_snap_repo = StoryStateSnapshotRepository(db)
     retrieval_loop = RetrievalLoopService(
         runtime_config=OrchestratorRuntimeConfig(
             worker_poll_interval_seconds=0.1,
@@ -171,6 +173,8 @@ def build_test_orchestrator_service(db: Session) -> WritingOrchestratorService:
         outline_repo=outline_repo,
         user_repo=user_repo,
         retrieval_trace_repo=retrieval_trace_repo,
+        inventory_tool=CharacterInventoryTool(db),
+        story_state_snapshot_repo=story_snap_repo,
     )
 
     return WritingOrchestratorService(
@@ -222,5 +226,5 @@ def build_test_orchestrator_service(db: Session) -> WritingOrchestratorService:
         ),
         retrieval_trace_repo=retrieval_trace_repo,
         retrieval_loop=retrieval_loop,
-        story_state_snapshot_repo=StoryStateSnapshotRepository(db),
+        story_state_snapshot_repo=story_snap_repo,
     )

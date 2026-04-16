@@ -219,6 +219,47 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         self.assertEqual(len(payload["retrieval"]["items"]), 2)
         self.assertLessEqual(len(payload["retrieval"]["items"][0]["text"]), 10)
 
+    def test_retrieval_view_includes_layered_summary_fields(self) -> None:
+        """Writer 消费契约：summary_only 也须含五段分层字段（可为空列表）。"""
+        specs = {
+            "w": StepInputSpec(
+                role_id="w",
+                include_project=False,
+                include_outline=False,
+                dependencies=[],
+                retrieval=RetrievalViewSpec(mode="summary_only"),
+            )
+        }
+        asm = PromptPayloadAssembler(specs=specs)
+        bundle = {
+            "summary": {
+                "key_facts": ["kf"],
+                "current_states": ["cs"],
+                "confirmed_facts": ["cf"],
+                "supporting_evidence": ["se"],
+                "conflicts": [{"a": 1}],
+                "information_gaps": ["gap"],
+            },
+            "items": [],
+        }
+        payload = asm.build(
+            role_id="w",
+            step_key="x",
+            workflow_type="t",
+            project_context={},
+            raw_state={},
+            retrieval_bundle=bundle,
+            outline_state={},
+        )
+        r = payload["retrieval"]
+        self.assertEqual(r["key_facts"], ["kf"])
+        self.assertEqual(r["current_states"], ["cs"])
+        self.assertEqual(r["confirmed_facts"], ["cf"])
+        self.assertEqual(r["supporting_evidence"], ["se"])
+        self.assertEqual(r["conflicts"], [{"a": 1}])
+        self.assertEqual(r["information_gaps"], ["gap"])
+        self.assertNotIn("items", r)
+
     def test_payload_chunk_chars_includes_goal_and_contract(self) -> None:
         """_payload_chunk_char_sizes 覆盖 goal / writing_contract 等 writer 顶层块。"""
         asm = PromptPayloadAssembler()

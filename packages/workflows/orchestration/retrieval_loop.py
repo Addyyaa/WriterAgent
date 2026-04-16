@@ -33,9 +33,14 @@ class RetrievalLoopRequest:
     chapter_no: int | None = None
     user_id: object | None = None
     source_types: list[str] | None = None
-    # planner_bootstrap 抽取的槽位，与 workflow 默认槽位并集（保序：planner → 显式追加 → workflow）
+    # planner_bootstrap / plan 节点抽取的槽位；默认可不再并入 workflow 模板（见 runtime_config）
     planner_slot_hints: list[str] | None = None
     must_have_slots: list[str] | None = None
+    # 聚焦加载：goal + slots + 核验事实；过短则回退宽池 load()
+    relevance_blob: str | None = None
+    planner_verify_facts: list[str] | None = None
+    # 库存类槽位结构化工具（CharacterInventoryTool）
+    focus_character_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +71,8 @@ class RetrievalLoopService:
         "outline",
         "chapter",
         "character",
+        "character_inventory",
+        "story_state_snapshot",
         "world_entry",
         "timeline_event",
         "foreshadowing",
@@ -83,9 +90,9 @@ class RetrievalLoopService:
         "style_preference": {"user_preference"},
         "conflict_evidence": {"chapter", "memory_fact", "timeline_event", "foreshadowing"},
         # Planner 自定义槽位与别名（结构化优先 → 向量/事实 → 章节）
-        "inventory": {"character", "chapter", "memory_fact"},
-        "current_inventory": {"character", "chapter", "memory_fact"},
-        "character_inventory": {"character", "chapter", "memory_fact"},
+        "inventory": {"character_inventory", "character", "chapter", "memory_fact"},
+        "current_inventory": {"character_inventory", "character", "chapter", "memory_fact"},
+        "character_inventory": {"character_inventory", "character", "chapter", "memory_fact"},
         "power_rules": {"world_entry", "memory_fact", "chapter"},
         "power_rule": {"world_entry", "memory_fact", "chapter"},
         "known_power_rules": {"world_entry", "memory_fact"},
@@ -94,8 +101,32 @@ class RetrievalLoopService:
         "relationship": {"character", "memory_fact"},
         "witnesses": {"chapter", "character", "memory_fact"},
         "previous_chapter": {"chapter", "memory_fact"},
+        "story_state": {"story_state_snapshot", "chapter", "memory_fact"},
+        "scene_state": {"story_state_snapshot", "chapter"},
     }
     _UNKNOWN_SLOT_SOURCES = frozenset({"memory_fact", "chapter", "character", "world_entry", "project"})
+    _INVENTORY_LIKE_SLOTS = frozenset(
+        {"inventory", "current_inventory", "character_inventory", "wealth", "current_wealth"}
+    )
+    # 槽位权重（加权覆盖率）：状态/设定类高于风格偏好
+    _SLOT_WEIGHT: dict[str, float] = {
+        "style_preference": 0.35,
+        "project_goal": 0.55,
+        "outline": 0.75,
+        "foreshadowing": 0.72,
+        "timeline": 0.88,
+        "chapter_neighborhood": 0.92,
+        "character": 1.0,
+        "world_rule": 1.05,
+        "conflict_evidence": 1.1,
+        "current_inventory": 1.15,
+        "inventory": 1.15,
+        "character_inventory": 1.15,
+        "power_rules": 1.15,
+        "power_rule": 1.15,
+        "story_state": 1.12,
+        "scene_state": 1.05,
+    }
     _SLOT_QUERY_HINT = {
         "character": "角色档案与约束",
         "world_rule": "世界观规则",
@@ -118,6 +149,8 @@ class RetrievalLoopService:
         "timeline_event": 5,
         "foreshadowing": 6,
         "user_preference": 7,
+        "character_inventory": 2,
+        "story_state_snapshot": 2,
         "memory_fact": 20,
     }
 
@@ -131,6 +164,8 @@ class RetrievalLoopService:
         outline_repo,
         user_repo=None,
         retrieval_trace_repo=None,
+        inventory_tool=None,
+        story_state_snapshot_repo=None,
     ) -> None:
         self.runtime_config = runtime_config
         self.project_memory_service = project_memory_service
@@ -139,6 +174,31 @@ class RetrievalLoopService:
         self.outline_repo = outline_repo
         self.user_repo = user_repo
         self.retrieval_trace_repo = retrieval_trace_repo
+        self._inventory_tool = inventory_tool
+        self._story_state_snapshot_repo = story_state_snapshot_repo
+
+    @staticmethod
+    def build_relevance_blob(
+        *,
+        writing_goal: str,
+        planner_slots: list[str] | None,
+        verify_facts: list[str] | None,
+    ) -> str | None:
+        """组装 load_focused 的 relevance_blob；信息量过低时返回 None 以触发宽池回退。"""
+        parts: list[str] = []
+        g = str(writing_goal or "").strip()
+        if g:
+            parts.append(g)
+        slots = [str(x).strip() for x in list(planner_slots or []) if str(x).strip()]
+        if slots:
+            parts.append("required_slots: " + ", ".join(slots[:32]))
+        facts = [str(x).strip() for x in list(verify_facts or []) if str(x).strip()]
+        if facts:
+            parts.append("must_verify: " + " | ".join(facts[:16]))
+        blob = "\n".join(parts).strip()
+        if len(blob) < 8:
+            return None
+        return blob
 
     def run(self, request: RetrievalLoopRequest) -> RetrievalLoopSummary:
         retrieval_trace_id = self._build_trace_id(request)
@@ -150,15 +210,18 @@ class RetrievalLoopService:
         stale_round_limit = max(1, int(self.runtime_config.retrieval_stop_stale_rounds))
 
         source_types = self._normalize_source_types(request.source_types)
+        merge_wf = bool(self.runtime_config.retrieval_merge_workflow_when_planner_slots)
         slots = self._merge_inference_slots(
             workflow_type=request.workflow_type,
             writing_goal=request.writing_goal,
             planner_hints=request.planner_slot_hints,
             explicit_extra=request.must_have_slots,
+            merge_workflow_defaults_when_planner_nonempty=merge_wf,
         )
         structured_items = self._build_structured_evidence(
             request=request,
             allowed_source_types=set(source_types),
+            focus_slots=slots,
         )
 
         rounds: list[RetrievalRoundResult] = []
@@ -181,7 +244,7 @@ class RetrievalLoopService:
                 open_slots=open_slots,
                 source_types=source_types,
             )
-            query = self._build_round_query(
+            query, slot_frags = self._build_round_query_and_fragments(
                 base_query=base_query,
                 workflow_type=request.workflow_type,
                 open_slots=open_slots,
@@ -198,6 +261,7 @@ class RetrievalLoopService:
                 },
                 must_have_slots=list(slots),
                 enough_context=False,
+                slot_query_fragments=dict(slot_frags),
             )
 
             started = perf_counter()
@@ -255,6 +319,7 @@ class RetrievalLoopService:
                 chapter_window=dict(decision.chapter_window),
                 must_have_slots=list(decision.must_have_slots),
                 enough_context=bool(coverage.enough_context),
+                slot_query_fragments=dict(decision.slot_query_fragments or {}),
             )
             coverage = EvidenceCoverageReport(
                 coverage_score=float(coverage.coverage_score),
@@ -301,6 +366,8 @@ class RetrievalLoopService:
                 "unique_evidence": len(accepted_items),
                 "max_unique_evidence": max_unique_evidence,
                 "max_context_items": max_context_items,
+                "relevance_blob_chars": len(str(request.relevance_blob or "")),
+                "planner_slots_count": len(list(request.planner_slot_hints or [])),
             },
         }
         return RetrievalLoopSummary(
@@ -354,11 +421,99 @@ class RetrievalLoopService:
             "information_gaps": [],
         }
 
+    def _inject_character_inventory_evidence(
+        self,
+        *,
+        request: RetrievalLoopRequest,
+        allowed_source_types: set[str],
+        focus_slots: list[str],
+        items: list[EvidenceItem],
+    ) -> None:
+        if "character_inventory" not in allowed_source_types or self._inventory_tool is None:
+            return
+        slot_set = {str(s or "").strip().lower() for s in focus_slots}
+        if not slot_set & self._INVENTORY_LIKE_SLOTS:
+            return
+        cid = request.focus_character_id
+        if not cid:
+            return
+        try:
+            payload = self._inventory_tool.run(
+                project_id=request.project_id,
+                character_id=cid,
+                chapter_no=request.chapter_no,
+            )
+        except Exception:
+            return
+        if not payload.get("found"):
+            return
+        text = json.dumps(
+            {
+                "inventory": payload.get("inventory_json"),
+                "wealth": payload.get("wealth_json"),
+                "inventory_source": payload.get("source"),
+            },
+            ensure_ascii=False,
+        )
+        items.append(
+            EvidenceItem(
+                source_type="character_inventory",
+                source_id=str(cid),
+                chunk_id=f"inventory:{cid}:{request.chapter_no}",
+                text=text[:2400],
+                score=0.98,
+                adopted=True,
+                metadata_json={
+                    "inventory_source": str(payload.get("source") or ""),
+                    "character_id": str(cid),
+                    "chapter_no": request.chapter_no,
+                },
+            )
+        )
+
+    def _inject_story_state_snapshot_evidence(
+        self,
+        *,
+        request: RetrievalLoopRequest,
+        allowed_source_types: set[str],
+        focus_slots: list[str],
+        items: list[EvidenceItem],
+    ) -> None:
+        if "story_state_snapshot" not in allowed_source_types or self._story_state_snapshot_repo is None:
+            return
+        slot_set = {str(s or "").strip().lower() for s in focus_slots}
+        if not (slot_set & {"story_state", "scene_state"}):
+            return
+        if request.chapter_no is None:
+            return
+        try:
+            snap = self._story_state_snapshot_repo.get_latest_before(
+                project_id=request.project_id,
+                before_chapter_no=int(request.chapter_no),
+            )
+        except Exception:
+            return
+        if snap is None:
+            return
+        text = json.dumps(dict(snap.state_json or {}), ensure_ascii=False)
+        items.append(
+            EvidenceItem(
+                source_type="story_state_snapshot",
+                source_id=str(snap.id),
+                chunk_id=f"story_state:{snap.id}",
+                text=text[:4000],
+                score=0.96,
+                adopted=True,
+                metadata_json={"after_chapter_no": int(snap.chapter_no), "source": snap.source},
+            )
+        )
+
     def _build_structured_evidence(
         self,
         *,
         request: RetrievalLoopRequest,
         allowed_source_types: set[str],
+        focus_slots: list[str],
     ) -> list[EvidenceItem]:
         items: list[EvidenceItem] = []
         project = self.project_repo.get(request.project_id)
@@ -407,13 +562,17 @@ class RetrievalLoopService:
                     )
                 )
 
-        if hasattr(self.story_context_provider, "load_focused"):
+        blob = str(request.relevance_blob or "").strip()
+        use_focused = hasattr(self.story_context_provider, "load_focused") and (
+            len(blob) >= 12 or bool(request.planner_slot_hints)
+        )
+        if use_focused:
             context = self.story_context_provider.load_focused(
                 project_id=request.project_id,
                 chapter_no=request.chapter_no,
                 chapter_window_before=int(self.runtime_config.context_chapter_window_before),
                 chapter_window_after=int(self.runtime_config.context_chapter_window_after),
-                relevance_blob=str(request.writing_goal or ""),
+                relevance_blob=blob or str(request.writing_goal or ""),
             )
         else:
             context = self.story_context_provider.load(
@@ -531,6 +690,18 @@ class RetrievalLoopService:
                             metadata_json={"username": getattr(user, "username", None)},
                         )
                     )
+        self._inject_story_state_snapshot_evidence(
+            request=request,
+            allowed_source_types=allowed_source_types,
+            focus_slots=focus_slots,
+            items=items,
+        )
+        self._inject_character_inventory_evidence(
+            request=request,
+            allowed_source_types=allowed_source_types,
+            focus_slots=focus_slots,
+            items=items,
+        )
         return items
 
     def _retrieve_round_items(
@@ -623,7 +794,9 @@ class RetrievalLoopService:
             if slot_ok:
                 resolved.append(slot)
         open_slots = [slot for slot in slots if slot not in set(resolved)]
-        coverage_score = float(len(resolved) / max(1, len(slots)))
+        total_w = sum(self._slot_weight(s) for s in slots)
+        resolved_w = sum(self._slot_weight(s) for s in resolved)
+        coverage_score = float(resolved_w / total_w) if total_w > 0 else 0.0
         enough_context = coverage_score >= min_coverage
         return EvidenceCoverageReport(
             coverage_score=coverage_score,
@@ -666,6 +839,7 @@ class RetrievalLoopService:
                 decision_json={
                     "resolved_slots": list(result.coverage.resolved_slots),
                     "open_slots": list(result.coverage.open_slots),
+                    "slot_query_fragments": dict(result.decision.slot_query_fragments or {}),
                 },
             )
 
@@ -765,18 +939,27 @@ class RetrievalLoopService:
         writing_goal: str,
         planner_hints: list[str] | None,
         explicit_extra: list[str] | None,
+        merge_workflow_defaults_when_planner_nonempty: bool = True,
     ) -> list[str]:
-        """planner 槽位优先，其次编排显式追加，再并入 workflow 默认槽位。"""
+        """planner 槽位优先，其次编排显式追加；若 planner 非空且不允许合并，则不再追加 workflow 默认。"""
         base = cls._workflow_base_slots(workflow_type=workflow_type, writing_goal=writing_goal)
         merged: list[str] = []
         for chunk in (planner_hints, explicit_extra):
             for slot in cls._dedupe_slots(chunk):
                 if slot not in merged:
                     merged.append(slot)
+        planner_nonempty = bool(cls._dedupe_slots(planner_hints))
+        if planner_nonempty and not merge_workflow_defaults_when_planner_nonempty:
+            return merged
         for slot in base:
             if slot not in merged:
                 merged.append(slot)
         return merged
+
+    @classmethod
+    def _slot_weight(cls, slot: str) -> float:
+        key = str(slot or "").strip().lower()
+        return float(cls._SLOT_WEIGHT.get(key, 1.0))
 
     @classmethod
     def _sources_for_slot(cls, slot: str) -> set[str]:
@@ -787,29 +970,32 @@ class RetrievalLoopService:
         return set(cls._UNKNOWN_SLOT_SOURCES)
 
     @classmethod
-    def _build_round_query(
+    def _phrase_for_open_slot(cls, slot: str) -> str:
+        key = str(slot or "").strip().lower()
+        return cls._SLOT_QUERY_HINT.get(key) or f"针对「{key}」检索可引用证据与结构化设定"
+
+    @classmethod
+    def _build_round_query_and_fragments(
         cls,
         *,
         base_query: str,
         workflow_type: str,
         open_slots: list[str],
         round_index: int,
-    ) -> str:
+    ) -> tuple[str, dict[str, str]]:
         query = str(base_query or "").strip()
-        if round_index <= 1:
-            return query
-        if not open_slots:
-            return query
-        # 按槽位生成短意图短语，优于仅罗列槽位名
-        phrases: list[str] = []
-        for slot in open_slots[:6]:
-            key = str(slot or "").strip().lower()
-            hint = cls._SLOT_QUERY_HINT.get(key) or f"「{key}」相关设定与证据"
-            phrases.append(hint)
+        fragments: dict[str, str] = {}
+        for s in open_slots[:12]:
+            sk = str(s or "").strip().lower()
+            if sk:
+                fragments[sk] = cls._phrase_for_open_slot(sk)
+        if round_index <= 1 or not open_slots:
+            return query, fragments
+        phrases = [fragments.get(str(s or "").strip().lower(), cls._phrase_for_open_slot(str(s))) for s in open_slots[:8]]
         slot_line = "；".join(phrases)
         if str(workflow_type).strip().lower() == "revision":
-            return f"{query}；定向补充（修订）：{slot_line}"
-        return f"{query}；定向补充：{slot_line}"
+            return f"{query}；定向补充（修订）：{slot_line}", fragments
+        return f"{query}；定向补充：{slot_line}", fragments
 
     @classmethod
     def _select_round_sources(

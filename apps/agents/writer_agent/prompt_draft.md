@@ -25,7 +25,11 @@
 - `state.writer_context_slice`：章节/角色/世界/时间线/伏笔等结构化约束（summary-first 切片；与旧版 `story_constraints` / `story_assets` 同义）。
 - `state.writer_focus`：本章 relevance 摘要（写作目标 + 编排 alignment 拼接裁剪，供聚焦阅读）。
 - `state.writer_evidence_pack`：硬上下文短证据（如邻章摘要等），与 detail-on-demand 主路径配合。
-- `retrieval`：检索视图（`key_facts` / `current_states` / `items`，粒度由规格控制）。
+- `retrieval`：检索视图（**分层决策上下文**，粒度由规格控制）：
+  - **优先采信**：`confirmed_facts`（强事实 / 结构化表）、`current_states`（章节与状态快照类）。
+  - **支持证据**：`supporting_evidence`（向量/摘录等，可引用但不得抬升为既定事实）。
+  - **硬约束**：`conflicts`（矛盾）与 `information_gaps`（缺口）——不得无视；缺口处留白或显式标注待补，勿臆造。
+  - 兼容字段：`key_facts` / `current_states` 与上述分层同向；`items` 为原始片段列表（辅助，非唯一依据）。
 - `working_notes`：情节节拍与护栏（`lines[]`，有内容时才会出现）。
 - `local_data_tools`：本地数据工具目录（若启用 AgentRegistry 时附带）。
 - `output_format`：输出契约说明（`contract` 为 **`writer.output.draft`** 时须对齐 `output_schema_draft.json`）。

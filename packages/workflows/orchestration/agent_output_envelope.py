@@ -86,10 +86,30 @@ def step_agent_view(step_output: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def wrap_view_schema_for_consumption(inner: dict[str, Any]) -> dict[str, Any]:
-    """将角色 output_schema（仅描述 view 形状）包装为含 view 根的契约 schema。"""
+    """将角色 output_schema（仅描述 view 形状）包装为含 view 根的契约 schema。
+
+    另含可选 ``retrieval``，与 ``PromptPayloadAssembler`` 注入 Writer 的分层检索视图对齐，
+    供 ``consumption.json`` 声明 ``retrieval.*`` 消费路径时校验。
+    """
+    retrieval_for_prompt: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "key_facts": {"type": "array", "items": {"type": "string"}},
+            "current_states": {"type": "array", "items": {"type": "string"}},
+            "confirmed_facts": {"type": "array", "items": {"type": "string"}},
+            "supporting_evidence": {"type": "array", "items": {"type": "string"}},
+            "conflicts": {"type": "array"},
+            "information_gaps": {"type": "array", "items": {"type": "string"}},
+            "items": {"type": "array"},
+        },
+        "additionalProperties": True,
+    }
     return {
         "type": "object",
         "required": ["view"],
-        "properties": {"view": dict(inner)},
+        "properties": {
+            "view": dict(inner),
+            "retrieval": retrieval_for_prompt,
+        },
         "additionalProperties": True,
     }

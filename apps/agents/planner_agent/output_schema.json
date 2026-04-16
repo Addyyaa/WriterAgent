@@ -10,6 +10,11 @@
       "description": "全计划通用的信息槽位（snake_case，与检索循环 must_have_slots 对齐；可为空）",
       "items": { "type": "string" }
     },
+    "global_preferred_tools": {
+      "type": "array",
+      "description": "全计划优先调用的工具名（如 character_inventory、project_memory_search；可为空）",
+      "items": { "type": "string" }
+    },
     "steps": {
       "type": "array",
       "description": "3-7 个原子化执行步骤",
@@ -39,6 +44,16 @@
           "fallback_when_missing": {
             "type": "string",
             "description": "关键信息缺失时的处理原则（如：标记待补设定，不写死为既成事实）"
+          },
+          "preferred_tools": {
+            "type": "array",
+            "description": "本步优先使用的结构化工具或检索工具标识",
+            "items": { "type": "string" }
+          },
+          "allowed_assumptions": {
+            "type": "array",
+            "description": "在证据不足时仍允许采用的显式假设（需写明边界；无则 []）",
+            "items": { "type": "string" }
           },
           "acceptance_criteria": {
             "type": "object",

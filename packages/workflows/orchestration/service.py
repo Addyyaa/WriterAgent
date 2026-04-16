@@ -91,6 +91,7 @@ from packages.schemas import SchemaRegistry
 from packages.skills import SkillRegistry, SkillRuntimeContext, SkillRuntimeEngine
 from packages.skills.registry import SkillSpec
 from packages.tools.chapter_tools.chapter_generation_tool import ChapterGenerationTool
+from packages.tools.character_tools.inventory_tool import CharacterInventoryTool
 from packages.webhooks.service import WebhookService
 from packages.workflows.chapter_generation.context_provider import (
     SQLAlchemyStoryContextProvider,
@@ -105,7 +106,8 @@ from packages.workflows.consistency_review.service import (
 )
 from packages.workflows.orchestration.planner import DynamicPlanner, create_dynamic_planner
 from packages.workflows.orchestration.planner_knowledge import (
-    extract_planner_retrieval_slots,
+    merge_planner_retrieval_slots,
+    merge_planner_verify_facts,
     planner_knowledge_meta,
 )
 from packages.workflows.orchestration.prompt_payload_assembler import (
@@ -345,6 +347,7 @@ class WritingOrchestratorService:
             subscription_repo=WebhookSubscriptionRepository(db),
             delivery_repo=WebhookDeliveryRepository(db),
         )
+        story_snap_repo = StoryStateSnapshotRepository(db)
         retrieval_loop = RetrievalLoopService(
             runtime_config=runtime_config,
             project_memory_service=project_memory_service,
@@ -353,6 +356,8 @@ class WritingOrchestratorService:
             outline_repo=outline_repo,
             user_repo=user_repo,
             retrieval_trace_repo=retrieval_trace_repo,
+            inventory_tool=CharacterInventoryTool(db),
+            story_state_snapshot_repo=story_snap_repo,
         )
 
         return cls(
@@ -383,7 +388,7 @@ class WritingOrchestratorService:
             webhook_service=webhook_service,
             character_repo=CharacterRepository(db),
             timeline_repo=TimelineEventRepository(db),
-            story_state_snapshot_repo=StoryStateSnapshotRepository(db),
+            story_state_snapshot_repo=story_snap_repo,
         )
 
     def create_run(self, request: WorkflowRunRequest) -> WorkflowRunResult:
@@ -745,6 +750,11 @@ class WritingOrchestratorService:
                         "summary_excerpt": (chapter_row.summary or "")[:4000],
                         "approved_via": "chapter_candidate",
                         "candidate_id": str(candidate.id),
+                        "location": None,
+                        "party": [],
+                        "relationships": [],
+                        "knowledge": [],
+                        "identity_exposure": [],
                     },
                     source="candidate_approve",
                 )
@@ -1087,6 +1097,18 @@ class WritingOrchestratorService:
                 schema_version = profile.schema_version
                 prompt_hash = hashlib.sha256(profile.prompt.encode("utf-8")).hexdigest()[:16]
 
+            base_inp = dict(node.input_json or {})
+            plan_inp: dict[str, Any] = {}
+            if getattr(node, "required_slots", None):
+                plan_inp["plan_required_slots"] = list(node.required_slots)
+            if getattr(node, "preferred_tools", None):
+                plan_inp["plan_preferred_tools"] = list(node.preferred_tools)
+            if getattr(node, "must_verify_facts", None):
+                plan_inp["plan_must_verify_facts"] = list(node.must_verify_facts)
+            if getattr(node, "allowed_assumptions", None):
+                plan_inp["plan_allowed_assumptions"] = list(node.allowed_assumptions)
+            if getattr(node, "fallback_when_missing", None) and str(node.fallback_when_missing or "").strip():
+                plan_inp["plan_fallback_when_missing"] = str(node.fallback_when_missing).strip()
             self.workflow_step_repo.create_step(
                 workflow_run_id=row.id,
                 step_key=node.step_key,
@@ -1098,7 +1120,8 @@ class WritingOrchestratorService:
                 schema_version=schema_version,
                 depends_on_keys=node.depends_on,
                 input_json={
-                    **dict(node.input_json or {}),
+                    **base_inp,
+                    **plan_inp,
                     "workflow_type": node.workflow_type,
                     "strategy_mode": node.strategy_mode,
                 },
@@ -1813,10 +1836,16 @@ class WritingOrchestratorService:
                         before_chapter_no=ch_no,
                     )
                     if snap is not None:
+                        st = dict(snap.state_json or {})
                         story_state_snapshot = {
                             "after_chapter_no": int(snap.chapter_no),
-                            "state": dict(snap.state_json or {}),
                             "source": snap.source,
+                            "location": st.get("location"),
+                            "party": st.get("party"),
+                            "relationships": st.get("relationships"),
+                            "knowledge": st.get("knowledge"),
+                            "identity_exposure": st.get("identity_exposure"),
+                            "state": st,
                         }
 
         retrieval_bundle = build_retrieval_bundle_from_raw_state(raw_state)
@@ -2308,14 +2337,35 @@ class WritingOrchestratorService:
         }
 
     @staticmethod
-    def _planner_slot_hints_from_raw_state(raw_state: dict[str, dict] | None) -> list[str]:
-        """从 planner_bootstrap 步骤输出抽取槽位，供检索与 workflow 默认槽位合并。"""
-        if not raw_state:
-            return []
-        bootstrap = raw_state.get("planner_bootstrap")
-        if not isinstance(bootstrap, dict):
-            return []
-        return extract_planner_retrieval_slots(bootstrap)
+    def _planner_slot_hints_from_state(
+        raw_state: dict[str, dict] | None,
+        step_input: dict[str, Any] | None,
+    ) -> list[str]:
+        """合并 planner_bootstrap 与当前步骤 input 中的 plan_required_slots。"""
+        bootstrap: dict[str, Any] | None = None
+        if raw_state:
+            b = raw_state.get("planner_bootstrap")
+            if isinstance(b, dict):
+                bootstrap = b
+        return merge_planner_retrieval_slots(
+            planner_bootstrap_output=bootstrap,
+            step_input=step_input,
+        )
+
+    @staticmethod
+    def _planner_verify_facts_from_state(
+        raw_state: dict[str, dict] | None,
+        step_input: dict[str, Any] | None,
+    ) -> list[str]:
+        bootstrap: dict[str, Any] | None = None
+        if raw_state:
+            b = raw_state.get("planner_bootstrap")
+            if isinstance(b, dict):
+                bootstrap = b
+        return merge_planner_verify_facts(
+            planner_bootstrap_output=bootstrap,
+            step_input=step_input,
+        )
 
     def _run_retrieval_loop(
         self,
@@ -2344,7 +2394,18 @@ class WritingOrchestratorService:
                     "meta": {},
                 },
             )
-        planner_hints = self._planner_slot_hints_from_raw_state(raw_state)
+        step_inp = dict(step.input_json or {}) if step is not None else {}
+        planner_hints = self._planner_slot_hints_from_state(raw_state, step_inp)
+        verify_facts = self._planner_verify_facts_from_state(raw_state, step_inp)
+        relevance_blob = RetrievalLoopService.build_relevance_blob(
+            writing_goal=writing_goal,
+            planner_slots=planner_hints,
+            verify_facts=verify_facts,
+        )
+        ri = dict(row.input_json or {})
+        meta = ri.get("metadata_json") if isinstance(ri.get("metadata_json"), dict) else {}
+        fc = ri.get("focus_character_id") or meta.get("focus_character_id")
+        focus_character_id = str(fc).strip() if fc else None
         return self.retrieval_loop.run(
             RetrievalLoopRequest(
                 workflow_run_id=row.id,
@@ -2358,6 +2419,9 @@ class WritingOrchestratorService:
                 user_id=row.initiated_by,
                 planner_slot_hints=planner_hints or None,
                 must_have_slots=must_have_slots,
+                relevance_blob=relevance_blob,
+                planner_verify_facts=verify_facts or None,
+                focus_character_id=focus_character_id,
             )
         )
 

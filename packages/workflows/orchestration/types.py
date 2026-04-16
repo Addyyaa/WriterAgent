@@ -89,6 +89,12 @@ class PlannerNode:
     strategy_mode: str | None = None
     depends_on: list[str] = field(default_factory=list)
     input_json: dict[str, Any] = field(default_factory=dict)
+    # 信息需求（与 planner_bootstrap JSON 语义对齐；动态规划器 nodes[] 一级字段）
+    required_slots: list[str] = field(default_factory=list)
+    preferred_tools: list[str] = field(default_factory=list)
+    must_verify_facts: list[str] = field(default_factory=list)
+    allowed_assumptions: list[str] = field(default_factory=list)
+    fallback_when_missing: str | None = None
 
 
 @dataclass(frozen=True)
@@ -120,6 +126,8 @@ class RetrievalRoundDecision:
     chapter_window: dict[str, int] = field(default_factory=dict)
     must_have_slots: list[str] = field(default_factory=list)
     enough_context: bool = False
+    # 每开放槽位对应的检索短语（回放审计）
+    slot_query_fragments: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

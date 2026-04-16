@@ -16,6 +16,32 @@ from packages.workflows.orchestration.runtime_config import PlannerRuntimeConfig
 from packages.workflows.orchestration.types import PlannerNode, PlannerPlan, WorkflowRunRequest
 
 
+def _str_list_prop(raw: Any) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    return [str(x).strip() for x in raw if str(x).strip()]
+
+
+def planner_node_from_dict(item: dict[str, Any]) -> PlannerNode:
+    """从动态规划器 LLM 节点 dict 构造 PlannerNode（含信息需求字段）。"""
+    fb = item.get("fallback_when_missing")
+    return PlannerNode(
+        step_key=str(item.get("step_key") or ""),
+        step_type=str(item.get("step_type") or "workflow"),
+        workflow_type=str(item.get("workflow_type") or "chapter_generation"),
+        agent_name=str(item.get("agent_name") or "writer_agent"),
+        role_id=str(item.get("role_id") or item.get("agent_name") or "writer_agent"),
+        strategy_mode=str(item.get("strategy_mode")).strip() if item.get("strategy_mode") is not None else None,
+        depends_on=[str(x) for x in list(item.get("depends_on") or [])],
+        input_json=dict(item.get("input_json") or {}),
+        required_slots=_str_list_prop(item.get("required_slots")),
+        preferred_tools=_str_list_prop(item.get("preferred_tools")),
+        must_verify_facts=_str_list_prop(item.get("must_verify_facts")),
+        allowed_assumptions=_str_list_prop(item.get("allowed_assumptions")),
+        fallback_when_missing=str(fb).strip() if fb is not None and str(fb).strip() else None,
+    )
+
+
 _DEFAULT_PLANNER_PROMPT = (
     "你是写作工作流规划器。输出 JSON：{nodes:[...], retry_policy:{}, fallback_policy:{}}。"
 )
@@ -120,6 +146,16 @@ class MockDynamicPlanner(DynamicPlanner):
                     "world_alignment",
                     "style_alignment",
                 ],
+                required_slots=[
+                    "character",
+                    "world_rule",
+                    "chapter_neighborhood",
+                    "current_inventory",
+                ],
+                preferred_tools=["character_inventory"],
+                must_verify_facts=[],
+                allowed_assumptions=[],
+                fallback_when_missing="关键设定缺失时标注待补，不写死为既定事实",
             ),
             PlannerNode(
                 step_key="consistency_review",
@@ -212,20 +248,7 @@ class OpenAICompatibleDynamicPlanner(DynamicPlanner):
             for item in parsed.get("nodes", []):
                 if not isinstance(item, dict):
                     continue
-                nodes.append(
-                    PlannerNode(
-                        step_key=str(item.get("step_key") or ""),
-                        step_type=str(item.get("step_type") or "workflow"),
-                        workflow_type=str(item.get("workflow_type") or "chapter_generation"),
-                        agent_name=str(item.get("agent_name") or "writer_agent"),
-                        role_id=str(item.get("role_id") or item.get("agent_name") or "writer_agent"),
-                        strategy_mode=(
-                            str(item.get("strategy_mode")).strip() if item.get("strategy_mode") is not None else None
-                        ),
-                        depends_on=[str(x) for x in list(item.get("depends_on") or [])],
-                        input_json=dict(item.get("input_json") or {}),
-                    )
-                )
+                nodes.append(planner_node_from_dict(item))
             if not nodes:
                 return self.fallback.plan(request, context_json=context_json)
             return PlannerPlan(
