@@ -85,6 +85,23 @@ class _FakeStoryContextProvider:
         del project_id, chapter_no, chapter_window_before, chapter_window_after
         return self.context
 
+    def load_focused(
+        self,
+        *,
+        project_id,
+        chapter_no=None,
+        chapter_window_before=2,
+        chapter_window_after=1,
+        relevance_blob="",
+    ):
+        del relevance_blob
+        return self.load(
+            project_id=project_id,
+            chapter_no=chapter_no,
+            chapter_window_before=chapter_window_before,
+            chapter_window_after=chapter_window_after,
+        )
+
 
 class TestConsistencyReviewWorkflowService(unittest.TestCase):
     def test_hybrid_merge_prefers_failed_status(self) -> None:

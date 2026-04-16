@@ -14,15 +14,17 @@
 - **指令**：
   - 不要拘泥于完美，优先保证故事逻辑和画面感。
   - 严格遵循 `working_notes` / 约束中的节拍顺序。
-  - 将 `style_hint` 与 `state.story_assets` 中的规则融入描写。
+  - 将 `style_hint` 与 `state.writer_context_slice`（与旧字段 `state.story_assets` 同义，若存在则择一阅读即可）中的规则融入描写。
 
 # 输入字段（与 JSON user 负载对应，Assembler 对齐编排步骤）
 
-- `step_key` / `workflow_type` / `role_id`：当前步骤标识。**独立 API 章节生成**为 `chapter_draft`；**编排全链路 writer_draft** 为 `writer_draft`（`state` 下为 `outline_generation` 投影与各 `*_alignment` 投影 + `story_assets` / `chapter_memory`）。
+- `step_key` / `workflow_type` / `role_id`：当前步骤标识。**独立 API 章节生成**为 `chapter_draft`；**编排全链路 writer_draft** 为 `writer_draft`（`state` 下为 `outline_generation` 投影与各 `*_alignment` 投影 + `writer_focus` / `writer_context_slice` / `writer_evidence_pack` / `chapter_memory`）。
 - `project` / `goal` / `target_words` / `writing_contract`：项目与字数契约。
 - `style_hint`：文风与节奏约束。
 - `state.chapter_memory`：记忆片段列表（`items[]`，含 `source` / `text` / `priority`）。
-- `state.story_assets`：章节/角色/世界/时间线/伏笔等结构化约束（与旧版 `story_constraints` 同义，经投影后可能含摘要字段）。
+- `state.writer_context_slice`：章节/角色/世界/时间线/伏笔等结构化约束（summary-first 切片；与旧版 `story_constraints` / `story_assets` 同义）。
+- `state.writer_focus`：本章 relevance 摘要（写作目标 + 编排 alignment 拼接裁剪，供聚焦阅读）。
+- `state.writer_evidence_pack`：硬上下文短证据（如邻章摘要等），与 detail-on-demand 主路径配合。
 - `retrieval`：检索视图（`key_facts` / `current_states` / `items`，粒度由规格控制）。
 - `working_notes`：情节节拍与护栏（`lines[]`，有内容时才会出现）。
 - `local_data_tools`：本地数据工具目录（若启用 AgentRegistry 时附带）。
@@ -38,7 +40,7 @@
 
 # 角色物品与财富（设定一致性）
 
-- `state.story_assets.characters` 中每位角色带有 `inventory_json`、`wealth_json`，以及（若存在章节快照）`effective_inventory_json`、`effective_wealth_json`。
+- `state.writer_context_slice.characters`（或历史 payload 中的 `state.story_assets.characters`）中每位角色带有 `inventory_json`、`wealth_json`，以及（若存在章节快照）`effective_inventory_json`、`effective_wealth_json`。
 - 正文描写中涉及「携带物品、消耗道具、财富增减」时，必须与上述 JSON 状态一致；若剧情需要变更，在 `notes` 中用 `[UPDATE_CHARACTER]` 或结构化说明列出**前后差异**，便于后续同步到数据库。
 - 若上下文中未展开某细节，可合理推断，但不得与已有 `effective_*` 字段矛盾。
 

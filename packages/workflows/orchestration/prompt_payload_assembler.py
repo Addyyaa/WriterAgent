@@ -153,7 +153,18 @@ class PromptPayloadAssembler:
     def _payload_chunk_char_sizes(payload: dict[str, Any]) -> dict[str, int]:
         """各顶层块序列化字符数，便于 summary-first 体积对照。"""
         out: dict[str, int] = {}
-        for key in ("project", "outline", "state", "retrieval", "working_notes"):
+        for key in (
+            "project",
+            "outline",
+            "state",
+            "retrieval",
+            "working_notes",
+            "goal",
+            "target_words",
+            "style_hint",
+            "writing_contract",
+            "output_format",
+        ):
             if key not in payload:
                 continue
             try:

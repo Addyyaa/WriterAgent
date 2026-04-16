@@ -108,7 +108,16 @@ def _build_service(*, use_registry: bool) -> ChapterGenerationWorkflowService:
                         timeline_events=[],
                         foreshadowings=[],
                     )
-                )
+                ),
+                "load_focused": staticmethod(
+                    lambda **kw: SimpleNamespace(
+                        chapters=[{"id": "c1", "chapter_no": 1, "title": "上一章", "content": "…"}],
+                        characters=[{"name": "主角", "id": "ch1"}],
+                        world_entries=[],
+                        timeline_events=[],
+                        foreshadowings=[],
+                    )
+                ),
             },
         )(),
         project_memory_service=type(

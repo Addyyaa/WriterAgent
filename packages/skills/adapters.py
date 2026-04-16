@@ -125,6 +125,9 @@ def _constraints_root(payload: dict[str, Any]) -> dict[str, Any] | None:
         return raw
     state = payload.get("state")
     if isinstance(state, dict):
+        wcs = state.get("writer_context_slice")
+        if isinstance(wcs, dict):
+            return wcs
         sa = state.get("story_assets")
         if isinstance(sa, dict):
             return sa
@@ -199,6 +202,7 @@ class TimelineAdapter(BaseSkillToolAdapter):
         events = _extract_list(
             payload,
             ("story_constraints", "timeline_events"),
+            ("state", "writer_context_slice", "timeline_events"),
             ("state", "story_assets", "timeline_events"),
             ("timeline_events",),
             ("events",),
@@ -265,6 +269,7 @@ class CanonAdapter(BaseSkillToolAdapter):
         for item in _extract_list(
             payload,
             ("story_constraints", "characters"),
+            ("state", "writer_context_slice", "characters"),
             ("state", "story_assets", "characters"),
             ("characters",),
         ):
@@ -275,6 +280,7 @@ class CanonAdapter(BaseSkillToolAdapter):
         for item in _extract_list(
             payload,
             ("story_constraints", "world_entries"),
+            ("state", "writer_context_slice", "world_entries"),
             ("state", "story_assets", "world_entries"),
             ("world_entries",),
         ):

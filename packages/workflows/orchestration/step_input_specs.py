@@ -130,7 +130,7 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
         ],
         retrieval=RetrievalViewSpec(mode="summary_only", allowed_sources=["memory", "summary"]),
     ),
-    # 编排全链路 writer_draft：依赖大纲 + 四路 alignment + 检索上下文 + DB 注入的 story_assets / chapter_memory。
+    # 编排全链路 writer_draft：大纲 + alignment + 检索 + chapter_memory + writer_focus / writer_context_slice / writer_evidence_pack（story_assets 为兼容别名，内容同 slice）。
     "writer_agent:writer_draft": StepInputSpec(
         role_id="writer_agent",
         include_project=True,
@@ -196,7 +196,13 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
                 compact=False,
             ),
             StateDependencySpec(
-                step_key="story_assets",
+                step_key="writer_focus",
+                required=True,
+                fields=["chapter_no", "relevance_excerpt", "relevance_total_chars"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="writer_context_slice",
                 required=True,
                 fields=[
                     "chapters",
@@ -205,6 +211,12 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
                     "timeline_events",
                     "foreshadowings",
                 ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="writer_evidence_pack",
+                required=True,
+                fields=["meta", "prev_chapter"],
                 compact=True,
             ),
         ],
@@ -229,7 +241,13 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
                 compact=False,
             ),
             StateDependencySpec(
-                step_key="story_assets",
+                step_key="writer_focus",
+                required=True,
+                fields=["chapter_no", "relevance_excerpt", "relevance_total_chars"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="writer_context_slice",
                 required=True,
                 fields=[
                     "chapters",
@@ -238,6 +256,12 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
                     "timeline_events",
                     "foreshadowings",
                 ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="writer_evidence_pack",
+                required=True,
+                fields=["meta", "prev_chapter"],
                 compact=True,
             ),
         ],
@@ -319,6 +343,56 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
             allowed_sources=[],
         ),
         context_tier="strict_review",
+    ),
+    "writer_agent:writer_revision": StepInputSpec(
+        role_id="writer_agent",
+        include_project=True,
+        include_outline=False,
+        include_working_notes=True,
+        dependencies=[
+            StateDependencySpec(
+                step_key="revision_chapter",
+                required=True,
+                fields=["title", "content", "summary", "chapter_no"],
+                compact=False,
+            ),
+            StateDependencySpec(
+                step_key="consistency_review",
+                required=True,
+                fields=["status", "summary", "issues"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="revision_focus",
+                required=True,
+                fields=[
+                    "chapter_no",
+                    "issue_count",
+                    "issue_categories",
+                    "issues_signal_excerpt",
+                ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="revision_context_slice",
+                required=True,
+                fields=["issue_signals"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="revision_evidence_pack",
+                required=True,
+                fields=["meta", "from_issues"],
+                compact=True,
+            ),
+        ],
+        retrieval=RetrievalViewSpec(
+            mode="compact_items",
+            max_items=10,
+            max_chars_per_item=4000,
+            allowed_sources=[],
+        ),
+        context_tier="generative",
     ),
     "writer_agent:persist_artifacts": StepInputSpec(
         role_id="writer_agent",

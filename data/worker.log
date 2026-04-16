@@ -1552,3 +1552,42 @@ httpx.ReadTimeout: The read operation timed out
 2026-04-17 02:52:10,358 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
 2026-04-17 02:52:15,916 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
 2026-04-17 02:52:20,917 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 02:53:11,279 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 02:57:34,511 [INFO] packages.workflows.orchestration.service - claimed run 8a8e7767-e9d6-427c-920d-b7d718b25bff (workflow=writing_full)
+2026-04-17 02:57:34,511 [INFO] packages.workflows.orchestration.service - execute_run start run=8a8e7767-e9d6-427c-920d-b7d718b25bff project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 02:57:34,544 [INFO] packages.workflows.orchestration.service - step start run=8a8e7767-e9d6-427c-920d-b7d718b25bff step=1103 key=writer_revision type=workflow
+2026-04-17 03:01:19,422 [INFO] packages.workflows.orchestration.service - step done run=8a8e7767-e9d6-427c-920d-b7d718b25bff step=1103 key=writer_revision latency=224874ms
+2026-04-17 03:01:19,448 [INFO] packages.workflows.orchestration.service - step start run=8a8e7767-e9d6-427c-920d-b7d718b25bff step=1104 key=persist_artifacts type=agent
+2026-04-17 03:01:19,471 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "writer_agent", "step_key": "persist_artifacts", "context_tier": "generative", "raw_state_keys": ["character_alignment", "consistency_review", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "style_alignment", "world_alignment", "writer_draft", "writer_revision"], "projected_state_keys": ["consistency_review", "writer_draft", "writer_revision"], "dependency_keys": ["writer_revision", "writer_draft", "consistency_review"], "retrieval_mode": "none", "payload_size_chars": 25762, "payload_chunk_chars": {"project": 9592, "outline": 2677, "state": 13358, "state.writer_revision": 6910, "state.writer_draft": 4920, "state.consistency_review": 1465}}
+2026-04-17 03:05:39,553 [INFO] packages.workflows.orchestration.service - step done run=8a8e7767-e9d6-427c-920d-b7d718b25bff step=1104 key=persist_artifacts latency=260106ms
+2026-04-17 03:05:39,623 [INFO] packages.workflows.orchestration.service - run 8a8e7767-e9d6-427c-920d-b7d718b25bff completed latency=485090ms
+2026-04-17 03:05:39,653 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-17 03:07:27,639 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:07:29,221 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:08:06,165 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:08:10,515 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:08:22,064 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:08:32,688 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:08:58,857 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:09:00,064 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:09:38,162 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:09:46,646 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:09:47,385 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:09:49,284 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:09:50,456 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:10:00,747 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:10:22,673 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:10:38,217 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:11:06,912 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:11:19,821 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:11:45,270 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:18:25,591 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:19:04,547 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:19:07,286 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:19:08,463 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:19:12,498 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:19:18,155 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:19:19,164 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:19:58,965 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:20:18,437 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 03:20:42,434 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent

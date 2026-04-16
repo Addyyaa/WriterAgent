@@ -38,8 +38,7 @@ class ConsistencyReviewRequest:
     chapter_id: object
     chapter_version_id: int | None = None
     trace_id: str | None = None
-    # 优先使用与 writer 链路一致的检索包（summary/items）；勿与 retrieval_bundle 重复塞长文本
-    retrieval_context: str | None = None
+    # 与 writer 一致的检索包（summary/items）；长文本请写入 items[].text，勿另传平行字符串入口
     retrieval_bundle: dict[str, Any] | None = None
     # 供 PromptPayloadAssembler 的 project 投影；缺省时仅含 project_id
     project_snapshot: dict[str, Any] | None = None
@@ -147,23 +146,11 @@ class ConsistencyReviewWorkflowService:
         self._payload_assembler = PromptPayloadAssembler()
 
     @staticmethod
-    def _retrieval_bundle_from_legacy(retrieval_context: str | None) -> dict[str, Any]:
-        if not retrieval_context or not str(retrieval_context).strip():
-            return {
-                "summary": {"key_facts": [], "current_states": []},
-                "items": [],
-                "meta": {},
-            }
+    def _empty_retrieval_bundle() -> dict[str, Any]:
         return {
             "summary": {"key_facts": [], "current_states": []},
-            "items": [
-                {
-                    "source": "retrieval",
-                    "score": None,
-                    "text": str(retrieval_context).strip()[:2400],
-                }
-            ],
-            "meta": {"from_legacy_context_string": True},
+            "items": [],
+            "meta": {},
         }
 
     def run(self, request: ConsistencyReviewRequest) -> ConsistencyReviewResult:
@@ -217,11 +204,9 @@ class ConsistencyReviewWorkflowService:
         project_ctx = dict(request.project_snapshot or {})
         if "id" not in project_ctx:
             project_ctx["id"] = str(request.project_id)
-        retrieval_bundle = request.retrieval_bundle
-        if retrieval_bundle is None:
-            retrieval_bundle = self._retrieval_bundle_from_legacy(request.retrieval_context)
-        else:
-            retrieval_bundle = dict(retrieval_bundle)
+        retrieval_bundle = (
+            dict(request.retrieval_bundle) if request.retrieval_bundle is not None else self._empty_retrieval_bundle()
+        )
         retrieval_bundle = dedupe_retrieval_bundle_against_evidence(
             retrieval_bundle,
             review_context_slice,

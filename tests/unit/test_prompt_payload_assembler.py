@@ -20,6 +20,7 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         self.assertEqual(STEP_INPUT_SPECS["planner_agent"].context_tier, "planning")
         self.assertEqual(STEP_INPUT_SPECS["retrieval_agent"].context_tier, "planning")
         self.assertEqual(STEP_INPUT_SPECS["consistency_agent:chapter_audit"].context_tier, "strict_review")
+        self.assertEqual(STEP_INPUT_SPECS["writer_agent:writer_revision"].context_tier, "generative")
 
     def test_build_projects_only_dependencies_not_full_state(self) -> None:
         specs = {
@@ -215,6 +216,26 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         )
         self.assertEqual(len(payload["retrieval"]["items"]), 2)
         self.assertLessEqual(len(payload["retrieval"]["items"][0]["text"]), 10)
+
+    def test_payload_chunk_chars_includes_goal_and_contract(self) -> None:
+        """_payload_chunk_char_sizes 覆盖 goal / writing_contract 等 writer 顶层块。"""
+        asm = PromptPayloadAssembler()
+        payload = {
+            "project": {"id": "p"},
+            "state": {"a": {"x": 1}},
+            "goal": "写作目标",
+            "target_words": 1200,
+            "style_hint": "冷峻",
+            "writing_contract": {"word_count_metric": "非空白字符数"},
+            "output_format": {"schema_ref": "inline://x"},
+        }
+        chunks = asm._payload_chunk_char_sizes(payload)
+        self.assertIn("goal", chunks)
+        self.assertIn("target_words", chunks)
+        self.assertIn("style_hint", chunks)
+        self.assertIn("writing_contract", chunks)
+        self.assertIn("output_format", chunks)
+        self.assertIn("state.a", chunks)
 
     def test_build_writer_alignment_supplement_text(self) -> None:
         raw_state = {

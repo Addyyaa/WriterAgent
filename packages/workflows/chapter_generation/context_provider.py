@@ -25,6 +25,11 @@ class StoryConstraintContext:
     foreshadowings: list[dict[str, Any]]
 
 
+def _is_foreshadow_open(status: Any) -> bool:
+    s = str(status or "").strip().lower()
+    return s in {"open", "pending", "unresolved", "active"}
+
+
 class SQLAlchemyStoryContextProvider:
     """从业务表读取写作硬约束上下文（候选池）。
 
@@ -33,6 +38,9 @@ class SQLAlchemyStoryContextProvider:
     结果整包直接作为 LLM 输入，须经
     ``packages.workflows.consistency_review.context_builder`` 中的切片与聚焦逻辑
     再进入 ``PromptPayloadAssembler``。
+
+    ``load()`` 为宽池候选；``load_focused()`` 在 relevance_blob（写作目标 + alignment 等）
+    中按名称/标题命中优先筛选，减少无关行进入后续摘要/切片。
     """
 
     def __init__(self, db: Session) -> None:
@@ -62,6 +70,124 @@ class SQLAlchemyStoryContextProvider:
             world_entries=self._list_world_entries(project_id=project_id, limit=30),
             timeline_events=self._list_timeline_events(project_id=project_id, limit=30),
             foreshadowings=self._list_foreshadowings(project_id=project_id, limit=30),
+        )
+
+    def load_focused(
+        self,
+        *,
+        project_id,
+        chapter_no: int | None = None,
+        chapter_window_before: int = 2,
+        chapter_window_after: int = 1,
+        relevance_blob: str = "",
+    ) -> StoryConstraintContext:
+        """聚焦加载：优先纳入 relevance_blob 中出现的角色名与世界条目标题，时间线/伏笔按章号裁剪。"""
+        blob = str(relevance_blob or "").strip()[:12000]
+        chapters = self._list_chapters(
+            project_id=project_id,
+            limit=20,
+            chapter_no=chapter_no,
+            chapter_window_before=chapter_window_before,
+            chapter_window_after=chapter_window_after,
+        )
+        chs = self._list_characters(project_id=project_id, limit=48, chapter_no=chapter_no)
+        named = [
+            c
+            for c in chs
+            if str(c.get("name") or "").strip() and str(c.get("name")) in blob
+        ]
+        if len(named) < 3:
+            characters = chs[:18]
+        else:
+            characters = named[:24]
+
+        worlds = self._list_world_entries(project_id=project_id, limit=40)
+        world_hits = [
+            w
+            for w in worlds
+            if str(w.get("title") or "").strip() and str(w.get("title")) in blob
+        ]
+        if len(world_hits) < 2:
+            world_entries = worlds[:10]
+        else:
+            world_entries = world_hits[:12]
+
+        timeline_all = self._list_timeline_events(project_id=project_id, limit=40)
+        timeline_hits: list[dict[str, Any]] = []
+        for ev in timeline_all:
+            if not isinstance(ev, dict):
+                continue
+            raw_no = ev.get("chapter_no")
+            try:
+                ev_ch = int(raw_no) if raw_no is not None else None
+            except (TypeError, ValueError):
+                ev_ch = None
+            if chapter_no is not None and ev_ch is not None and ev_ch > int(chapter_no):
+                continue
+            et = str(ev.get("event_title") or "")
+            ed = str(ev.get("event_desc") or "")
+            if blob and (
+                (et and et in blob) or (len(ed) >= 4 and ed[:120] in blob)
+            ):
+                timeline_hits.append(ev)
+        if len(timeline_hits) < 2:
+            timeline_events: list[dict[str, Any]] = []
+            for ev in timeline_all:
+                if not isinstance(ev, dict):
+                    continue
+                raw_no = ev.get("chapter_no")
+                try:
+                    ev_ch = int(raw_no) if raw_no is not None else None
+                except (TypeError, ValueError):
+                    ev_ch = None
+                if chapter_no is not None and ev_ch is not None and ev_ch > int(chapter_no):
+                    continue
+                timeline_events.append(ev)
+                if len(timeline_events) >= 14:
+                    break
+        else:
+            timeline_events = timeline_hits[:14]
+
+        fore_all = self._list_foreshadowings(project_id=project_id, limit=32)
+        foreshadowings: list[dict[str, Any]] = []
+        for item in fore_all:
+            if not isinstance(item, dict):
+                continue
+            if not _is_foreshadow_open(item.get("status")):
+                continue
+            setup_ch = item.get("setup_chapter_no")
+            try:
+                setup_int = int(setup_ch) if setup_ch is not None else None
+            except (TypeError, ValueError):
+                setup_int = None
+            if chapter_no is not None and setup_int is not None and setup_int > int(chapter_no):
+                continue
+            foreshadowings.append(item)
+            if len(foreshadowings) >= 8:
+                break
+
+        return StoryConstraintContext(
+            chapters=chapters,
+            characters=characters,
+            world_entries=world_entries,
+            timeline_events=timeline_events,
+            foreshadowings=foreshadowings,
+        )
+
+    def load_candidate_pool(
+        self,
+        *,
+        project_id,
+        chapter_no: int | None = None,
+        chapter_window_before: int = 2,
+        chapter_window_after: int = 1,
+    ) -> StoryConstraintContext:
+        """显式宽池入口，语义同 `load()`。"""
+        return self.load(
+            project_id=project_id,
+            chapter_no=chapter_no,
+            chapter_window_before=chapter_window_before,
+            chapter_window_after=chapter_window_after,
         )
 
     def _list_chapters(

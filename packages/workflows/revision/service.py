@@ -15,7 +15,18 @@ from packages.storage.postgres.repositories.chapter_repository import ChapterRep
 from packages.storage.postgres.repositories.consistency_report_repository import (
     ConsistencyReportRepository,
 )
-from packages.workflows.writer_output import WriterOutputAdapter
+from packages.workflows.orchestration.agent_output_envelope import step_agent_view
+from packages.workflows.orchestration.prompt_payload_assembler import PromptPayloadAssembler
+from packages.workflows.revision.context_builder import (
+    build_revision_context_slice,
+    build_revision_evidence_pack,
+    build_revision_focus,
+)
+from packages.workflows.writer_output import (
+    WRITER_OUTPUT_CONTRACT_V2,
+    WRITER_OUTPUT_SCHEMA_REF_V2,
+    WriterOutputAdapter,
+)
 
 if TYPE_CHECKING:
     from packages.workflows.orchestration.agent_registry import AgentRegistry
@@ -27,7 +38,12 @@ class RevisionRequest:
     chapter_id: object
     trace_id: str | None = None
     force: bool = False
-    retrieval_context: str | None = None
+    # 统一检索包（summary/items）；编排侧来自 RetrievalLoopSummary.context_bundle
+    retrieval_bundle: dict[str, Any] | None = None
+    # 编排快照：供后续扩展依赖；当前修订仍以 DB 章节 + 报告为主
+    orchestrator_raw_state: dict[str, Any] | None = None
+    project_context: dict[str, Any] | None = None
+    working_notes: dict[str, Any] | list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -45,18 +61,24 @@ class RevisionResult:
 class RevisionWorkflowService:
     AGENT_NAME = "writer_agent"
     WORKFLOW_NAME = "revision"
+    # 与 Assembler 输出对齐；output_schema 仅由 FC response_schema 约束，不进 user JSON
     REVISION_INPUT_SCHEMA = {
         "type": "object",
-        "required": ["chapter", "consistency_report", "output_schema"],
+        "required": ["step_key", "workflow_type", "role_id", "state", "project"],
         "properties": {
-            "chapter": {"type": "object"},
-            "consistency_report": {"type": "object"},
-            "retrieval_context": {"type": ["string", "null"]},
-            "output_schema": {"type": "object"},
+            "step_key": {"type": "string"},
+            "workflow_type": {"type": "string"},
+            "role_id": {"type": "string"},
+            "project": {"type": "object"},
+            "state": {"type": "object"},
+            "outline": {"type": "object"},
+            "retrieval": {"type": "object"},
+            "working_notes": {"type": ["array", "object", "string", "null"]},
+            "output_format": {"type": "object"},
+            "local_data_tools": {"type": "array"},
         },
         "additionalProperties": True,
     }
-    # 兼容旧链路；当启用 writer_agent registry 时会使用 writer_agent/output_schema.json。
     REVISION_OUTPUT_SCHEMA = {
         "type": "object",
         "required": ["title", "content", "summary"],
@@ -78,6 +100,7 @@ class RevisionWorkflowService:
         agent_registry: AgentRegistry | None = None,
         schema_registry: SchemaRegistry | None = None,
         skill_runtime: SkillRuntimeEngine | None = None,
+        prompt_assembler: PromptPayloadAssembler | None = None,
     ) -> None:
         self.chapter_repo = chapter_repo
         self.report_repo = report_repo
@@ -86,6 +109,38 @@ class RevisionWorkflowService:
         self.agent_registry = agent_registry
         self.schema_registry = schema_registry
         self.skill_runtime = skill_runtime or SkillRuntimeEngine()
+        self._prompt_assembler = prompt_assembler or PromptPayloadAssembler()
+
+    @staticmethod
+    def _normalize_retrieval_bundle(raw: dict[str, Any] | None) -> dict[str, Any]:
+        b = dict(raw or {})
+        summary = dict(b.get("summary") or {})
+        return {
+            "summary": {
+                "key_facts": list(summary.get("key_facts") or []),
+                "current_states": list(summary.get("current_states") or []),
+            },
+            "items": list(b.get("items") or []),
+            "meta": dict(b.get("meta") or {}),
+        }
+
+    @staticmethod
+    def _snapshot_raw_state(raw: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+        out: dict[str, dict[str, Any]] = {}
+        for k, v in dict(raw or {}).items():
+            if isinstance(v, dict):
+                out[str(k)] = copy.deepcopy(v)
+        return out
+
+    @staticmethod
+    def _default_project_context(project_id: object) -> dict[str, Any]:
+        return {
+            "id": str(project_id),
+            "title": "",
+            "genre": "",
+            "premise": "",
+            "metadata_json": {},
+        }
 
     def run(self, request: RevisionRequest) -> RevisionResult:
         chapter = self.chapter_repo.get(request.chapter_id)
@@ -112,28 +167,61 @@ class RevisionWorkflowService:
             step_key="writer_revision",
             strategy_mode="revision",
         )
-        # revision_input 要求 output_schema 为 object；须传入真实 JSON Schema 字典供模型对齐，不可使用占位字符串。
-        rs = runtime.get("response_schema")
-        if isinstance(rs, dict) and rs:
-            output_schema_for_payload = copy.deepcopy(rs)
-        else:
-            output_schema_for_payload = dict(self.REVISION_OUTPUT_SCHEMA)
-        payload = {
-            "chapter": {
-                "title": chapter.title,
-                "content": chapter.content,
-                "summary": chapter.summary,
-                "chapter_no": int(chapter.chapter_no),
-            },
-            "consistency_report": {
+        project_context = dict(request.project_context or self._default_project_context(request.project_id))
+        retrieval_bundle = self._normalize_retrieval_bundle(request.retrieval_bundle)
+
+        merged_raw = self._snapshot_raw_state(request.orchestrator_raw_state)
+        chapter_no = int(chapter.chapter_no)
+        chapter_view = {
+            "title": chapter.title,
+            "content": chapter.content,
+            "summary": chapter.summary,
+            "chapter_no": chapter_no,
+        }
+        merged_raw["revision_chapter"] = {"view": chapter_view}
+        merged_raw["consistency_review"] = {
+            "view": {
                 "status": str(report.status) if report is not None else "warning",
                 "summary": report.summary if report is not None else "",
                 "issues": issues,
-                "recommendations": list(report.recommendations_json or []) if report is not None else [],
-            },
-            "retrieval_context": request.retrieval_context,
-            "output_schema": output_schema_for_payload,
+            }
         }
+        merged_raw["revision_focus"] = {
+            "view": build_revision_focus(chapter_no=chapter_no, issues=issues),
+        }
+        merged_raw["revision_context_slice"] = {
+            "view": build_revision_context_slice(issues=issues),
+        }
+        merged_raw["revision_evidence_pack"] = {
+            "view": build_revision_evidence_pack(issues=issues),
+        }
+
+        outline_state: dict[str, Any] = {}
+        og = merged_raw.get("outline_generation")
+        if isinstance(og, dict):
+            ov = step_agent_view(og)
+            if ov:
+                outline_state = dict(ov)
+
+        core = self._prompt_assembler.build(
+            role_id=self.AGENT_NAME,
+            step_key="writer_revision",
+            workflow_type=self.WORKFLOW_NAME,
+            project_context=project_context,
+            raw_state=merged_raw,
+            retrieval_bundle=retrieval_bundle,
+            outline_state=outline_state,
+            working_notes=request.working_notes,
+        )
+        payload: dict[str, Any] = {
+            **core,
+            "output_format": {
+                "schema_ref": str(runtime.get("output_format_schema_ref") or WRITER_OUTPUT_SCHEMA_REF_V2),
+                "contract": str(runtime.get("output_format_contract") or WRITER_OUTPUT_CONTRACT_V2),
+            },
+        }
+        if self.agent_registry is not None:
+            payload["local_data_tools"] = self.agent_registry.local_data_tools_catalog()
 
         before = self.skill_runtime.run_before_generate(
             skills=list(runtime.get("skills") or []),
@@ -285,6 +373,8 @@ class RevisionWorkflowService:
             "schema_version": "v1",
             "strategy_version": "legacy-v1",
             "using_writer_schema": False,
+            "output_format_schema_ref": WRITER_OUTPUT_SCHEMA_REF_V2,
+            "output_format_contract": WRITER_OUTPUT_CONTRACT_V2,
         }
         if self.agent_registry is None:
             return default
@@ -315,8 +405,16 @@ class RevisionWorkflowService:
             schema_payload = dict(self.REVISION_OUTPUT_SCHEMA)
             schema_resolution = "fallback_flat"
 
+        system_prompt = profile.prompt or self._legacy_system_prompt()
+        if str(strategy_mode).strip().lower() == "revision":
+            revision_path = self.agent_registry.root / "writer_agent" / "prompt_revision.md"
+            if revision_path.is_file():
+                system_prompt = self.agent_registry.compose_prompt_with_shared_tools(
+                    revision_path.read_text(encoding="utf-8").strip(),
+                )
+
         return {
-            "system_prompt": profile.prompt or self._legacy_system_prompt(),
+            "system_prompt": system_prompt,
             "response_schema": schema_payload,
             "temperature": float(strategy.temperature),
             "max_tokens": int(strategy.max_tokens),
@@ -326,6 +424,8 @@ class RevisionWorkflowService:
             "schema_version": profile.schema_version,
             "strategy_version": strategy.version,
             "using_writer_schema": schema_resolution != "fallback_flat",
+            "output_format_schema_ref": WRITER_OUTPUT_SCHEMA_REF_V2,
+            "output_format_contract": WRITER_OUTPUT_CONTRACT_V2,
         }
 
     @staticmethod

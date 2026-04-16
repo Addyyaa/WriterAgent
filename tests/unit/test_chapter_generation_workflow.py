@@ -167,6 +167,21 @@ class _FakeStoryContextProvider:
             foreshadowings=[],
         )
 
+    def load_focused(
+        self,
+        *,
+        project_id,
+        chapter_no=None,
+        chapter_window_before=2,
+        chapter_window_after=1,
+        relevance_blob="",
+    ):
+        del chapter_window_before, chapter_window_after, relevance_blob
+        return self.load(
+            project_id=project_id,
+            chapter_no=chapter_no,
+        )
+
 
 class _FakeProjectMemoryService:
     def build_context(self, **kwargs):
@@ -275,7 +290,9 @@ class TestChapterGenerationWorkflowUnit(unittest.TestCase):
         self.assertEqual(payload.get("role_id"), "writer_agent")
         self.assertIn("state", payload)
         self.assertIn("chapter_memory", payload["state"])
-        self.assertIn("story_assets", payload["state"])
+        self.assertIn("writer_focus", payload["state"])
+        self.assertIn("writer_context_slice", payload["state"])
+        self.assertIn("writer_evidence_pack", payload["state"])
         self.assertIn("retrieval", payload)
         self.assertEqual(payload.get("goal"), "目标")
         self.assertIn("writing_contract", payload)
@@ -363,7 +380,8 @@ class TestChapterGenerationWorkflowUnit(unittest.TestCase):
         self.assertEqual(payload.get("step_key"), "writer_draft")
         self.assertIn("outline", payload)
         self.assertIn("plot_alignment", payload["state"])
-        self.assertIn("story_assets", payload["state"])
+        self.assertIn("writer_context_slice", payload["state"])
+        self.assertIn("writer_evidence_pack", payload["state"])
 
     def test_writer_output_format_follows_runtime_schema_hint(self) -> None:
         """草稿链路 runtime 传入的 schema_ref/contract 应原样进入 user payload，与硬校验一致。"""

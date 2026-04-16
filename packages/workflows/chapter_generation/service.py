@@ -33,7 +33,12 @@ from packages.storage.postgres.repositories.tool_call_repository import ToolCall
 from packages.workflows.chapter_generation.context_provider import (
     SQLAlchemyStoryContextProvider,
 )
-from packages.workflows.context_views import build_story_assets_from_context
+from packages.workflows.context_views import (
+    build_writer_context_slice,
+    build_writer_evidence_pack,
+    build_writer_focus,
+    build_writer_relevance_blob,
+)
 from packages.workflows.chapter_generation.types import (
     ChapterGenerationRequest,
     ChapterGenerationResult,
@@ -292,10 +297,21 @@ class ChapterGenerationWorkflowService:
                     chat_turns=request.chat_turns,
                     working_notes=request.working_notes,
                 )
-                story_context = self.story_context_provider.load(
-                    project_id=request.project_id,
-                    chapter_no=request.chapter_no,
+                relevance_blob = build_writer_relevance_blob(
+                    writing_goal,
+                    request.orchestrator_raw_state,
                 )
+                if env_bool("WRITER_STORY_CONTEXT_LOAD_FOCUS", True):
+                    story_context = self.story_context_provider.load_focused(
+                        project_id=request.project_id,
+                        chapter_no=request.chapter_no,
+                        relevance_blob=relevance_blob,
+                    )
+                else:
+                    story_context = self.story_context_provider.load(
+                        project_id=request.project_id,
+                        chapter_no=request.chapter_no,
+                    )
                 self.tool_call_repo.succeed(
                     retrieval_call.id,
                     output_json={
@@ -1729,7 +1745,10 @@ class ChapterGenerationWorkflowService:
             {"source": item.source, "text": item.text, "priority": item.priority}
             for item in memory_context.items
         ]
-        story_snapshot = build_story_assets_from_context(
+        relevance_blob = build_writer_relevance_blob(writing_goal, orchestrator_raw_state)
+        writer_focus = build_writer_focus(chapter_no=chapter_no, relevance_blob=relevance_blob)
+        writer_evidence_pack = build_writer_evidence_pack(story_context, chapter_no=chapter_no)
+        story_snapshot = build_writer_context_slice(
             story_context,
             chapter_no=chapter_no,
             summary_first=env_bool("WRITER_STORY_ASSETS_SUMMARY_FIRST", True),
@@ -1739,7 +1758,10 @@ class ChapterGenerationWorkflowService:
             merged_raw = self._snapshot_raw_state_for_chapter(
                 dict(orchestrator_raw_state or {})
             )
-            merged_raw["story_assets"] = story_snapshot
+            merged_raw["writer_focus"] = {"view": writer_focus}
+            merged_raw["writer_context_slice"] = {"view": story_snapshot}
+            merged_raw["writer_evidence_pack"] = {"view": writer_evidence_pack}
+            merged_raw["story_assets"] = {"view": story_snapshot}
             merged_raw["chapter_memory"] = {"items": memory_items}
             retrieval_bundle = build_retrieval_bundle_from_raw_state(merged_raw)
             mem_bundle = self._build_chapter_retrieval_bundle(
@@ -1770,7 +1792,10 @@ class ChapterGenerationWorkflowService:
         else:
             raw_state: dict[str, dict[str, Any]] = {
                 "chapter_memory": {"items": memory_items},
-                "story_assets": story_snapshot,
+                "writer_focus": {"view": writer_focus},
+                "writer_context_slice": {"view": story_snapshot},
+                "writer_evidence_pack": {"view": writer_evidence_pack},
+                "story_assets": {"view": story_snapshot},
             }
             retrieval_bundle = self._build_chapter_retrieval_bundle(
                 memory_items=memory_items,

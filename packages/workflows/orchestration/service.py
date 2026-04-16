@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import logging
@@ -2125,7 +2126,6 @@ class WritingOrchestratorService:
                 chapter_id=chapter_id,
                 chapter_version_id=chapter.get("version_id"),
                 trace_id=row.trace_id,
-                retrieval_context=None,
                 retrieval_bundle=dict(retrieval.context_bundle or {}),
                 project_snapshot=project_snapshot,
                 llm_enabled=True,
@@ -2186,14 +2186,30 @@ class WritingOrchestratorService:
             ],
         )
 
-        retrieval_context_parts: list[str] = []
-        if retrieval.context_text:
-            retrieval_context_parts.append(str(retrieval.context_text))
+        retrieval_bundle = copy.deepcopy(dict(retrieval.context_bundle or {}))
+        summary = dict(retrieval_bundle.get("summary") or {})
+        key_facts = list(summary.get("key_facts") or [])
         if alignment_supplement:
-            retrieval_context_parts.append(
-                "角色化约束与风格护栏（alignment / retrieval 摘要）：\n" + alignment_supplement
-            )
-        combined_retrieval_context = "\n\n".join(part for part in retrieval_context_parts if part).strip() or None
+            sup = str(alignment_supplement).strip()
+            if sup:
+                key_facts.insert(0, sup[:12000])
+        retrieval_bundle["summary"] = {**summary, "key_facts": key_facts}
+
+        project = self.project_repo.get(row.project_id)
+        project_context = {
+            "id": str(row.project_id),
+            "title": getattr(project, "title", None),
+            "genre": getattr(project, "genre", None),
+            "premise": getattr(project, "premise", None),
+            "metadata_json": getattr(project, "metadata_json", None) or {},
+        }
+        wn_raw = (row.input_json or {}).get("working_notes")
+        working_notes_arg = wn_raw if isinstance(wn_raw, (list, dict)) else None
+
+        orch_snapshot: dict[str, Any] = {}
+        for k, v in raw_state.items():
+            if isinstance(v, dict):
+                orch_snapshot[str(k)] = copy.deepcopy(v)
 
         result = self.revision_service.run(
             RevisionRequest(
@@ -2201,7 +2217,10 @@ class WritingOrchestratorService:
                 chapter_id=chapter_id,
                 trace_id=row.trace_id,
                 force=force,
-                retrieval_context=combined_retrieval_context,
+                retrieval_bundle=retrieval_bundle,
+                orchestrator_raw_state=orch_snapshot,
+                project_context=project_context,
+                working_notes=working_notes_arg,
             )
         )
         return {
