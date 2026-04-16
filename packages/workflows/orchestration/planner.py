@@ -10,7 +10,7 @@ from packages.llm.text_generation.openai_compatible import OpenAICompatibleTextP
 from packages.llm.text_generation.runtime_config import TextGenerationRuntimeConfig
 from packages.schemas.dynamic_planner_output import (
     DYNAMIC_PLANNER_INPUT_SCHEMA,
-    DYNAMIC_PLANNER_OUTPUT_SCHEMA,
+    dynamic_planner_output_schema,
 )
 from packages.workflows.orchestration.runtime_config import PlannerRuntimeConfig
 from packages.workflows.orchestration.types import PlannerNode, PlannerPlan, WorkflowRunRequest
@@ -231,7 +231,9 @@ class OpenAICompatibleDynamicPlanner(DynamicPlanner):
                     input_schema=DYNAMIC_PLANNER_INPUT_SCHEMA,
                     input_schema_name="dynamic_planner_input",
                     input_schema_strict=True,
-                    response_schema=DYNAMIC_PLANNER_OUTPUT_SCHEMA,
+                    response_schema=dynamic_planner_output_schema(
+                        strict_node_knowledge=bool(self.config.strict_node_knowledge_schema),
+                    ),
                     response_schema_name="dynamic_planner_output",
                     response_schema_strict=True,
                     validation_retries=2,

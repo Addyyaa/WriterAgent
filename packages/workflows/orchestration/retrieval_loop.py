@@ -586,16 +586,23 @@ class RetrievalLoopService:
                 )
 
         blob = str(request.relevance_blob or "").strip()
+        goal = str(request.writing_goal or "").strip()
+        force_focused = bool(getattr(self.runtime_config, "retrieval_force_focused_loading", False))
         use_focused = hasattr(self.story_context_provider, "load_focused") and (
-            len(blob) >= 12 or bool(request.planner_slot_hints)
+            force_focused
+            or len(blob) >= 12
+            or bool(request.planner_slot_hints)
         )
         if use_focused:
+            rel_blob = blob or goal
+            if force_focused and len(rel_blob.strip()) < 8:
+                rel_blob = goal or "写作上下文"
             context = self.story_context_provider.load_focused(
                 project_id=request.project_id,
                 chapter_no=request.chapter_no,
                 chapter_window_before=int(self.runtime_config.context_chapter_window_before),
                 chapter_window_after=int(self.runtime_config.context_chapter_window_after),
-                relevance_blob=blob or str(request.writing_goal or ""),
+                relevance_blob=rel_blob,
             )
         else:
             context = self.story_context_provider.load(

@@ -260,6 +260,40 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         self.assertEqual(r["information_gaps"], ["gap"])
         self.assertNotIn("items", r)
 
+    def test_retrieval_decision_aliases_retrieval_same_object(self) -> None:
+        """顶层 retrieval_decision 与 retrieval 指向同一决策包，避免双轨漂移。"""
+        specs = {
+            "w": StepInputSpec(
+                role_id="w",
+                include_project=False,
+                include_outline=False,
+                dependencies=[],
+                retrieval=RetrievalViewSpec(mode="summary_only"),
+            )
+        }
+        asm2 = PromptPayloadAssembler(specs=specs)
+        out = asm2.build(
+            role_id="w",
+            step_key="x",
+            workflow_type="t",
+            project_context={},
+            raw_state={},
+            retrieval_bundle={
+                "summary": {
+                    "key_facts": ["a"],
+                    "current_states": ["b"],
+                    "confirmed_facts": ["c"],
+                    "supporting_evidence": [],
+                    "conflicts": [],
+                    "information_gaps": [],
+                },
+                "items": [],
+            },
+            outline_state={},
+        )
+        self.assertIs(out["retrieval"], out["retrieval_decision"])
+        self.assertEqual(out["retrieval"]["confirmed_facts"], ["c"])
+
     def test_payload_chunk_chars_includes_goal_and_contract(self) -> None:
         """_payload_chunk_char_sizes 覆盖 goal / writing_contract 等 writer 顶层块。"""
         asm = PromptPayloadAssembler()

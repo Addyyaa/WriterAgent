@@ -106,7 +106,9 @@ class PromptPayloadAssembler:
 
         retrieval_view = self._build_retrieval_view(spec, retrieval_bundle)
         if retrieval_view:
+            # 与 retrieval 同一对象：便于只扫顶层别名的调用方（评测/模型习惯），避免与 retrieval 漂移
             payload["retrieval"] = retrieval_view
+            payload["retrieval_decision"] = retrieval_view
 
         if spec.include_working_notes and working_notes:
             payload["working_notes"] = self._build_working_notes_view(working_notes)
@@ -158,6 +160,7 @@ class PromptPayloadAssembler:
             "outline",
             "state",
             "retrieval",
+            "retrieval_decision",
             "working_notes",
             "goal",
             "target_words",

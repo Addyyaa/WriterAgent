@@ -44,6 +44,9 @@ class OrchestratorRuntimeConfig:
     context_chapter_window_after: int = 1
     # planner 已提供槽位时是否仍并入 workflow 默认槽位（默认 false：以 planner 为主）
     retrieval_merge_workflow_when_planner_slots: bool = False
+    # True：结构化证据阶段在支持 load_focused 时尽量走聚焦加载（blob 过短则用 writing_goal 兜底），减少宽池 load()
+    # 默认 True：与「长篇防膨胀」策略一致；设 WRITER_RETRIEVAL_FORCE_FOCUSED_LOADING=false 可回退宽池优先
+    retrieval_force_focused_loading: bool = True
     api_v1_enabled: bool = False
     lifecycle_enabled: bool = False
     lifecycle_embedding_limit: int = 200
@@ -119,6 +122,7 @@ class OrchestratorRuntimeConfig:
                 "WRITER_RETRIEVAL_MERGE_WORKFLOW_WHEN_PLANNER_SLOTS",
                 False,
             ),
+            retrieval_force_focused_loading=env_bool("WRITER_RETRIEVAL_FORCE_FOCUSED_LOADING", True),
             api_v1_enabled=env_bool("WRITER_API_V1_ENABLED", False),
             lifecycle_enabled=env_bool("WRITER_LIFECYCLE_ENABLED", False),
             lifecycle_embedding_limit=env_int("WRITER_LIFECYCLE_EMBEDDING_LIMIT", 200),
@@ -140,6 +144,9 @@ class PlannerRuntimeConfig:
     api_key: str = ""
     temperature: float = 0.2
     timeout_seconds: float = 20.0
+    # 默认 False：动态规划节点知识字段在 schema 中为可选 properties，避免历史 plan_json / 弱模型缺键拖垮整次规划。
+    # 需要硬合同时在 staging 试跑 WRITER_PLANNER_STRICT_NODE_KNOWLEDGE=true，再评估是否改为默认 True。
+    strict_node_knowledge_schema: bool = False
 
     @classmethod
     def from_env(cls) -> "PlannerRuntimeConfig":
@@ -151,4 +158,5 @@ class PlannerRuntimeConfig:
             api_key=env_str("WRITER_PLANNER_API_KEY", ""),
             temperature=env_float("WRITER_PLANNER_TEMPERATURE", 0.2, minimum=0.0, maximum=2.0),
             timeout_seconds=env_float("WRITER_PLANNER_TIMEOUT", 20.0, minimum=1.0, maximum=300.0),
+            strict_node_knowledge_schema=env_bool("WRITER_PLANNER_STRICT_NODE_KNOWLEDGE", False),
         )

@@ -16,6 +16,7 @@
 - `state.revision_focus` / `state.revision_context_slice`：问题类别与信号摘要，先读后改。
 - `state.revision_evidence_pack`：逐条 issue 的短证据（`from_issues`）。
 - `retrieval`：结构化检索视图；**优先** `confirmed_facts` 与 `current_states`，**其次** `supporting_evidence`；必须处理 `conflicts` 与 `information_gaps`（不得与矛盾证据对打脸）。`key_facts` / `items` 为兼容与辅助字段。
+- `retrieval_decision`：与 `retrieval` 同内容的别名（同一对象），便于扫顶层字段；阅读其一即可。
 - `working_notes`：若存在，遵守其中的护栏与节拍。
 - `output_format`：仅说明契约引用（`schema_ref` / `contract`）；**实际 JSON 形状以工具/函数 `revision_output` 的 schema 为准**，勿依赖 user JSON 内的完整 schema 副本。
 

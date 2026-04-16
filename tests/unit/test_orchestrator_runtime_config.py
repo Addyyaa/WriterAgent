@@ -56,6 +56,16 @@ class TestOrchestratorRuntimeConfig(unittest.TestCase):
         self.assertEqual(cfg.context_chapter_window_before, 2)
         self.assertEqual(cfg.context_chapter_window_after, 1)
         self.assertFalse(cfg.api_v1_enabled)
+        self.assertTrue(cfg.retrieval_force_focused_loading)
+
+    @mock.patch.dict(
+        os.environ,
+        {"WRITER_RETRIEVAL_FORCE_FOCUSED_LOADING": "false"},
+        clear=False,
+    )
+    def test_from_env_retrieval_force_focused_disabled(self) -> None:
+        cfg = OrchestratorRuntimeConfig.from_env()
+        self.assertFalse(cfg.retrieval_force_focused_loading)
 
 
 if __name__ == "__main__":
