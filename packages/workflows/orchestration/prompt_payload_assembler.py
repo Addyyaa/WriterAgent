@@ -6,6 +6,11 @@ import json
 import logging
 from typing import Any
 
+from packages.core.context_bundle_decision import (
+    mirror_context_bundle_lists_from_summary,
+    read_decision_fields_from_bundle,
+    read_key_facts_from_bundle,
+)
 from packages.workflows.orchestration.agent_output_envelope import step_agent_view
 from packages.workflows.orchestration.prompt_payload_types import StepInputSpec
 from packages.workflows.orchestration.step_input_specs import STEP_INPUT_SPECS
@@ -310,15 +315,13 @@ class PromptPayloadAssembler:
         if rv.mode == "none":
             return {}
 
-        summary = dict(retrieval_bundle.get("summary") or {})
-        key_facts = list(summary.get("key_facts") or retrieval_bundle.get("key_facts") or [])
-        current_states = list(
-            summary.get("current_states") or retrieval_bundle.get("current_states") or []
-        )
-        confirmed_facts = list(summary.get("confirmed_facts") or [])
-        supporting_evidence = list(summary.get("supporting_evidence") or [])
-        conflicts = list(summary.get("conflicts") or [])
-        information_gaps = list(summary.get("information_gaps") or [])
+        decision = read_decision_fields_from_bundle(retrieval_bundle)
+        key_facts = read_key_facts_from_bundle(retrieval_bundle)
+        current_states = decision["current_states"]
+        confirmed_facts = decision["confirmed_facts"]
+        supporting_evidence = decision["supporting_evidence"]
+        conflicts = decision["conflicts"]
+        information_gaps = decision["information_gaps"]
 
         def _layered_retrieval_view(*, items_payload: list[dict[str, Any]] | None) -> dict[str, Any]:
             """决策型分层：与 retrieval_agent / ContextPackage 合同对齐。"""
@@ -407,7 +410,7 @@ def build_retrieval_bundle_from_raw_state(raw_state: dict[str, dict]) -> dict[st
     step = dict(raw_state.get("retrieval_context") or {})
     agent_out = step_agent_view(step)
     if not isinstance(agent_out, dict) or not agent_out:
-        return {
+        empty_bundle: dict[str, Any] = {
             "summary": {
                 "key_facts": [],
                 "current_states": [],
@@ -419,6 +422,8 @@ def build_retrieval_bundle_from_raw_state(raw_state: dict[str, dict]) -> dict[st
             "items": [],
             "meta": {},
         }
+        mirror_context_bundle_lists_from_summary(empty_bundle)
+        return empty_bundle
 
     summary_obj = dict(agent_out.get("writing_context_summary") or {})
     key_facts = [str(x).strip() for x in list(summary_obj.get("key_facts") or []) if str(x).strip()]
@@ -455,7 +460,7 @@ def build_retrieval_bundle_from_raw_state(raw_state: dict[str, dict]) -> dict[st
             if sn:
                 supporting_evidence.append(sn[:1200])
 
-    return {
+    out_bundle: dict[str, Any] = {
         "summary": {
             "key_facts": key_facts,
             "current_states": current_states,
@@ -467,6 +472,8 @@ def build_retrieval_bundle_from_raw_state(raw_state: dict[str, dict]) -> dict[st
         "items": items,
         "meta": {},
     }
+    mirror_context_bundle_lists_from_summary(out_bundle)
+    return out_bundle
 
 
 def build_writer_alignment_supplement_text(raw_state: dict[str, Any]) -> str:

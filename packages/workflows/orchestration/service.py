@@ -30,6 +30,7 @@ def _coerce_enforce_chapter_word_count(raw: Any) -> bool:
     return True
 
 
+from packages.core.context_bundle_decision import mirror_context_bundle_lists_from_summary
 from packages.core.tracing import new_request_id, new_trace_id, request_context
 from packages.core.utils import ensure_non_empty_string
 from packages.evaluation.writing import build_writing_score_breakdown
@@ -2409,20 +2410,22 @@ class WritingOrchestratorService:
         raw_state: dict[str, dict] | None = None,
     ) -> RetrievalLoopSummary:
         if self.retrieval_loop is None:
+            disabled_bundle: dict[str, Any] = {
+                "summary": {
+                    "key_facts": [],
+                    "current_states": [],
+                    "confirmed_facts": [],
+                    "supporting_evidence": [],
+                    "conflicts": [],
+                    "information_gaps": [],
+                },
+                "items": [],
+                "meta": {},
+            }
+            mirror_context_bundle_lists_from_summary(disabled_bundle)
             return RetrievalLoopSummary(
                 retrieval_trace_id=f"{row.trace_id}:{step.step_key}:disabled",
-                context_bundle={
-                    "summary": {
-                        "key_facts": [],
-                        "current_states": [],
-                        "confirmed_facts": [],
-                        "supporting_evidence": [],
-                        "conflicts": [],
-                        "information_gaps": [],
-                    },
-                    "items": [],
-                    "meta": {},
-                },
+                context_bundle=disabled_bundle,
             )
         step_inp = dict(step.input_json or {}) if step is not None else {}
         planner_hints = self._planner_slot_hints_from_state(raw_state, step_inp)

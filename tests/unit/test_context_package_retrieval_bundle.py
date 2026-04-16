@@ -22,6 +22,9 @@ class TestContextPackageRetrievalBundle(unittest.TestCase):
         self.assertEqual(b["summary"]["current_states"], [])
         self.assertEqual(b["summary"]["conflicts"], [])
         self.assertEqual(b["summary"]["information_gaps"], [])
+        self.assertEqual(b["key_facts"], b["summary"]["key_facts"])
+        self.assertEqual(b["confirmed_facts"], b["summary"]["confirmed_facts"])
+        self.assertIsNot(b["confirmed_facts"], b["summary"]["confirmed_facts"])
         self.assertEqual(len(b["items"]), 1)
         self.assertEqual(b["items"][0]["source"], "memory_fact")
         self.assertEqual(b["meta"]["used_tokens"], 42)
@@ -55,6 +58,8 @@ class TestContextPackageRetrievalBundle(unittest.TestCase):
         self.assertEqual(b["summary"]["information_gaps"], ["未确认动机"])
         self.assertEqual(b["summary"]["key_facts"], ["KF"])
         self.assertEqual(b["summary"]["current_states"], ["ST"])
+        self.assertEqual(b["conflicts"], b["summary"]["conflicts"])
+        self.assertEqual(b["information_gaps"], b["summary"]["information_gaps"])
         self.assertTrue(any("证据句" in str(i.get("text", "")) for i in b["items"]))
 
 

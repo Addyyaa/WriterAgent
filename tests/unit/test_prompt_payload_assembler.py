@@ -172,6 +172,9 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         self.assertEqual(bundle["summary"]["key_facts"], ["a"])
         self.assertEqual(bundle["summary"]["confirmed_facts"], ["a"])
         self.assertEqual(bundle["summary"]["supporting_evidence"], ["hello world"])
+        self.assertEqual(bundle["key_facts"], bundle["summary"]["key_facts"])
+        self.assertEqual(bundle["confirmed_facts"], bundle["summary"]["confirmed_facts"])
+        self.assertEqual(bundle["supporting_evidence"], bundle["summary"]["supporting_evidence"])
         self.assertTrue(any("hello" in str(i.get("text")) for i in bundle["items"]))
 
     def test_retrieval_bundle_prefers_view_over_agent_output(self) -> None:
@@ -259,6 +262,45 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         self.assertEqual(r["conflicts"], [{"a": 1}])
         self.assertEqual(r["information_gaps"], ["gap"])
         self.assertNotIn("items", r)
+
+    def test_retrieval_view_reads_decision_fields_from_root_only(self) -> None:
+        """五段仅在根、summary 无对应字段时，Assembler 仍产出分层 retrieval view。"""
+        specs = {
+            "w": StepInputSpec(
+                role_id="w",
+                include_project=False,
+                include_outline=False,
+                dependencies=[],
+                retrieval=RetrievalViewSpec(mode="summary_only"),
+            )
+        }
+        asm = PromptPayloadAssembler(specs=specs)
+        bundle = {
+            "summary": {},
+            "key_facts": ["kf_root"],
+            "confirmed_facts": ["cf"],
+            "current_states": ["cs"],
+            "supporting_evidence": ["se"],
+            "conflicts": [{"a": 2}],
+            "information_gaps": ["gap"],
+            "items": [],
+        }
+        payload = asm.build(
+            role_id="w",
+            step_key="x",
+            workflow_type="t",
+            project_context={},
+            raw_state={},
+            retrieval_bundle=bundle,
+            outline_state={},
+        )
+        r = payload["retrieval"]
+        self.assertEqual(r["key_facts"], ["kf_root"])
+        self.assertEqual(r["confirmed_facts"], ["cf"])
+        self.assertEqual(r["current_states"], ["cs"])
+        self.assertEqual(r["supporting_evidence"], ["se"])
+        self.assertEqual(r["conflicts"], [{"a": 2}])
+        self.assertEqual(r["information_gaps"], ["gap"])
 
     def test_retrieval_decision_aliases_retrieval_same_object(self) -> None:
         """顶层 retrieval_decision 与 retrieval 指向同一决策包，避免双轨漂移。"""

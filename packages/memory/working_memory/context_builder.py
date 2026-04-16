@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from packages.core.context_bundle_decision import mirror_context_bundle_lists_from_summary
 from packages.core.utils import estimate_token_count
 from packages.memory.short_term.session_memory import SessionMemorySummary
 from packages.memory.working_memory.hybrid_compressor import HybridContextCompressor
@@ -30,6 +31,9 @@ class ContextPackage:
         retrieval_context_step: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """与编排检索 context_bundle 形状对齐：summary / items / meta。
+
+        返回前将 summary 中五段决策字段与 key_facts 双写到根对象（与
+        ``mirror_context_bundle_lists_from_summary`` 一致），便于调用方不依赖嵌套 summary。
 
         无 retrieval_agent 视图时，按来源粗分层，便于 Writer 与评测消费统一合同字段。
         若传入 ``retrieval_context_step``（与 raw_state['retrieval_context'] 同形），则用
@@ -101,6 +105,7 @@ class ContextPackage:
             agent_items = list(agent.get("items") or [])
             if agent_items:
                 bundle["items"] = list(bundle["items"]) + agent_items
+        mirror_context_bundle_lists_from_summary(bundle)
         return bundle
 
 

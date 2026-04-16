@@ -7,6 +7,7 @@ from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
+from packages.core.context_bundle_decision import mirror_context_bundle_lists_from_summary
 from packages.core.utils import estimate_token_count
 from packages.workflows.orchestration.runtime_config import OrchestratorRuntimeConfig
 from packages.workflows.orchestration.types import (
@@ -393,6 +394,7 @@ class RetrievalLoopService:
                 "planner_preferred_tools": list(request.planner_preferred_tools or []),
             },
         }
+        mirror_context_bundle_lists_from_summary(context_bundle)
         return RetrievalLoopSummary(
             retrieval_trace_id=retrieval_trace_id,
             rounds=rounds,

@@ -38,7 +38,7 @@ class RevisionRequest:
     chapter_id: object
     trace_id: str | None = None
     force: bool = False
-    # 统一检索包（summary/items）；编排侧来自 RetrievalLoopSummary.context_bundle
+    # 统一检索包（summary/items/meta + 根级五段与 key_facts 与 summary 双写）；编排侧来自 RetrievalLoopSummary.context_bundle
     retrieval_bundle: dict[str, Any] | None = None
     # 编排快照：供后续扩展依赖；当前修订仍以 DB 章节 + 报告为主
     orchestrator_raw_state: dict[str, Any] | None = None

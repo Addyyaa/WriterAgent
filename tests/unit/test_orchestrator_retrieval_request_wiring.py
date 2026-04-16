@@ -6,6 +6,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from packages.core.context_bundle_decision import mirror_context_bundle_lists_from_summary
 from packages.workflows.orchestration.retrieval_loop import (
     RetrievalLoopRequest,
     RetrievalLoopService,
@@ -26,20 +27,22 @@ class TestOrchestratorRetrievalRequestWiring(unittest.TestCase):
             captured["planner_preferred_tools"] = list(req.planner_preferred_tools or [])
             captured["relevance_blob"] = req.relevance_blob
             captured["focus_character_id"] = req.focus_character_id
+            stub_bundle = {
+                "summary": {
+                    "key_facts": [],
+                    "current_states": [],
+                    "confirmed_facts": [],
+                    "supporting_evidence": [],
+                    "conflicts": [],
+                    "information_gaps": [],
+                },
+                "items": [],
+                "meta": {},
+            }
+            mirror_context_bundle_lists_from_summary(stub_bundle)
             return RetrievalLoopSummary(
                 retrieval_trace_id="mock",
-                context_bundle={
-                    "summary": {
-                        "key_facts": [],
-                        "current_states": [],
-                        "confirmed_facts": [],
-                        "supporting_evidence": [],
-                        "conflicts": [],
-                        "information_gaps": [],
-                    },
-                    "items": [],
-                    "meta": {},
-                },
+                context_bundle=stub_bundle,
             )
 
         loop = MagicMock()
