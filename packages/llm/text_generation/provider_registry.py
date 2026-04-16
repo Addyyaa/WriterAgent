@@ -30,6 +30,8 @@ class ProviderProfile:
     supports_forced_function_tool_choice: bool = True
     default_timeout: float = 60.0
     default_context_window: int = 128000
+    # 部分兼容网关对单次 completion 的 max_tokens 有硬上限（如通义 8192）；None 表示不额外裁剪。
+    max_output_tokens: int | None = None
     notes: str = ""
 
 
@@ -64,9 +66,11 @@ _REGISTRY: list[ProviderProfile] = [
         supports_function_calling=True,
         supports_json_object=True,
         supports_forced_function_tool_choice=False,
-        default_timeout=120.0,
+        # 修订/长上下文 + JSON 工具调用在兼容网关侧常超过 120s，下限提高到 300s 以降低 ReadTimeout
+        default_timeout=300.0,
         default_context_window=262144,
-        notes="通义千问系列，function_calling 可用但 json_schema 不支持",
+        max_output_tokens=8192,
+        notes="通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192",
     ),
     ProviderProfile(
         name="zhipu",

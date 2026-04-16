@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 
 from packages.llm.text_generation.base import TextGenerationProvider, TextGenerationRequest, TextGenerationResult
+from packages.schemas import SchemaRegistry
+from packages.skills import SkillRegistry
 from packages.workflows.chapter_generation.service import ChapterGenerationWorkflowService
+from packages.workflows.orchestration.agent_registry import AgentRegistry
 from packages.workflows.writer_output import (
     WRITER_OUTPUT_CONTRACT_DRAFT,
+    WRITER_OUTPUT_CONTRACT_V2,
     WRITER_OUTPUT_SCHEMA_REF_DRAFT,
+    WRITER_OUTPUT_SCHEMA_REF_V2,
 )
 from packages.workflows.chapter_generation.types import ChapterGenerationRequest
 
@@ -394,6 +402,83 @@ class TestChapterGenerationWorkflowUnit(unittest.TestCase):
         fmt = payload.get("output_format") or {}
         self.assertEqual(fmt.get("schema_ref"), WRITER_OUTPUT_SCHEMA_REF_DRAFT)
         self.assertEqual(fmt.get("contract"), WRITER_OUTPUT_CONTRACT_DRAFT)
+
+    def test_resolve_writer_runtime_using_writer_schema_when_only_schema_ref_on_disk(self) -> None:
+        """profile.output_schema 为空、仅靠 schema_ref 从 SchemaRegistry 加载时，using_writer_schema 须为 True。
+
+        使用仓库内真实 packages/schemas、packages/skills；临时目录写入与仓库一致的 writer 策略/提示词及仅含
+        schema_ref 的 output_schema.json，不使用 unittest.mock。
+        """
+        repo_root = Path(__file__).resolve().parents[2]
+        schema_registry = SchemaRegistry(repo_root / "packages/schemas")
+        skill_registry = SkillRegistry(
+            root=repo_root / "packages/skills",
+            schema_registry=schema_registry,
+            strict=True,
+            degrade_mode=False,
+        )
+        strategy_text = (repo_root / "apps/agents/writer_agent/strategy.yaml").read_text(encoding="utf-8")
+        prompt_text = (repo_root / "apps/agents/writer_agent/prompt.md").read_text(encoding="utf-8")
+        skills_text = (repo_root / "apps/agents/writer_agent/skills.yaml").read_text(encoding="utf-8")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            agent_root = Path(tmp) / "agents"
+            wdir = agent_root / "writer_agent"
+            wdir.mkdir(parents=True)
+            (wdir / "prompt.md").write_text(prompt_text, encoding="utf-8")
+            (wdir / "strategy.yaml").write_text(strategy_text, encoding="utf-8")
+            (wdir / "output_schema.json").write_text(
+                json.dumps(
+                    {"schema_ref": "agents/agent_step_output.schema.json", "schema_version": "v1"},
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            (wdir / "skills.yaml").write_text(skills_text, encoding="utf-8")
+            # output_schema 仅引用 packages/schemas 下的 agent_step_output（与仓库 writer 内联正文 schema 不同），
+            # 故 consumption 只能覆盖该 schema 的必选 view.notes，不能复用 apps/agents/writer_agent/consumption.json。
+            (wdir / "consumption.json").write_text(
+                json.dumps({"consumed_by": {"view.notes": "code"}}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            agent_registry = AgentRegistry(
+                root=agent_root,
+                schema_registry=schema_registry,
+                skill_registry=skill_registry,
+                strict=True,
+                degrade_mode=False,
+            )
+
+            service = ChapterGenerationWorkflowService(
+                project_repo=_FakeProjectRepo(),
+                chapter_repo=_FakeChapterRepo(),
+                agent_run_repo=_FakeAgentRunRepo(),
+                tool_call_repo=_FakeToolCallRepo(),
+                skill_run_repo=_FakeSkillRunRepo(),
+                story_context_provider=_FakeStoryContextProvider(),
+                project_memory_service=_FakeProjectMemoryService(),
+                ingestion_service=_FakeIngestionService(),
+                text_provider=_FakeTextProvider(),
+                agent_registry=agent_registry,
+                schema_registry=schema_registry,
+            )
+
+            profile = agent_registry.get("writer_agent")
+            self.assertIsNotNone(profile)
+            self.assertFalse(bool(profile.output_schema))
+
+            runtime = service._resolve_writer_runtime(
+                workflow_type="chapter_generation",
+                step_key="writer_draft",
+                strategy_mode="draft",
+            )
+
+            self.assertTrue(runtime.get("using_writer_schema"))
+            props = (runtime.get("response_schema") or {}).get("properties") or {}
+            self.assertIn("notes", props)
+            self.assertEqual(runtime.get("output_format_contract"), WRITER_OUTPUT_CONTRACT_V2)
+            self.assertEqual(runtime.get("output_format_schema_ref"), WRITER_OUTPUT_SCHEMA_REF_V2)
 
     def test_success_path(self) -> None:
         service, _, run_repo, skill_repo = self._build_service()

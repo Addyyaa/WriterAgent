@@ -134,6 +134,10 @@ class ChapterGeneratePayload(BaseModel):
     writing_goal: str = Field(..., min_length=1, description="写作目标，建议包含剧情推进目标、冲突点或本章任务。")
     chapter_no: int | None = Field(default=None, ge=1, description="目标章节号。为空时由 workflow 自行决定写入章节序号。")
     target_words: int = Field(default=1200, ge=300, le=10000, description="目标字数（正文非空白字符数将校验在 ±10%）。")
+    enforce_chapter_word_count: bool = Field(
+        default=True,
+        description="为 False 时仍将 target_words 写入提示与契约，但不因返回长度未达标而重试或失败。",
+    )
     style_hint: str | None = Field(default=None, description="风格提示，如“冷峻纪实”“高张力对话”。")
     include_memory_top_k: int = Field(default=8, ge=1, le=50, description="记忆检索候选条数上限。")
     context_token_budget: int | None = Field(
@@ -182,6 +186,10 @@ class WorkflowRunCreatePayload(BaseModel):
     chat_turns: list[dict] | None = Field(default=None, description="会话历史。")
     working_notes: list[str] | None = Field(default=None, description="工作笔记。")
     session_id: UUID | None = Field(default=None, description="关联会话 ID（可选）。")
+    enforce_chapter_word_count: bool = Field(
+        default=True,
+        description="为 False 时不校验生成正文是否落在 target_words±10%，仍向模型传递目标字数。",
+    )
     idempotency_key: str | None = Field(
         default=None,
         description="幂等键。重复提交同一键会复用已有 run。",
@@ -232,6 +240,13 @@ class UserPreferencesResponse(BaseModel):
     ok: bool = Field(..., description="更新是否成功。")
     user_id: str = Field(..., description="被更新用户 ID。")
     rebuild_chunks: int = Field(..., description="偏好记忆重建生成的 chunk 数。")
+
+
+class AuthMePreferencesPatchPayload(BaseModel):
+    preferences: dict = Field(
+        default_factory=dict,
+        description="与当前用户 preferences 做顶层合并（不触发偏好记忆重建）。",
+    )
 
 
 class UserCreatePayload(BaseModel):
@@ -1514,6 +1529,27 @@ def create_app(
         user = current_user(req, db)
         return {"user": user}
 
+    @app.patch(
+        "/v2/auth/me/preferences",
+        tags=["Users"],
+        summary="合并当前用户 preferences",
+        description="顶层键合并写入 users.preferences；不触发 user_preference 记忆重建。",
+    )
+    def auth_patch_me_preferences(
+        payload: AuthMePreferencesPatchPayload,
+        req: Request,
+        db: Session = Depends(get_db),
+    ) -> dict:
+        user = current_user(req, db)
+        uid = UUID(str(user["id"]))
+        repo = UserRepository(db)
+        row = repo.get(uid)
+        if row is None:
+            raise HTTPException(status_code=404, detail="user 不存在")
+        merged = {**(dict(row.preferences or {})), **(dict(payload.preferences or {}))}
+        repo.update_preferences(uid, merged)
+        return {"ok": True, "preferences": merged}
+
     @app.post(
         "/v2/users",
         response_model=UserResponse,
@@ -2675,6 +2711,7 @@ def create_app(
                         temperature=payload.temperature,
                         chat_turns=payload.chat_turns,
                         working_notes=payload.working_notes,
+                        enforce_chapter_word_count=bool(payload.enforce_chapter_word_count),
                     )
                 )
             except ChapterGenerationWorkflowError as exc:
@@ -2742,6 +2779,7 @@ def create_app(
                     session_id=str(payload.session_id) if payload.session_id is not None else None,
                     idempotency_key=payload.idempotency_key,
                     user_id=str(user["id"]),
+                    enforce_chapter_word_count=bool(payload.enforce_chapter_word_count),
                 )
             )
             if payload.session_id is not None:
@@ -2980,6 +3018,7 @@ def create_app(
                     session_id=str(payload.session_id) if payload.session_id is not None else None,
                     idempotency_key=payload.idempotency_key,
                     user_id=str(user["id"]),
+                    enforce_chapter_word_count=bool(payload.enforce_chapter_word_count),
                 )
             )
             if payload.session_id is not None:

@@ -4,7 +4,17 @@
 
 # Task
 
-对比输入的【Context（背景设定/前文）】与【Draft（当前章节草稿）】，进行全方位的一致性审查。
+用户 JSON 由服务端组装，结构为：
+
+- `project`：项目摘要
+- `state.review_contract`：审查契约（`audit_dimensions`、`allowed_severities`、`evidence_policy`）
+- `state.review_focus`：规则引擎给出的审查焦点（角色、主视角启发式、结构化资产、关键词、已发现 rule 问题等）
+- `state.review_context`：**证据包**（已切片的章节摘要与短 preview、角色卡、世界观条目、时间线、伏笔），**不含**当前章全文
+- `state.chapter_draft_audit`：**当前章全文**（含 `content`），即待审草稿
+- `retrieval`：检索循环产出的短证据项（条数与长度已截断，且已与证据包去重）
+
+严格遵循 `state.review_contract.evidence_policy`；**不得**假设存在未出现在上述字段中的设定。
+输出**仅**通过函数调用 `consistency_review_output` 返回，**不要**在 assistant 文本中再写一份 JSON 示例或 Schema 说明。
 
 #审查维度
 
@@ -23,22 +33,3 @@
 2. **Evidence-Based (证据链)**: 每一个问题必须引用【Context】中的“原有设定”与【Draft】中的“冲突原文”。严禁凭空指摘。
 
 3. **Executable Fix (可执行修订)**: 给出具体的修改建议，而非笼统的“请修改”。
-
-# Output Format (JSON)
-
-请只输出符合以下 Schema 的 JSON，不要包含 Markdown 代码块标记：
-
-{
-"overall_status": "passed|warning|failed",
-"audit_summary": "一句话总结审查结果",
-"issues": [
-{
-"category": "character|worldview|timeline|foreshadowing",
-"severity": "warning|failed",
-"evidence_context": "string (引用Context中相关的原文设定)",
-"evidence_draft": "string (引用Draft中冲突的原文)",
-"reasoning": "string (为什么这是一个问题)",
-"revision_suggestion": "string (具体的修改建议)"
-}
-]
-}

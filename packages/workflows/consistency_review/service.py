@@ -4,7 +4,10 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
+from packages.core.config import env_bool, env_int
 from packages.llm.text_generation.base import TextGenerationProvider, TextGenerationRequest
+from packages.llm.text_generation.openai_compatible import OpenAICompatibleTextProvider
+from packages.llm.text_generation.runtime_config import TextGenerationRuntimeConfig
 from packages.storage.postgres.repositories.chapter_repository import ChapterRepository
 from packages.storage.postgres.repositories.consistency_report_repository import (
     ConsistencyReportRepository,
@@ -13,6 +16,20 @@ from packages.workflows.chapter_generation.context_provider import (
     SQLAlchemyStoryContextProvider,
     StoryConstraintContext,
 )
+from packages.workflows.consistency_review.context_builder import (
+    build_review_context_slice,
+    build_review_contract,
+    build_review_evidence_pack,
+    build_review_focus,
+    collect_review_fetch_allowlist,
+)
+from packages.workflows.consistency_review.evidence_tool_loop import (
+    run_consistency_review_tool_loop,
+)
+from packages.workflows.consistency_review.retrieval_dedup import (
+    dedupe_retrieval_bundle_against_evidence,
+)
+from packages.workflows.orchestration.prompt_payload_assembler import PromptPayloadAssembler
 
 
 @dataclass(frozen=True)
@@ -21,7 +38,11 @@ class ConsistencyReviewRequest:
     chapter_id: object
     chapter_version_id: int | None = None
     trace_id: str | None = None
+    # 优先使用与 writer 链路一致的检索包（summary/items）；勿与 retrieval_bundle 重复塞长文本
     retrieval_context: str | None = None
+    retrieval_bundle: dict[str, Any] | None = None
+    # 供 PromptPayloadAssembler 的 project 投影；缺省时仅含 project_id
+    project_snapshot: dict[str, Any] | None = None
     llm_enabled: bool = True
     llm_system_prompt: str | None = None
     llm_temperature: float | None = None
@@ -50,22 +71,22 @@ class ConsistencyReviewWorkflowService:
     AGENT_NAME = "consistency_agent"
     WORKFLOW_NAME = "consistency_review"
     DEFAULT_SYSTEM_PROMPT = (
-        "你是作品一致性审查助手。请对照上下文与章节草稿，"
-        "输出结构化 JSON，识别角色/世界观/时间线/伏笔冲突，并给出可执行修订建议。"
+        "你是作品一致性审查助手。仅依据 state.review_contract 中的 evidence_policy，"
+        "使用 state.review_focus、state.review_context、state.review_evidence_pack 与 retrieval 证据项，"
+        "对照 chapter_draft_audit 全文，输出函数 consistency_review_output 所要求的结构化结果；"
+        "勿臆造未提供证据。禁止调用任何「本地数据工具」——证据已由服务端注入。"
     )
+    # 与 PromptPayloadAssembler 输出对齐；output_schema 由 response_schema + 工具调用承载，不再重复进 prompt
     CONSISTENCY_INPUT_SCHEMA = {
         "type": "object",
-        "required": ["project_id", "chapter", "story_constraints"],
+        "required": ["state"],
         "properties": {
-            "project_id": {"type": "string", "minLength": 1},
-            "chapter": {"type": "object"},
-            "story_constraints": {"type": "object"},
-            "retrieval_context": {"type": ["string", "null"]},
-            "audit_dimensions": {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-            "output_schema": {"type": "object"},
+            "step_key": {"type": "string"},
+            "workflow_type": {"type": "string"},
+            "role_id": {"type": "string"},
+            "project": {"type": "object"},
+            "state": {"type": "object"},
+            "retrieval": {"type": "object"},
         },
         "additionalProperties": True,
     }
@@ -123,6 +144,27 @@ class ConsistencyReviewWorkflowService:
         self.report_repo = report_repo
         self.story_context_provider = story_context_provider
         self.text_provider = text_provider
+        self._payload_assembler = PromptPayloadAssembler()
+
+    @staticmethod
+    def _retrieval_bundle_from_legacy(retrieval_context: str | None) -> dict[str, Any]:
+        if not retrieval_context or not str(retrieval_context).strip():
+            return {
+                "summary": {"key_facts": [], "current_states": []},
+                "items": [],
+                "meta": {},
+            }
+        return {
+            "summary": {"key_facts": [], "current_states": []},
+            "items": [
+                {
+                    "source": "retrieval",
+                    "score": None,
+                    "text": str(retrieval_context).strip()[:2400],
+                }
+            ],
+            "meta": {"from_legacy_context_string": True},
+        }
 
     def run(self, request: ConsistencyReviewRequest) -> ConsistencyReviewResult:
         chapter = self.chapter_repo.get(request.chapter_id)
@@ -152,47 +194,158 @@ class ConsistencyReviewWorkflowService:
         )
         rule_status = self._status_from_issues(rule_issues)
 
+        review_focus = build_review_focus(
+            chapter_text=chapter_text,
+            chapter_no=chapter_no,
+            story_context=story_context,
+            rule_issues=rule_issues,
+        )
+        review_context_slice = build_review_context_slice(
+            chapter_text=chapter_text,
+            chapter_no=chapter_no,
+            story_context=story_context,
+            review_focus=review_focus,
+            rule_issues=rule_issues,
+        )
+        review_evidence_pack = build_review_evidence_pack(
+            chapter_text=chapter_text,
+            chapter_no=chapter_no,
+            story_context=story_context,
+            review_focus=review_focus,
+        )
+        review_contract = build_review_contract()
+        project_ctx = dict(request.project_snapshot or {})
+        if "id" not in project_ctx:
+            project_ctx["id"] = str(request.project_id)
+        retrieval_bundle = request.retrieval_bundle
+        if retrieval_bundle is None:
+            retrieval_bundle = self._retrieval_bundle_from_legacy(request.retrieval_context)
+        else:
+            retrieval_bundle = dict(retrieval_bundle)
+        retrieval_bundle = dedupe_retrieval_bundle_against_evidence(
+            retrieval_bundle,
+            review_context_slice,
+        )
+
+        raw_state: dict[str, dict[str, Any]] = {
+            "review_contract": {"view": review_contract},
+            "review_focus": {"view": review_focus},
+            "review_context": {"view": review_context_slice},
+            "review_evidence_pack": {"view": review_evidence_pack},
+            "chapter_draft_audit": {"view": chapter_payload},
+        }
+        llm_payload = self._payload_assembler.build(
+            role_id=str(request.llm_role_id or self.AGENT_NAME),
+            step_key="chapter_audit",
+            workflow_type=self.WORKFLOW_NAME,
+            project_context=project_ctx,
+            raw_state=raw_state,
+            retrieval_bundle=retrieval_bundle,
+            outline_state={},
+        )
+
         llm_used = False
         llm_status = "passed"
         llm_summary = ""
         llm_issues: list[dict[str, Any]] = []
         if request.llm_enabled and self.text_provider is not None:
-            llm_payload = self._build_llm_payload(
-                project_id=request.project_id,
-                chapter=chapter_payload,
-                context=story_context,
-                retrieval_context=request.retrieval_context,
-            )
             try:
-                llm_result = self.text_provider.generate(
-                    TextGenerationRequest(
-                        system_prompt=request.llm_system_prompt or self.DEFAULT_SYSTEM_PROMPT,
-                        user_prompt=json.dumps(llm_payload, ensure_ascii=False),
-                        temperature=float(request.llm_temperature or 0.1),
-                        max_tokens=int(request.llm_max_tokens or 1200),
-                        input_payload=llm_payload,
-                        input_schema=self.CONSISTENCY_INPUT_SCHEMA,
-                        input_schema_name="consistency_review_input",
-                        input_schema_strict=True,
-                        response_schema=request.llm_response_schema or self.CONSISTENCY_OUTPUT_SCHEMA,
-                        response_schema_name="consistency_review_output",
-                        response_schema_strict=True,
-                        validation_retries=1,
-                        use_function_calling=True,
-                        function_name="consistency_review_output",
-                        function_description=(
+                out_schema = request.llm_response_schema or self.CONSISTENCY_OUTPUT_SCHEMA
+                sys_prompt = str(request.llm_system_prompt or self.DEFAULT_SYSTEM_PROMPT)
+                tool_loop = env_bool("WRITER_CONSISTENCY_REVIEW_TOOL_LOOP", False)
+                if tool_loop and isinstance(self.text_provider, OpenAICompatibleTextProvider):
+                    max_fetches = env_int(
+                        "WRITER_CONSISTENCY_REVIEW_MAX_FETCHES",
+                        3,
+                        minimum=1,
+                        maximum=20,
+                    )
+                    strict_entity_fetch = env_bool("WRITER_CONSISTENCY_REVIEW_STRICT_ENTITY_FETCH", True)
+                    fetch_allowlist: set[str] | None = None
+                    if strict_entity_fetch:
+                        fetch_allowlist = collect_review_fetch_allowlist(
+                            review_focus=review_focus,
+                            review_context_slice=review_context_slice,
+                            evidence_pack=review_evidence_pack,
+                        )
+                    extra_fetch = (
+                        "\n\n你可按需调用 fetch_consistency_evidence（scope + entity_id，UUID）"
+                        f"补充证据，建议不超过 {max_fetches} 次；"
+                        "entity_id 必须已出现在 state.review_context / state.review_evidence_pack 所涉实体中。"
+                        if strict_entity_fetch
+                        else "\n\n你可按需调用 fetch_consistency_evidence（scope + entity_id，UUID）"
+                        f"拉取证据包未包含的实体，建议不超过 {max_fetches} 次；"
+                    )
+                    sys_prompt = (
+                        sys_prompt
+                        + extra_fetch
+                        + "最后必须调用 consistency_review_output 提交完整审查 JSON。"
+                    )
+
+                    def _fetch_evidence(scope: str, entity_id: str) -> dict[str, Any]:
+                        return self.story_context_provider.fetch_evidence_entity(
+                            project_id=request.project_id,
+                            scope=scope,
+                            entity_id=entity_id,
+                        )
+
+                    cfg = TextGenerationRuntimeConfig.from_env()
+                    tool_read_timeout: float | None = None
+                    if cfg.revision_llm_timeout_seconds is not None:
+                        tool_read_timeout = min(
+                            max(float(cfg.revision_llm_timeout_seconds), 1.0),
+                            900.0,
+                        )
+
+                    llm_result = run_consistency_review_tool_loop(
+                        self.text_provider,
+                        system_prompt=sys_prompt,
+                        user_json=json.dumps(llm_payload, ensure_ascii=False),
+                        output_schema=out_schema,
+                        output_function_name="consistency_review_output",
+                        output_description=(
                             "Return consistency audit JSON with overall_status, audit_summary and issues."
                         ),
-                        metadata_json={
-                            "workflow": self.WORKFLOW_NAME,
-                            "trace_id": request.trace_id,
-                            "role_id": request.llm_role_id,
-                            "strategy_version": request.llm_strategy_version,
-                            "prompt_hash": request.llm_prompt_hash,
-                            "schema_ref": request.llm_schema_ref,
-                        },
+                        fetch_handler=_fetch_evidence,
+                        max_rounds=6,
+                        max_fetches=max_fetches,
+                        validation_retries=1,
+                        temperature=float(request.llm_temperature or 0.1),
+                        max_tokens=int(request.llm_max_tokens or 1200),
+                        read_timeout=tool_read_timeout,
+                        metadata_tag=str(request.trace_id or "consistency_tool_loop"),
+                        entity_id_allowlist=fetch_allowlist,
                     )
-                )
+                else:
+                    llm_result = self.text_provider.generate(
+                        TextGenerationRequest(
+                            system_prompt=sys_prompt,
+                            user_prompt=json.dumps(llm_payload, ensure_ascii=False),
+                            temperature=float(request.llm_temperature or 0.1),
+                            max_tokens=int(request.llm_max_tokens or 1200),
+                            input_payload=llm_payload,
+                            input_schema=self.CONSISTENCY_INPUT_SCHEMA,
+                            input_schema_name="consistency_review_input",
+                            input_schema_strict=True,
+                            response_schema=out_schema,
+                            response_schema_name="consistency_review_output",
+                            response_schema_strict=True,
+                            validation_retries=1,
+                            use_function_calling=True,
+                            function_name="consistency_review_output",
+                            function_description=(
+                                "Return consistency audit JSON with overall_status, audit_summary and issues."
+                            ),
+                            metadata_json={
+                                "workflow": self.WORKFLOW_NAME,
+                                "trace_id": request.trace_id,
+                                "role_id": request.llm_role_id,
+                                "strategy_version": request.llm_strategy_version,
+                                "prompt_hash": request.llm_prompt_hash,
+                                "schema_ref": request.llm_schema_ref,
+                            },
+                        )
+                    )
                 llm_used = True
                 llm_output = dict(llm_result.json_data or {})
                 llm_status = self._normalize_status(llm_output.get("overall_status"))
@@ -241,42 +394,6 @@ class ConsistencyReviewWorkflowService:
             rule_issues_count=len(rule_issues),
             llm_issues_count=len(llm_issues),
         )
-
-    def _build_llm_payload(
-        self,
-        *,
-        project_id: object,
-        chapter: dict[str, Any],
-        context: StoryConstraintContext,
-        retrieval_context: str | None,
-    ) -> dict[str, Any]:
-        return {
-            "project_id": str(project_id),
-            "chapter": dict(chapter),
-            "story_constraints": {
-                "chapters": list(context.chapters),
-                "characters": list(context.characters),
-                "world_entries": list(context.world_entries),
-                "timeline_events": list(context.timeline_events),
-                "foreshadowings": list(context.foreshadowings),
-            },
-            "retrieval_context": retrieval_context,
-            "audit_dimensions": ["character", "worldview", "timeline", "foreshadowing"],
-            "output_schema": {
-                "overall_status": "passed|warning|failed",
-                "audit_summary": "string",
-                "issues": [
-                    {
-                        "category": "character|worldview|timeline|foreshadowing",
-                        "severity": "warning|failed",
-                        "evidence_context": "string",
-                        "evidence_draft": "string",
-                        "reasoning": "string",
-                        "revision_suggestion": "string",
-                    }
-                ],
-            },
-        }
 
     def _run_rule_checks(
         self,

@@ -112,22 +112,62 @@ class PromptPayloadAssembler:
             payload["working_notes"] = self._build_working_notes_view(working_notes)
 
         payload_size_chars = len(json.dumps(payload, ensure_ascii=False))
+        chunk_chars = self._payload_chunk_char_sizes(payload)
         logger.info(
             json.dumps(
                 {
                     "event": "prompt_payload_built",
                     "role_id": str(role_id or "").strip().lower(),
                     "step_key": str(step_key or ""),
+                    "context_tier": spec.context_tier,
                     "raw_state_keys": sorted(raw_state.keys()),
                     "projected_state_keys": sorted(state_view.keys()),
                     "dependency_keys": [d.step_key for d in spec.dependencies],
                     "retrieval_mode": spec.retrieval.mode,
                     "payload_size_chars": payload_size_chars,
+                    "payload_chunk_chars": chunk_chars,
                 },
                 ensure_ascii=False,
             )
         )
+        if spec.context_tier == "planning":
+            st = int(chunk_chars.get("state") or 0)
+            rt = int(chunk_chars.get("retrieval") or 0)
+            if st + rt > 12_000:
+                logger.warning(
+                    json.dumps(
+                        {
+                            "event": "prompt_payload_planning_budget_soft_cap",
+                            "role_id": str(role_id or "").strip().lower(),
+                            "step_key": str(step_key or ""),
+                            "state_chars": st,
+                            "retrieval_chars": rt,
+                            "hint": "规划档建议保持轻量；检查 dependencies 是否带入过长字段",
+                        },
+                        ensure_ascii=False,
+                    )
+                )
         return payload
+
+    @staticmethod
+    def _payload_chunk_char_sizes(payload: dict[str, Any]) -> dict[str, int]:
+        """各顶层块序列化字符数，便于 summary-first 体积对照。"""
+        out: dict[str, int] = {}
+        for key in ("project", "outline", "state", "retrieval", "working_notes"):
+            if key not in payload:
+                continue
+            try:
+                out[key] = len(json.dumps(payload[key], ensure_ascii=False))
+            except (TypeError, ValueError):
+                out[key] = -1
+        st = payload.get("state")
+        if isinstance(st, dict):
+            for sk, sv in st.items():
+                try:
+                    out[f"state.{sk}"] = len(json.dumps(sv, ensure_ascii=False))
+                except (TypeError, ValueError):
+                    out[f"state.{sk}"] = -1
+        return out
 
     def _missing_required_dependencies(
         self, spec: StepInputSpec, raw_state: dict[str, dict]

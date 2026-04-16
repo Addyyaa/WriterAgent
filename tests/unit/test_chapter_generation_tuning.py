@@ -113,6 +113,17 @@ class TestChapterGenerationTuning(unittest.TestCase):
                 no_progress_streak=1,
             )
         )
+        self.assertFalse(
+            ChapterGenerationWorkflowService._should_use_short_draft_expander(
+                enabled=True,
+                attempt_index=2,
+                trigger_attempt=3,
+                issue="too_short",
+                previous_content="已有正文",
+                no_progress_streak=0,
+                enforce_word_count=False,
+            )
+        )
 
     def test_response_schema_content_min_patch(self) -> None:
         schema = {

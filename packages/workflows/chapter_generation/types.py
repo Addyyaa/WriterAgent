@@ -21,6 +21,8 @@ class ChapterGenerationRequest:
     # 编排 writer_draft 步传入的各 agent 输出快照，供 PromptPayloadAssembler「writer_agent:writer_draft」投影。
     orchestrator_raw_state: dict[str, Any] | None = None
     persist_chapter: bool = True
+    # False 时仍向 LLM 传递 target_words 与字数区间提示，但不因返回正文长度未落在 ±10% 而重试/失败。
+    enforce_chapter_word_count: bool = True
     request_id: str | None = None
     trace_id: str | None = None
     live_progress_callback: Callable[[dict[str, Any]], None] | None = None

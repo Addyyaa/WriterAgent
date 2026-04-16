@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -22,8 +23,10 @@ from packages.workflows.consistency_review.service import (
 class _OkProvider(TextGenerationProvider):
     def __init__(self, payload: dict):
         self.payload = payload
+        self.last_input: dict | None = None
 
     def generate(self, request: TextGenerationRequest) -> TextGenerationResult:
+        self.last_input = dict(request.input_payload or {})
         return TextGenerationResult(
             text="ok",
             json_data=dict(self.payload),
@@ -135,6 +138,22 @@ class TestConsistencyReviewWorkflowService(unittest.TestCase):
                 trace_id="trace-x",
             )
         )
+        assert isinstance(service.text_provider, _OkProvider)
+        lp = service.text_provider.last_input
+        self.assertIsNotNone(lp)
+        assert lp is not None
+        self.assertIn("state", lp)
+        self.assertIn("review_contract", lp["state"])
+        self.assertIn("audit_dimensions", lp["state"]["review_contract"])
+        self.assertIn("allowed_severities", lp["state"]["review_contract"])
+        self.assertIn("review_focus", lp["state"])
+        self.assertNotIn("audit_dimensions", lp["state"]["review_focus"])
+        self.assertIn("review_context", lp["state"])
+        self.assertIn("review_evidence_pack", lp["state"])
+        self.assertIn("characters_detail", lp["state"]["review_evidence_pack"])
+        self.assertIn("chapter_draft_audit", lp["state"])
+        self.assertIn("content", lp["state"]["chapter_draft_audit"])
+        self.assertNotIn("output_schema", json.dumps(lp, ensure_ascii=False))
         self.assertTrue(result.llm_used)
         self.assertEqual(result.status, "failed")
         self.assertGreaterEqual(result.rule_issues_count, 1)

@@ -68,6 +68,7 @@ class WorkflowRunRequest:
     trace_id: str | None = None
     idempotency_key: str | None = None
     metadata_json: dict[str, Any] = field(default_factory=dict)
+    enforce_chapter_word_count: bool = True
 
 
 @dataclass(frozen=True)

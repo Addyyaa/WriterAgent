@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,7 +26,14 @@ class StoryConstraintContext:
 
 
 class SQLAlchemyStoryContextProvider:
-    """从业务表读取写作硬约束上下文。"""
+    """从业务表读取写作硬约束上下文（候选池）。
+
+    返回的是在条数上限内的结构化候选集（章节窗口、角色与世界等），
+    **不保证**与当前 LLM 步骤 token 预算匹配。一致性审查等步骤不得将 ``load()``
+    结果整包直接作为 LLM 输入，须经
+    ``packages.workflows.consistency_review.context_builder`` 中的切片与聚焦逻辑
+    再进入 ``PromptPayloadAssembler``。
+    """
 
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -198,3 +207,101 @@ class SQLAlchemyStoryContextProvider:
             }
             for row in rows
         ]
+
+    def fetch_evidence_entity(
+        self,
+        *,
+        project_id,
+        scope: str,
+        entity_id: str,
+        max_json_chars: int = 2800,
+    ) -> dict[str, Any]:
+        """按需拉取单条实体（供一致性审查多轮 tool calling）；不在候选池切片内时使用。"""
+        try:
+            eid = uuid.UUID(str(entity_id).strip())
+        except ValueError:
+            return {"found": False, "scope": scope, "reason": "invalid_entity_id"}
+
+        key = str(scope or "").strip().lower()
+        payload: dict[str, Any] | None = None
+
+        if key == "character":
+            row = self.db.execute(
+                select(Character).where(
+                    and_(Character.id == eid, Character.project_id == project_id)
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                return {"found": False, "scope": key, "entity_id": str(entity_id)}
+            inv = dict(getattr(row, "inventory_json", None) or {})
+            wealth = dict(getattr(row, "wealth_json", None) or {})
+            payload = {
+                "id": str(row.id),
+                "name": row.name,
+                "role_type": row.role_type,
+                "faction": row.faction,
+                "profile_json": row.profile_json or {},
+                "inventory_json": inv,
+                "wealth_json": wealth,
+            }
+        elif key in {"world_entry", "world"}:
+            row = self.db.execute(
+                select(WorldEntry).where(
+                    and_(WorldEntry.id == eid, WorldEntry.project_id == project_id)
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                return {"found": False, "scope": key, "entity_id": str(entity_id)}
+            payload = {
+                "id": str(row.id),
+                "entry_type": row.entry_type,
+                "title": row.title,
+                "content": row.content,
+                "metadata_json": row.metadata_json or {},
+            }
+        elif key in {"timeline_event", "timeline"}:
+            row = self.db.execute(
+                select(TimelineEvent).where(
+                    and_(TimelineEvent.id == eid, TimelineEvent.project_id == project_id)
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                return {"found": False, "scope": key, "entity_id": str(entity_id)}
+            payload = {
+                "id": str(row.id),
+                "chapter_no": row.chapter_no,
+                "event_title": row.event_title,
+                "event_desc": row.event_desc,
+                "location": row.location,
+                "involved_characters": row.involved_characters or [],
+            }
+        elif key in {"foreshadowing", "foreshadow"}:
+            row = self.db.execute(
+                select(Foreshadowing).where(
+                    and_(Foreshadowing.id == eid, Foreshadowing.project_id == project_id)
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                return {"found": False, "scope": key, "entity_id": str(entity_id)}
+            payload = {
+                "id": str(row.id),
+                "setup_chapter_no": row.setup_chapter_no,
+                "setup_text": row.setup_text,
+                "expected_payoff": row.expected_payoff,
+                "payoff_chapter_no": row.payoff_chapter_no,
+                "payoff_text": row.payoff_text,
+                "status": str(row.status.value if hasattr(row.status, "value") else row.status),
+            }
+        else:
+            return {"found": False, "scope": scope, "reason": "unknown_scope"}
+
+        out = {"found": True, "scope": key, "entity": payload}
+        raw = json.dumps(out, ensure_ascii=False)
+        if len(raw) > max_json_chars:
+            return {
+                "found": True,
+                "scope": key,
+                "truncated": True,
+                "preview": raw[: max(1, max_json_chars - 3)] + "...",
+            }
+        return out

@@ -239,11 +239,15 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         prompt_guard_max_attempts: int = 2,
         prompt_guard_llm_max_input_chars: int = 12000,
         compat_mode: str = "auto",
+        max_output_tokens_cap: int | None = None,
     ) -> None:
         self.api_key = ensure_non_empty_string(api_key, field_name="api_key")
         self.model = ensure_non_empty_string(model, field_name="model")
         self.base_url = ensure_non_empty_string(base_url, field_name="base_url").rstrip("/")
         self.timeout_seconds = max(1.0, float(timeout_seconds))
+        self.max_output_tokens_cap = (
+            max(1, int(max_output_tokens_cap)) if max_output_tokens_cap is not None else None
+        )
 
         self.prompt_guard_enabled = bool(prompt_guard_enabled)
         self.model_context_window_tokens = max(2048, int(model_context_window_tokens))
@@ -287,16 +291,33 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             return True
         return bool(profile.supports_forced_function_tool_choice)
 
+    def _read_timeout_for(self, request: TextGenerationRequest) -> float:
+        """单次请求的 HTTP 读超时，与 factory 侧上限 900s 对齐。"""
+        if request.timeout_seconds is not None:
+            return min(max(float(request.timeout_seconds), 1.0), 900.0)
+        return float(self.timeout_seconds)
+
     def generate(self, request: TextGenerationRequest) -> TextGenerationResult:
         effective_request = request
         input_validation = self._validate_request_input(request)
         prompt_guard = {"applied": False, "attempts": 0, "reason": "disabled_or_not_needed"}
 
         meta_tag = request.metadata_json.get("role_id", request.metadata_json.get("step_key", "unknown"))
-        logger.info(
-            "[LLM] generate start | model=%s meta=%s prompt_len=%d max_tokens=%s",
-            self.model, meta_tag, len(request.user_prompt or ""), request.max_tokens or "None",
-        )
+        read_to = self._read_timeout_for(request)
+        if request.timeout_seconds is not None and read_to != float(self.timeout_seconds):
+            logger.info(
+                "[LLM] generate start | model=%s meta=%s prompt_len=%d max_tokens=%s read_timeout=%.1fs（按请求覆盖）",
+                self.model,
+                meta_tag,
+                len(request.user_prompt or ""),
+                request.max_tokens or "None",
+                read_to,
+            )
+        else:
+            logger.info(
+                "[LLM] generate start | model=%s meta=%s prompt_len=%d max_tokens=%s",
+                self.model, meta_tag, len(request.user_prompt or ""), request.max_tokens or "None",
+            )
 
         if self._should_apply_prompt_guard(request):
             effective_request, prompt_guard = self._apply_prompt_guard(
@@ -424,8 +445,9 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             }
         else:
             payload["response_format"] = {"type": "json_object"}
-        if request.max_tokens is not None:
-            payload["max_tokens"] = int(request.max_tokens)
+        eff_mt = self._effective_max_tokens(request)
+        if eff_mt is not None:
+            payload["max_tokens"] = int(eff_mt)
         return payload
 
     @staticmethod
@@ -481,12 +503,13 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         url: str,
         headers: dict[str, str],
         payload: dict[str, Any],
+        read_timeout: float,
     ) -> dict[str, Any]:
         resp = httpx.post(
             url,
             headers=headers,
             json=payload,
-            timeout=self.timeout_seconds,
+            timeout=float(read_timeout),
         )
         return self._parse_http_response(resp)
 
@@ -517,6 +540,59 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         )
         raise err
 
+    def chat_completions(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        temperature: float = 0.1,
+        max_tokens: int | None = None,
+        read_timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """
+        原始 chat/completions 多轮协议（messages 含 assistant/tool 角色）。
+        用于一致性审查等「输出函数 + 按需取证工具」的多轮拉取；与单轮 generate 并存。
+        """
+        url = f"{self.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": list(messages),
+            "temperature": max(0.0, min(float(temperature), 2.0)),
+        }
+        if tools:
+            payload["tools"] = list(tools)
+            if tool_choice is not None:
+                payload["tool_choice"] = tool_choice
+            else:
+                payload["tool_choice"] = "auto"
+        elif tool_choice is not None:
+            payload["tool_choice"] = tool_choice
+
+        if max_tokens is not None:
+            mt = max(1, int(max_tokens))
+            cap = self.max_output_tokens_cap
+            if cap is not None and mt > cap:
+                logger.info(
+                    "[LLM] chat_completions max_tokens %s 超过厂商上限 %s，已裁剪",
+                    mt,
+                    cap,
+                )
+                mt = cap
+            payload["max_tokens"] = mt
+
+        to = float(read_timeout) if read_timeout is not None else float(self.timeout_seconds)
+        logger.info(
+            "[LLM] chat_completions | model=%s messages=%d tools=%s",
+            self.model,
+            len(messages),
+            len(tools or []),
+        )
+        return self._post_chat_payload(url=url, headers=headers, payload=payload, read_timeout=to)
 
     def parse_chat_response(self, body: dict[str, Any]) -> TextGenerationResult:
         try:
@@ -710,7 +786,12 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         for attempt in range(repair_limit + 1):
             payload = self.build_chat_payload(effective_request)
             try:
-                body = self._post_chat_payload(url=url, headers=headers, payload=payload)
+                body = self._post_chat_payload(
+                    url=url,
+                    headers=headers,
+                    payload=payload,
+                    read_timeout=self._read_timeout_for(effective_request),
+                )
                 parsed = self.parse_chat_response(body)
             except Exception:
                 if effective_request.use_function_calling and not downgraded_fc:
@@ -1111,12 +1192,24 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             normalized = "writer_output"
         return normalized[:64]
 
+    def _effective_max_tokens(self, request: TextGenerationRequest) -> int | None:
+        """按厂商上限裁剪 max_tokens（如通义网关要求 ≤8192），避免 400 InvalidParameter。"""
+        if request.max_tokens is None:
+            return None
+        mt = max(1, int(request.max_tokens))
+        cap = self.max_output_tokens_cap
+        if cap is not None and mt > cap:
+            logger.info(
+                "[LLM] max_tokens 请求值 %s 超过厂商上限 %s，已裁剪",
+                mt,
+                cap,
+            )
+            mt = cap
+        return mt
+
     def _resolve_input_budget(self, request: TextGenerationRequest) -> int:
-        reserve = (
-            int(request.max_tokens)
-            if request.max_tokens is not None
-            else self.prompt_guard_output_reserve_tokens
-        )
+        eff = self._effective_max_tokens(request)
+        reserve = int(eff) if eff is not None else int(self.prompt_guard_output_reserve_tokens)
         reserve = max(128, reserve)
         return max(512, self.model_context_window_tokens - reserve)
 

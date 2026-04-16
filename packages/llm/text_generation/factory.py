@@ -30,6 +30,20 @@ def create_text_generation_provider(
             profile_floor,
             str(cfg.timeout_use_provider_floor).lower(),
         )
+    profile_max_out = (
+        int(detected.profile.max_output_tokens)
+        if detected.profile and detected.profile.max_output_tokens is not None
+        else None
+    )
+    env_max_out = cfg.max_output_tokens
+    max_output_cap = env_max_out if env_max_out is not None else profile_max_out
+    if max_output_cap is not None:
+        logger.info(
+            "[LLM] max_output_tokens 将裁剪至 ≤%s（WRITER_LLM_MAX_OUTPUT_TOKENS=%s，profile=%s）",
+            max_output_cap,
+            env_max_out if env_max_out is not None else "（未设）",
+            profile_max_out if profile_max_out is not None else "（无）",
+        )
     return OpenAICompatibleTextProvider(
         api_key=cfg.api_key,
         model=cfg.model,
@@ -42,4 +56,5 @@ def create_text_generation_provider(
         prompt_guard_max_attempts=cfg.prompt_guard_max_attempts,
         prompt_guard_llm_max_input_chars=cfg.prompt_guard_llm_max_input_chars,
         compat_mode=cfg.compat_mode,
+        max_output_tokens_cap=max_output_cap,
     )

@@ -7,6 +7,7 @@ from packages.workflows.orchestration.prompt_payload_assembler import (
     build_retrieval_bundle_from_raw_state,
     build_writer_alignment_supplement_text,
 )
+from packages.workflows.orchestration.step_input_specs import STEP_INPUT_SPECS
 from packages.workflows.orchestration.prompt_payload_types import (
     RetrievalViewSpec,
     StateDependencySpec,
@@ -15,6 +16,11 @@ from packages.workflows.orchestration.prompt_payload_types import (
 
 
 class TestPromptPayloadAssembler(unittest.TestCase):
+    def test_step_input_specs_context_tier(self) -> None:
+        self.assertEqual(STEP_INPUT_SPECS["planner_agent"].context_tier, "planning")
+        self.assertEqual(STEP_INPUT_SPECS["retrieval_agent"].context_tier, "planning")
+        self.assertEqual(STEP_INPUT_SPECS["consistency_agent:chapter_audit"].context_tier, "strict_review")
+
     def test_build_projects_only_dependencies_not_full_state(self) -> None:
         specs = {
             "test_agent": StepInputSpec(

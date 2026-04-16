@@ -11,6 +11,8 @@ class TextGenerationRequest:
     user_prompt: str
     temperature: float = 0.7
     max_tokens: int | None = None
+    # 单次 HTTP 读超时（秒）；未设则使用 Provider 构造时的 timeout（如 factory 合并厂商下限后值）
+    timeout_seconds: float | None = None
     metadata_json: dict[str, Any] = field(default_factory=dict)
     input_payload: Any | None = None
     input_schema: dict[str, Any] | None = None

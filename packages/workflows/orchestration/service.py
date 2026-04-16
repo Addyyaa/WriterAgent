@@ -12,6 +12,23 @@ from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
+
+def _coerce_enforce_chapter_word_count(raw: Any) -> bool:
+    """workflow_run.input_json 中的布尔偏好（缺省为 True）。"""
+    if raw is None:
+        return True
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)):
+        return bool(int(raw))
+    s = str(raw).strip().lower()
+    if s in ("0", "false", "no", "off"):
+        return False
+    if s in ("1", "true", "yes", "on"):
+        return True
+    return True
+
+
 from packages.core.tracing import new_request_id, new_trace_id, request_context
 from packages.core.utils import ensure_non_empty_string
 from packages.evaluation.writing import build_writing_score_breakdown
@@ -383,6 +400,7 @@ class WritingOrchestratorService:
                 "working_notes": list(request.working_notes or []),
                 "session_id": request.session_id,
                 "metadata_json": request.metadata_json,
+                "enforce_chapter_word_count": bool(request.enforce_chapter_word_count),
             },
             max_retries=self.runtime_config.default_max_retries,
         )
@@ -1016,6 +1034,9 @@ class WritingOrchestratorService:
             request_id=row.request_id,
             trace_id=row.trace_id,
             idempotency_key=row.idempotency_key,
+            enforce_chapter_word_count=_coerce_enforce_chapter_word_count(
+                (row.input_json or {}).get("enforce_chapter_word_count"),
+            ),
         )
 
         plan = self.planner.plan(req, context_json=context_json)
@@ -1930,6 +1951,9 @@ class WritingOrchestratorService:
                 chat_turns=list((row.input_json or {}).get("chat_turns") or []),
                 working_notes=working_notes or None,
                 persist_chapter=False,
+                enforce_chapter_word_count=_coerce_enforce_chapter_word_count(
+                    (row.input_json or {}).get("enforce_chapter_word_count"),
+                ),
                 request_id=row.request_id,
                 trace_id=row.trace_id,
                 retrieval_context=combined_retrieval_context,
@@ -2084,13 +2108,26 @@ class WritingOrchestratorService:
                 if isinstance(loaded, dict):
                     llm_schema = loaded
 
+        proj_row = self.project_repo.get(row.project_id)
+        project_snapshot: dict[str, Any] = {"id": str(row.project_id)}
+        if proj_row is not None:
+            project_snapshot = {
+                "id": str(proj_row.id),
+                "title": getattr(proj_row, "title", None),
+                "genre": getattr(proj_row, "genre", None),
+                "premise": getattr(proj_row, "premise", None),
+                "metadata_json": getattr(proj_row, "metadata_json", None) or {},
+            }
+
         result = self.consistency_service.run(
             ConsistencyReviewRequest(
                 project_id=row.project_id,
                 chapter_id=chapter_id,
                 chapter_version_id=chapter.get("version_id"),
                 trace_id=row.trace_id,
-                retrieval_context=retrieval.context_text or None,
+                retrieval_context=None,
+                retrieval_bundle=dict(retrieval.context_bundle or {}),
+                project_snapshot=project_snapshot,
                 llm_enabled=True,
                 llm_system_prompt=llm_prompt,
                 llm_temperature=llm_temperature,

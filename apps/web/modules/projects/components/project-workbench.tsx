@@ -159,6 +159,25 @@ const WATCH_RUN_STORAGE_KEY = "writeragent.workspace.watchRun.v1";
 
 type WatchRunPayload = { runId: string; workflow: string };
 
+type AuthMeResponse = {
+  user?: {
+    id?: string;
+    preferences?: Record<string, unknown>;
+  };
+};
+
+const PREFS_ENFORCE_WORD_COUNT_KEY = "enforce_chapter_word_count";
+
+function readEnforceChapterWordCount(prefs: Record<string, unknown> | undefined): boolean {
+  const raw = prefs?.[PREFS_ENFORCE_WORD_COUNT_KEY];
+  if (raw === undefined || raw === null) return true;
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "number") return raw !== 0;
+  const s = String(raw).trim().toLowerCase();
+  if (s === "0" || s === "false" || s === "no" || s === "off") return false;
+  return true;
+}
+
 function readWatchRun(projectId: string): WatchRunPayload | null {
   if (typeof window === "undefined") return null;
   try {
@@ -513,6 +532,19 @@ export function ProjectWorkbench() {
   const { data, isLoading, error } = useQuery({ queryKey: ["projects"], queryFn: getProjects });
   const projects = data?.items || [];
 
+  const { data: authMe } = useQuery({
+    queryKey: ["auth-me"],
+    queryFn: () => fetchJson<AuthMeResponse>("/api/auth/me"),
+    staleTime: 60_000,
+  });
+
+  const [enforceChapterWordCount, setEnforceChapterWordCount] = useState(true);
+
+  useEffect(() => {
+    const prefs = authMe?.user?.preferences as Record<string, unknown> | undefined;
+    setEnforceChapterWordCount(readEnforceChapterWordCount(prefs));
+  }, [authMe?.user?.preferences]);
+
   const projectById = useMemo(() => {
     const map = new Map<string, Project>();
     for (const item of projects) map.set(item.id, item);
@@ -813,7 +845,8 @@ export function ProjectWorkbench() {
         project_id: values.project_id,
         workflow_type: values.workflow_type,
         writing_goal: values.writing_goal,
-        target_words: values.target_words
+        target_words: values.target_words,
+        enforce_chapter_word_count: enforceChapterWordCount
       })
     });
     const newRunId = String(body.run_id || "").trim() || null;
@@ -1267,6 +1300,40 @@ export function ProjectWorkbench() {
                 />
                 <p className="mt-1 text-xs text-rose-700">{runForm.formState.errors.target_words?.message}</p>
               </label>
+
+              <div className="rounded-xl border border-ink/15 bg-white px-3 py-3">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 shrink-0 rounded border-ink/30 text-ocean focus:ring-surge/50"
+                    checked={enforceChapterWordCount}
+                    onChange={async (e) => {
+                      const next = e.target.checked;
+                      setEnforceChapterWordCount(next);
+                      try {
+                        await fetchJson("/api/auth/me/preferences", {
+                          method: "PATCH",
+                          body: JSON.stringify({
+                            preferences: { [PREFS_ENFORCE_WORD_COUNT_KEY]: next }
+                          })
+                        });
+                        await queryClient.invalidateQueries({ queryKey: ["auth-me"] });
+                        toast.success(next ? "已开启正文字数校验" : "已关闭正文字数校验（目标字数仍会传给模型）");
+                      } catch (err) {
+                        setEnforceChapterWordCount(!next);
+                        toast.error(String((err as Error)?.message || "保存失败"));
+                      }
+                    }}
+                    disabled={!authMe?.user?.id}
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-graphite">校验生成正文字数</span>
+                    <span className="mt-0.5 block text-xs text-graphite/70">
+                      开启时要求正文有效字数落在目标字数 ±10%，否则自动重试；关闭时仍填写目标字数供模型参考，但不因长度不达标而重试。设置已保存到账号。
+                    </span>
+                  </span>
+                </label>
+              </div>
 
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-graphite">写作目标</span>

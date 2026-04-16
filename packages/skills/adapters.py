@@ -279,7 +279,9 @@ class CanonAdapter(BaseSkillToolAdapter):
             ("world_entries",),
         ):
             if isinstance(item, dict):
-                name = str(item.get("term") or item.get("name") or "").strip()
+                name = str(
+                    item.get("term") or item.get("name") or item.get("title") or ""
+                ).strip()
                 if name:
                     canon_names.append(name)
 

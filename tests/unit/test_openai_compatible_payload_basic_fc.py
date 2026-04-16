@@ -56,6 +56,47 @@ class TestOpenAICompatiblePayloadBasicFC(unittest.TestCase):
         )
         self.assertEqual(payload["response_format"]["type"], "json_object")
 
+    def test_max_tokens_clamped_to_provider_cap(self) -> None:
+        provider = OpenAICompatibleTextProvider(
+            api_key="k",
+            model="qwen-plus",
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            compat_mode="basic",
+            max_output_tokens_cap=8192,
+        )
+        payload = provider.build_chat_payload(
+            TextGenerationRequest(
+                system_prompt="sys",
+                user_prompt="user",
+                temperature=0.4,
+                max_tokens=32_000,
+                response_schema={"type": "object", "properties": {"x": {"type": "string"}}},
+                use_function_calling=False,
+            )
+        )
+        self.assertEqual(payload["max_tokens"], 8192)
+
+    def test_read_timeout_for_request_override(self) -> None:
+        provider = OpenAICompatibleTextProvider(
+            api_key="k",
+            model="qwen-plus",
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            compat_mode="basic",
+            timeout_seconds=120.0,
+        )
+        req = TextGenerationRequest(
+            system_prompt="s",
+            user_prompt="u",
+            timeout_seconds=450.0,
+        )
+        self.assertEqual(provider._read_timeout_for(req), 450.0)
+        over = TextGenerationRequest(
+            system_prompt="s",
+            user_prompt="u",
+            timeout_seconds=1000.0,
+        )
+        self.assertEqual(provider._read_timeout_for(over), 900.0)
+
 
 if __name__ == "__main__":
     unittest.main()

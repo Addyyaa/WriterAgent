@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from time import perf_counter
 from typing import Any, TYPE_CHECKING
 
+from packages.core.config import env_bool
 from packages.core.tracing import new_request_id, new_trace_id, request_context
 from packages.core.utils import ensure_non_empty_string
 from packages.core.utils.chapter_metrics import (
@@ -32,6 +33,7 @@ from packages.storage.postgres.repositories.tool_call_repository import ToolCall
 from packages.workflows.chapter_generation.context_provider import (
     SQLAlchemyStoryContextProvider,
 )
+from packages.workflows.context_views import build_story_assets_from_context
 from packages.workflows.chapter_generation.types import (
     ChapterGenerationRequest,
     ChapterGenerationResult,
@@ -243,6 +245,7 @@ class ChapterGenerationWorkflowService:
                     "include_memory_top_k": request.include_memory_top_k,
                     "context_token_budget": request.context_token_budget,
                     "temperature": request.temperature,
+                    "enforce_chapter_word_count": bool(request.enforce_chapter_word_count),
                 },
             )
             self.agent_run_repo.start(run_row.id)
@@ -371,6 +374,8 @@ class ChapterGenerationWorkflowService:
 
                 system_prompt = str(runtime.get("system_prompt") or self._legacy_system_prompt())
                 w_low, w_high = chapter_word_count_allowed_range(tw)
+                # user JSON：_build_chapter_writer_prompt_payload 内先 PromptPayloadAssembler.build（StepInputSpec
+                # writer_draft / chapter_draft），再合并 goal / writing_contract / output_format；无 _build_user_prompt。
                 base_prompt_payload = self._build_chapter_writer_prompt_payload(
                     project=project,
                     writing_goal=writing_goal,
@@ -389,7 +394,7 @@ class ChapterGenerationWorkflowService:
                     orchestrator_raw_state=request.orchestrator_raw_state,
                 )
 
-                max_word_attempts = max(1, min(10, int(os.environ.get("WRITER_CHAPTER_WORD_COUNT_MAX_ATTEMPTS", "5"))))
+                max_word_attempts = max(1, min(10, int(os.environ.get("WRITER_CHAPTER_WORD_COUNT_MAX_ATTEMPTS", "3"))))
                 short_expand_enabled = self._env_flag("WRITER_CHAPTER_TOO_SHORT_EXPAND_ENABLED", default=True)
                 short_expand_trigger_attempt = max(
                     2,
@@ -415,6 +420,13 @@ class ChapterGenerationWorkflowService:
                 wc = 0
                 short_expand_no_progress_streak = 0
                 schema_progressive = self._env_flag("WRITER_CHAPTER_SCHEMA_MIN_PROGRESSIVE", default=True)
+                # 字数多轮仍不达标时是否用最后一轮草稿放行（关闭则维持抛错）。
+                word_count_final_bypass = self._env_flag(
+                    "WRITER_CHAPTER_WORD_COUNT_FINAL_BYPASS",
+                    default=True,
+                )
+                word_count_bypass_warning: str | None = None
+                enforce_wc = bool(request.enforce_chapter_word_count)
 
                 for word_attempt in range(max_word_attempts):
                     schema_min_content_len = self._schema_min_content_len_for_attempt(
@@ -425,8 +437,22 @@ class ChapterGenerationWorkflowService:
                     draft_pool_title = (draft_title or recoverable_title).strip()
                     draft_pool_summary = (draft_summary or recoverable_summary).strip()
                     draft_pool_content = (draft_content or recoverable_content).strip()
+                    use_short_expander = self._should_use_short_draft_expander(
+                        enabled=short_expand_enabled,
+                        attempt_index=word_attempt,
+                        trigger_attempt=short_expand_trigger_attempt,
+                        issue=last_issue,
+                        previous_content=draft_pool_content,
+                        no_progress_streak=short_expand_no_progress_streak,
+                        enforce_word_count=enforce_wc,
+                    )
                     prompt_payload = copy.deepcopy(base_prompt_payload)
-                    if word_attempt > 0 and last_bad_wc is not None and last_issue is not None:
+                    if (
+                        enforce_wc
+                        and word_attempt > 0
+                        and last_bad_wc is not None
+                        and last_issue is not None
+                    ):
                         contract = dict(prompt_payload.get("writing_contract") or {})
                         contract["word_count_retry"] = self._word_count_retry_contract(
                             attempt_index=word_attempt,
@@ -437,6 +463,7 @@ class ChapterGenerationWorkflowService:
                             target_words=tw,
                             issue=last_issue,
                             previous_raw_char_len=last_bad_raw_len,
+                            flat_output=use_short_expander,
                         )
                         prompt_payload["writing_contract"] = contract
 
@@ -449,14 +476,6 @@ class ChapterGenerationWorkflowService:
                         int(runtime.get("max_tokens"))
                         if runtime.get("using_writer_schema") and runtime.get("max_tokens") is not None
                         else None
-                    )
-                    use_short_expander = self._should_use_short_draft_expander(
-                        enabled=short_expand_enabled,
-                        attempt_index=word_attempt,
-                        trigger_attempt=short_expand_trigger_attempt,
-                        issue=last_issue,
-                        previous_content=draft_pool_content,
-                        no_progress_streak=short_expand_no_progress_streak,
                     )
                     generation_mode = "expand_short_draft" if use_short_expander else "full_regenerate"
                     _llm_diag_logger.info(
@@ -833,8 +852,11 @@ class ChapterGenerationWorkflowService:
                             "effective_wc": wc,
                             "schema_min_content_len": int(schema_min_content_len),
                             "last_issue": last_issue,
+                            "word_count_enforced": enforce_wc,
                         },
                     )
+                    if not enforce_wc:
+                        break
                     if w_low <= wc <= w_high:
                         break
 
@@ -850,6 +872,29 @@ class ChapterGenerationWorkflowService:
                         w_high,
                         last_issue,
                     )
+                    is_last_attempt = word_attempt >= max_word_attempts - 1
+                    if is_last_attempt and word_count_final_bypass:
+                        _llm_diag_logger.warning(
+                            "[chapter_generation] writer_draft 字数未达标已达最大次数，使用本轮草稿放行 | "
+                            "attempt=%s/%s llm_json_dump_len=%s legacy_content_non_ws=%s segments_join_non_ws=%s",
+                            word_attempt + 1,
+                            max_word_attempts,
+                            llm_dump_len,
+                            wc,
+                            seg_join_eff,
+                        )
+                        base = chapter_word_count_violation_message(
+                            effective_chars=wc,
+                            target_words=tw,
+                            low=w_low,
+                            high=w_high,
+                        )
+                        word_count_bypass_warning = (
+                            f"{base}已达最大重写次数 {max_word_attempts}，已使用本轮输出放行。"
+                        )
+                        logger.warning(word_count_bypass_warning)
+                        break
+
                     self.tool_call_repo.fail(
                         llm_call.id,
                         error_code="CHAPTER_WORD_COUNT",
@@ -858,12 +903,12 @@ class ChapterGenerationWorkflowService:
                             "allowed_min": w_low,
                             "allowed_max": w_high,
                             "target_words": tw,
-                            "will_retry": word_attempt < max_word_attempts - 1,
+                            "will_retry": not is_last_attempt,
                             "word_count_attempt": int(word_attempt) + 1,
                         },
                     )
                     active_tool_call_id = None
-                    if word_attempt >= max_word_attempts - 1:
+                    if is_last_attempt:
                         _llm_diag_logger.warning(
                             "[chapter_generation] writer_draft 仍不达标，放弃重写 | "
                             "attempt=%s/%s llm_json_dump_len=%s legacy_content_non_ws=%s segments_join_non_ws=%s",
@@ -902,6 +947,12 @@ class ChapterGenerationWorkflowService:
                 all_warnings.extend(
                     [str(item) for item in list(getattr(after, "warnings", []) or []) if str(item).strip()]
                 )
+                if word_count_bypass_warning:
+                    all_warnings.append(word_count_bypass_warning)
+                if not enforce_wc:
+                    all_warnings.append(
+                        "已关闭「生成正文字数」契约校验；target_words 仍会提供给模型作为写作参考。"
+                    )
 
                 self.tool_call_repo.succeed(
                     llm_call.id,
@@ -912,6 +963,8 @@ class ChapterGenerationWorkflowService:
                         "skills_effective_delta": int(
                             sum(int(item.get("effective_delta") or 0) for item in skill_runs_payload)
                         ),
+                        "word_count_contract_bypassed": bool(word_count_bypass_warning),
+                        "word_count_enforced": enforce_wc,
                     },
                 )
                 active_tool_call_id = None
@@ -1142,16 +1195,21 @@ class ChapterGenerationWorkflowService:
             default["warnings"] = [f"writer_agent 配置解析失败，回退 legacy schema: {exc}"]
             return default
 
+        # 解析 response_schema 来源，供 using_writer_schema 与真实生效的校验 schema 对齐（勿仅用 profile.output_schema）。
         schema_payload: dict[str, Any] | None = None
+        schema_resolution: str = "fallback_flat"
         if isinstance(profile.output_schema, dict) and profile.output_schema:
             schema_payload = dict(profile.output_schema)
+            schema_resolution = "profile_inline"
         elif self.schema_registry is not None:
             loaded = self.schema_registry.get(profile.schema_ref)
-            if isinstance(loaded, dict):
+            if isinstance(loaded, dict) and loaded:
                 schema_payload = dict(loaded)
+                schema_resolution = "registry"
 
         if not isinstance(schema_payload, dict) or not schema_payload:
             schema_payload = dict(self.CHAPTER_OUTPUT_SCHEMA)
+            schema_resolution = "fallback_flat"
 
         system_prompt = profile.prompt or self._legacy_system_prompt()
         mode = str(strategy_mode or "").strip().lower()
@@ -1170,6 +1228,7 @@ class ChapterGenerationWorkflowService:
                     if isinstance(loaded_draft, dict) and loaded_draft:
                         schema_payload = loaded_draft
                         draft_schema_active = True
+                        schema_resolution = "draft"
                 except Exception as exc:
                     draft_schema_warnings.append(
                         f"output_schema_draft.json 解析失败，沿用全量 schema: {exc}"
@@ -1186,6 +1245,8 @@ class ChapterGenerationWorkflowService:
             output_format_schema_ref = WRITER_OUTPUT_SCHEMA_REF_V2
             output_format_contract = WRITER_OUTPUT_CONTRACT_V2
 
+        using_writer_schema = schema_resolution != "fallback_flat"
+
         return {
             "system_prompt": system_prompt,
             "response_schema": schema_payload,
@@ -1196,7 +1257,7 @@ class ChapterGenerationWorkflowService:
             "schema_ref": profile.schema_ref,
             "schema_version": profile.schema_version,
             "strategy_version": strategy.version,
-            "using_writer_schema": bool(profile.output_schema),
+            "using_writer_schema": using_writer_schema,
             "output_format_schema_ref": output_format_schema_ref,
             "output_format_contract": output_format_contract,
         }
@@ -1401,7 +1462,10 @@ class ChapterGenerationWorkflowService:
         issue: str | None,
         previous_content: str | None,
         no_progress_streak: int = 0,
+        enforce_word_count: bool = True,
     ) -> bool:
+        if not bool(enforce_word_count):
+            return False
         if not bool(enabled):
             return False
         if int(attempt_index) + 1 < int(trigger_attempt):
@@ -1526,12 +1590,14 @@ class ChapterGenerationWorkflowService:
         target_words: int,
         issue: str,
         previous_raw_char_len: int | None = None,
+        flat_output: bool = False,
     ) -> dict[str, Any]:
         """上一稿字数不达标时注入 writing_contract，驱动模型在后续轮次重写。"""
+        content_ref = "`content`" if flat_output else "`chapter.content`"
         metric_note = ""
         if previous_raw_char_len is not None:
             metric_note = (
-                f"上一轮 `chapter.content` 原始字符数（含空白）约 {int(previous_raw_char_len)}，"
+                f"上一轮 {content_ref} 原始字符数（含空白）约 {int(previous_raw_char_len)}，"
                 f"有效非空白字约 {int(effective_chars)}；请在此基础上扩写或压缩，避免误解为「零字稿」。"
             )
         return {
@@ -1547,7 +1613,7 @@ class ChapterGenerationWorkflowService:
             "issue": str(issue),
             "instruction_cn": (
                 "上一稿未满足字数契约：请重新输出**完整** JSON。"
-                f"`chapter.content` 的「非空白字符数」必须落在 [{low}, {high}]（target_words={target_words}）。"
+                f"{content_ref} 的「非空白字符数」必须落在 [{low}, {high}]（target_words={target_words}）。"
                 "禁止仅用摘要、大纲式 bullet 或极短片段凑数；请充分展开场景、对白与描写。"
                 "输出结束前必须先自检非空白字符数是否达标。"
                 + metric_note
@@ -1663,13 +1729,11 @@ class ChapterGenerationWorkflowService:
             {"source": item.source, "text": item.text, "priority": item.priority}
             for item in memory_context.items
         ]
-        story_snapshot = {
-            "chapters": story_context.chapters,
-            "characters": story_context.characters,
-            "world_entries": story_context.world_entries,
-            "timeline_events": story_context.timeline_events,
-            "foreshadowings": story_context.foreshadowings,
-        }
+        story_snapshot = build_story_assets_from_context(
+            story_context,
+            chapter_no=chapter_no,
+            summary_first=env_bool("WRITER_STORY_ASSETS_SUMMARY_FIRST", True),
+        )
         use_writer_draft = self._should_use_writer_draft_assembler(orchestrator_raw_state)
         if use_writer_draft:
             merged_raw = self._snapshot_raw_state_for_chapter(

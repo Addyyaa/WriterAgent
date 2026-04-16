@@ -7,6 +7,9 @@ from typing import Literal
 
 RetrievalMode = Literal["none", "summary_only", "compact_items", "full_items"]
 
+# 步骤上下文档位：规划（轻量）、生成（摘要 + 可工具拉细节）、严格审查（服务端证据优先）
+StepContextTier = Literal["planning", "generative", "strict_review"]
+
 
 @dataclass
 class RetrievalViewSpec:
@@ -40,3 +43,5 @@ class StepInputSpec:
     include_working_notes: bool = False
     dependencies: list[StateDependencySpec] = field(default_factory=list)
     retrieval: RetrievalViewSpec = field(default_factory=RetrievalViewSpec)
+    # Summary-first：与 RetrievalViewSpec 配套，用于日志与策略路由（非强制校验）
+    context_tier: StepContextTier = "generative"

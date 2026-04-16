@@ -17,6 +17,7 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
         include_working_notes=False,
         dependencies=[],
         retrieval=RetrievalViewSpec(mode="none"),
+        context_tier="planning",
     ),
     "retrieval_agent": StepInputSpec(
         role_id="retrieval_agent",
@@ -36,6 +37,7 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
             max_chars_per_item=6000,
             allowed_sources=[],
         ),
+        context_tier="planning",
     ),
     "plot_agent": StepInputSpec(
         role_id="plot_agent",
@@ -245,6 +247,78 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
             max_chars_per_item=6000,
             allowed_sources=[],
         ),
+    ),
+    # 一致性审查 LLM：规则聚焦 + 证据包 + Assembler 检索视图（避免全量 lore 与 output_schema 重复）
+    "consistency_agent:chapter_audit": StepInputSpec(
+        role_id="consistency_agent",
+        include_project=True,
+        include_outline=False,
+        include_working_notes=False,
+        dependencies=[
+            StateDependencySpec(
+                step_key="review_contract",
+                required=True,
+                fields=[
+                    "audit_dimensions",
+                    "allowed_severities",
+                    "evidence_policy",
+                ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="review_focus",
+                required=True,
+                fields=[
+                    "chapter_no",
+                    "focus_character_names",
+                    "primary_pov_character",
+                    "focus_assets",
+                    "focus_world_keywords",
+                    "focus_timeline_event_ids",
+                    "focus_foreshadowing_ids",
+                    "focus_inventory_hints",
+                    "rule_issues",
+                ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="review_context",
+                required=True,
+                fields=[
+                    "chapters",
+                    "characters",
+                    "world_entries",
+                    "timeline_events",
+                    "foreshadowings",
+                ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="review_evidence_pack",
+                required=True,
+                fields=[
+                    "meta",
+                    "characters_detail",
+                    "timeline_detail",
+                    "foreshadowing_detail",
+                    "world_detail",
+                ],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="chapter_draft_audit",
+                required=True,
+                fields=["id", "chapter_no", "title", "summary", "content"],
+                compact=False,
+            ),
+        ],
+        retrieval=RetrievalViewSpec(
+            mode="compact_items",
+            max_items=6,
+            max_chars_per_item=400,
+            allowed_sources=[],
+        ),
+        context_tier="strict_review",
     ),
     "writer_agent:persist_artifacts": StepInputSpec(
         role_id="writer_agent",

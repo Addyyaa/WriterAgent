@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, TYPE_CHECKING
 
 from packages.llm.text_generation.base import TextGenerationProvider, TextGenerationRequest
+from packages.llm.text_generation.runtime_config import TextGenerationRuntimeConfig
 from packages.memory.long_term.ingestion.ingestion_service import MemoryIngestionService
 from packages.schemas import SchemaRegistry
 from packages.skills import SkillRuntimeContext, SkillRuntimeEngine
@@ -110,11 +112,12 @@ class RevisionWorkflowService:
             step_key="writer_revision",
             strategy_mode="revision",
         )
-        output_schema_hint = (
-            "writer_agent v2 schema"
-            if runtime.get("using_writer_schema")
-            else {"title": "string", "content": "string", "summary": "string"}
-        )
+        # revision_input 要求 output_schema 为 object；须传入真实 JSON Schema 字典供模型对齐，不可使用占位字符串。
+        rs = runtime.get("response_schema")
+        if isinstance(rs, dict) and rs:
+            output_schema_for_payload = copy.deepcopy(rs)
+        else:
+            output_schema_for_payload = dict(self.REVISION_OUTPUT_SCHEMA)
         payload = {
             "chapter": {
                 "title": chapter.title,
@@ -129,7 +132,7 @@ class RevisionWorkflowService:
                 "recommendations": list(report.recommendations_json or []) if report is not None else [],
             },
             "retrieval_context": request.retrieval_context,
-            "output_schema": output_schema_hint,
+            "output_schema": output_schema_for_payload,
         }
 
         before = self.skill_runtime.run_before_generate(
@@ -145,6 +148,7 @@ class RevisionWorkflowService:
             ),
         )
 
+        revision_timeout = TextGenerationRuntimeConfig.from_env().revision_llm_timeout_seconds
         llm_result = self.text_provider.generate(
             TextGenerationRequest(
                 system_prompt=before.system_prompt,
@@ -155,6 +159,7 @@ class RevisionWorkflowService:
                     if runtime.get("max_tokens") is not None
                     else None
                 ),
+                timeout_seconds=revision_timeout,
                 input_payload=before.input_payload,
                 input_schema=self.REVISION_INPUT_SCHEMA,
                 input_schema_name="revision_input",
@@ -295,16 +300,20 @@ class RevisionWorkflowService:
             default["warnings"] = [f"writer_agent 配置解析失败，回退 legacy schema: {exc}"]
             return default
 
+        schema_resolution = "fallback_flat"
         schema_payload: dict[str, Any] | None = None
         if isinstance(profile.output_schema, dict) and profile.output_schema:
             schema_payload = dict(profile.output_schema)
+            schema_resolution = "profile_inline"
         elif self.schema_registry is not None:
             loaded = self.schema_registry.get(profile.schema_ref)
-            if isinstance(loaded, dict):
+            if isinstance(loaded, dict) and loaded:
                 schema_payload = dict(loaded)
+                schema_resolution = "registry"
 
         if not isinstance(schema_payload, dict) or not schema_payload:
             schema_payload = dict(self.REVISION_OUTPUT_SCHEMA)
+            schema_resolution = "fallback_flat"
 
         return {
             "system_prompt": profile.prompt or self._legacy_system_prompt(),
@@ -316,7 +325,7 @@ class RevisionWorkflowService:
             "schema_ref": profile.schema_ref,
             "schema_version": profile.schema_version,
             "strategy_version": strategy.version,
-            "using_writer_schema": bool(profile.output_schema),
+            "using_writer_schema": schema_resolution != "fallback_flat",
         }
 
     @staticmethod
