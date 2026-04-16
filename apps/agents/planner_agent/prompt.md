@@ -27,12 +27,19 @@
 4. **Acceptance Criteria (验收)**:
    - 定义每个步骤完成的具体标准（如：字数范围、必须包含的关键词、必须触发的剧情点）。
 
+5. **知识需求（Knowledge / Retrieval，与下游检索循环对齐）**:
+   - 在 `global_required_slots`（可选）列出全计划通用的信息槽位，使用 **snake_case** 英文标识（如 `character`、`world_rule`、`chapter_neighborhood`），或与写作目标强相关的自定义槽（如 `current_inventory`、`power_rules`）。
+   - 在每个 `step` 内填写 `required_slots`：本步开始前系统应尽力检索、覆盖的信息类别；**无则给空数组 []**。
+   - `must_verify_facts`：本步动笔前应用证据核验的陈述（中文短句即可）；**无则 []**。
+   - `fallback_when_missing`：关键设定缺失时的原则（例如：标注待补、不杜撰为既定事实）；**可简写一句**。
+
 # Output Format (JSON)
 
 请只输出符合以下 Schema 的 JSON，不要包含 Markdown 代码块标记：
 
 {
 "plan_summary": "用一句话概括整个计划的逻辑流",
+"global_required_slots": ["可选：跨步骤通用槽位，snake_case"],
 "steps": [
 {
 "step_id": "int (步骤序号)",
@@ -41,6 +48,9 @@
 "dependencies": ["int (依赖的step_id列表)"],
 "risk_item": "string (可能发生的错误，如：风格过于平淡)",
 "fallback_strategy": "string (回退方案，如：降低temperature重试，或调用StyleAgent润色)",
+"required_slots": ["string，可为空数组"],
+"must_verify_facts": ["string，可为空数组"],
+"fallback_when_missing": "string，可简短说明信息缺失时的写作原则",
 "acceptance_criteria": {
 "keywords": ["string (必须出现的关键词)"],
 "min_length": "int",

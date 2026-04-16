@@ -44,6 +44,11 @@ def build_agent_step_meta_raw(
         "model": result.model,
         "skills_executed_count": int(skills_executed_count),
     }
+    req_meta = dict(result.request_metadata_json or {})
+    if req_meta.get("llm_task_id"):
+        meta["llm_task_id"] = req_meta.get("llm_task_id")
+    if req_meta.get("llm_task_id_prior"):
+        meta["llm_task_id_prior"] = req_meta.get("llm_task_id_prior")
     if usage:
         meta["usage"] = usage
     if finish_reason is not None:

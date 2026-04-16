@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict
+import uuid
+from dataclasses import asdict, replace
 
+from packages.llm.prompt_audit import record_llm_prompt_audit
 from packages.llm.text_generation.base import (
     TextGenerationProvider,
     TextGenerationRequest,
@@ -18,6 +20,20 @@ class MockTextGenerationProvider(TextGenerationProvider):
         self.model = model
 
     def generate(self, request: TextGenerationRequest) -> TextGenerationResult:
+        llm_task_id = str(uuid.uuid4())
+        request = replace(
+            request,
+            metadata_json={**dict(request.metadata_json or {}), "llm_task_id": llm_task_id},
+        )
+        record_llm_prompt_audit(
+            llm_task_id=llm_task_id,
+            system_prompt=str(request.system_prompt or ""),
+            user_prompt=str(request.user_prompt or ""),
+            model=self.model,
+            provider_label="MockTextGenerationProvider",
+            metadata=dict(request.metadata_json or {}),
+            prompt_guard_applied=False,
+        )
         fn = str(request.function_name or "").lower()
         if "consistency" in fn:
             return self._generate_consistency_mock(request)
@@ -53,6 +69,7 @@ class MockTextGenerationProvider(TextGenerationProvider):
                 "request": asdict(request),
                 "output": payload,
             },
+            request_metadata_json=dict(request.metadata_json or {}),
         )
 
     def _generate_consistency_mock(self, request: TextGenerationRequest) -> TextGenerationResult:
@@ -77,6 +94,7 @@ class MockTextGenerationProvider(TextGenerationProvider):
             provider="mock",
             is_mock=True,
             raw_response_json={"mock": True, "output": payload},
+            request_metadata_json=dict(request.metadata_json or {}),
         )
 
     @staticmethod

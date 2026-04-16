@@ -33,6 +33,8 @@ class RetrievalLoopRequest:
     chapter_no: int | None = None
     user_id: object | None = None
     source_types: list[str] | None = None
+    # planner_bootstrap 抽取的槽位，与 workflow 默认槽位并集（保序：planner → 显式追加 → workflow）
+    planner_slot_hints: list[str] | None = None
     must_have_slots: list[str] | None = None
 
 
@@ -80,6 +82,43 @@ class RetrievalLoopService:
         "foreshadowing": {"foreshadowing"},
         "style_preference": {"user_preference"},
         "conflict_evidence": {"chapter", "memory_fact", "timeline_event", "foreshadowing"},
+        # Planner 自定义槽位与别名（结构化优先 → 向量/事实 → 章节）
+        "inventory": {"character", "chapter", "memory_fact"},
+        "current_inventory": {"character", "chapter", "memory_fact"},
+        "character_inventory": {"character", "chapter", "memory_fact"},
+        "power_rules": {"world_entry", "memory_fact", "chapter"},
+        "power_rule": {"world_entry", "memory_fact", "chapter"},
+        "known_power_rules": {"world_entry", "memory_fact"},
+        "scene": {"chapter", "timeline_event"},
+        "location": {"chapter", "world_entry"},
+        "relationship": {"character", "memory_fact"},
+        "witnesses": {"chapter", "character", "memory_fact"},
+        "previous_chapter": {"chapter", "memory_fact"},
+    }
+    _UNKNOWN_SLOT_SOURCES = frozenset({"memory_fact", "chapter", "character", "world_entry", "project"})
+    _SLOT_QUERY_HINT = {
+        "character": "角色档案与约束",
+        "world_rule": "世界观规则",
+        "timeline": "时间线与事件顺序",
+        "foreshadowing": "伏笔与未回收线",
+        "chapter_neighborhood": "相邻章节情节",
+        "conflict_evidence": "冲突与矛盾证据",
+        "inventory": "持有物与库存",
+        "current_inventory": "当前携带物品",
+        "power_rules": "异能/规则边界",
+        "project_goal": "项目目标与前提",
+    }
+    # 结构化证据优先于向量记忆：数值越小越优先（同层再按 score 降序）
+    _RETRIEVAL_SOURCE_PRIORITY: dict[str, int] = {
+        "project": 0,
+        "outline": 1,
+        "chapter": 2,
+        "character": 3,
+        "world_entry": 4,
+        "timeline_event": 5,
+        "foreshadowing": 6,
+        "user_preference": 7,
+        "memory_fact": 20,
     }
 
     def __init__(
@@ -111,10 +150,11 @@ class RetrievalLoopService:
         stale_round_limit = max(1, int(self.runtime_config.retrieval_stop_stale_rounds))
 
         source_types = self._normalize_source_types(request.source_types)
-        slots = self._infer_slots(
+        slots = self._merge_inference_slots(
             workflow_type=request.workflow_type,
             writing_goal=request.writing_goal,
-            custom_slots=request.must_have_slots,
+            planner_hints=request.planner_slot_hints,
+            explicit_extra=request.must_have_slots,
         )
         structured_items = self._build_structured_evidence(
             request=request,
@@ -248,8 +288,9 @@ class RetrievalLoopService:
         context_text, truncated, bundle_items = self._build_context_lines(accepted_items)
         used_tokens = int(estimate_token_count(context_text))
         max_context_items = 24
+        summary_layer = self._bundle_summary_from_evidence(accepted_items)
         context_bundle = {
-            "summary": {"key_facts": [], "current_states": []},
+            "summary": summary_layer,
             "items": bundle_items,
             "meta": {
                 "used_tokens": used_tokens,
@@ -278,6 +319,40 @@ class RetrievalLoopService:
             context_budget_usage=dict(context_bundle.get("meta") or {}),
             context_bundle=context_bundle,
         )
+
+    @classmethod
+    def _bundle_summary_from_evidence(cls, items: list[EvidenceItem]) -> dict[str, list[str]]:
+        """从结构化+向量证据粗分层，对齐 retrieval_agent / ContextPackage 合同字段。"""
+        confirmed: list[str] = []
+        states: list[str] = []
+        support: list[str] = []
+        conflicts: list[str] = []
+        for it in items:
+            st = str(it.source_type or "")
+            tx = str(it.text or "").strip()
+            if not tx:
+                continue
+            if st == "memory_fact":
+                confirmed.append(tx[:1000])
+            elif st == "chapter":
+                states.append(tx[:1000])
+            elif _CONFLICT_RE.search(tx):
+                conflicts.append(tx[:900])
+            else:
+                support.append(f"[{st}] {tx[:900]}")
+        key_facts = confirmed[:16]
+        if not key_facts and states:
+            key_facts = [tx[:900] for tx in states[:8]]
+        if not key_facts:
+            key_facts = [str(it.text or "").strip()[:800] for it in items[:8] if str(it.text or "").strip()]
+        return {
+            "key_facts": key_facts,
+            "current_states": states[:18],
+            "confirmed_facts": confirmed[:24],
+            "supporting_evidence": support[:28],
+            "conflicts": conflicts[:16],
+            "information_gaps": [],
+        }
 
     def _build_structured_evidence(
         self,
@@ -332,12 +407,21 @@ class RetrievalLoopService:
                     )
                 )
 
-        context = self.story_context_provider.load(
-            project_id=request.project_id,
-            chapter_no=request.chapter_no,
-            chapter_window_before=int(self.runtime_config.context_chapter_window_before),
-            chapter_window_after=int(self.runtime_config.context_chapter_window_after),
-        )
+        if hasattr(self.story_context_provider, "load_focused"):
+            context = self.story_context_provider.load_focused(
+                project_id=request.project_id,
+                chapter_no=request.chapter_no,
+                chapter_window_before=int(self.runtime_config.context_chapter_window_before),
+                chapter_window_after=int(self.runtime_config.context_chapter_window_after),
+                relevance_blob=str(request.writing_goal or ""),
+            )
+        else:
+            context = self.story_context_provider.load(
+                project_id=request.project_id,
+                chapter_no=request.chapter_no,
+                chapter_window_before=int(self.runtime_config.context_chapter_window_before),
+                chapter_window_after=int(self.runtime_config.context_chapter_window_after),
+            )
         if "chapter" in allowed_source_types:
             for chapter in list(context.chapters or []):
                 text = str(chapter.get("summary") or chapter.get("content_preview") or "").strip()
@@ -501,6 +585,12 @@ class RetrievalLoopService:
                 )
             )
 
+        def _sort_key(item: EvidenceItem) -> tuple[int, float]:
+            tier = self._RETRIEVAL_SOURCE_PRIORITY.get(str(item.source_type or ""), 15)
+            sc = float(item.score) if item.score is not None else 0.0
+            return (tier, -sc)
+
+        out.sort(key=_sort_key)
         return out
 
     def _evaluate_coverage(
@@ -524,7 +614,7 @@ class RetrievalLoopService:
         evidence_source_set = {item.source_type for item in evidence_items}
         joined_text = "\n".join(item.text for item in evidence_items).lower()
         for slot in slots:
-            expected_sources = self._SLOT_SOURCE_MAP.get(slot, set())
+            expected_sources = self._sources_for_slot(slot)
             slot_ok = bool(expected_sources & evidence_source_set)
             if not slot_ok and slot == "conflict_evidence":
                 slot_ok = bool(_CONFLICT_RE.search(joined_text))
@@ -631,22 +721,7 @@ class RetrievalLoopService:
         return normalized or list(cls._DEFAULT_SOURCE_TYPES)
 
     @classmethod
-    def _infer_slots(
-        cls,
-        *,
-        workflow_type: str,
-        writing_goal: str,
-        custom_slots: list[str] | None,
-    ) -> list[str]:
-        if custom_slots:
-            deduped = []
-            for item in custom_slots:
-                slot = str(item or "").strip().lower()
-                if slot and slot not in deduped:
-                    deduped.append(slot)
-            if deduped:
-                return deduped
-
+    def _workflow_base_slots(cls, *, workflow_type: str, writing_goal: str) -> list[str]:
         wf = str(workflow_type or "").strip().lower()
         if wf == "outline_generation":
             slots = ["project_goal", "character", "world_rule", "timeline", "style_preference"]
@@ -673,8 +748,47 @@ class RetrievalLoopService:
             slots.append("foreshadowing")
         return slots
 
-    @staticmethod
+    @classmethod
+    def _dedupe_slots(cls, items: list[str] | None) -> list[str]:
+        out: list[str] = []
+        for raw in list(items or []):
+            slot = str(raw or "").strip().lower().replace(" ", "_").replace("-", "_")
+            if slot and slot not in out:
+                out.append(slot)
+        return out
+
+    @classmethod
+    def _merge_inference_slots(
+        cls,
+        *,
+        workflow_type: str,
+        writing_goal: str,
+        planner_hints: list[str] | None,
+        explicit_extra: list[str] | None,
+    ) -> list[str]:
+        """planner 槽位优先，其次编排显式追加，再并入 workflow 默认槽位。"""
+        base = cls._workflow_base_slots(workflow_type=workflow_type, writing_goal=writing_goal)
+        merged: list[str] = []
+        for chunk in (planner_hints, explicit_extra):
+            for slot in cls._dedupe_slots(chunk):
+                if slot not in merged:
+                    merged.append(slot)
+        for slot in base:
+            if slot not in merged:
+                merged.append(slot)
+        return merged
+
+    @classmethod
+    def _sources_for_slot(cls, slot: str) -> set[str]:
+        key = str(slot or "").strip().lower()
+        mapped = cls._SLOT_SOURCE_MAP.get(key)
+        if mapped:
+            return set(mapped)
+        return set(cls._UNKNOWN_SLOT_SOURCES)
+
+    @classmethod
     def _build_round_query(
+        cls,
         *,
         base_query: str,
         workflow_type: str,
@@ -684,10 +798,18 @@ class RetrievalLoopService:
         query = str(base_query or "").strip()
         if round_index <= 1:
             return query
-        open_hint = "、".join(open_slots[:4]) if open_slots else "关键上下文"
+        if not open_slots:
+            return query
+        # 按槽位生成短意图短语，优于仅罗列槽位名
+        phrases: list[str] = []
+        for slot in open_slots[:6]:
+            key = str(slot or "").strip().lower()
+            hint = cls._SLOT_QUERY_HINT.get(key) or f"「{key}」相关设定与证据"
+            phrases.append(hint)
+        slot_line = "；".join(phrases)
         if str(workflow_type).strip().lower() == "revision":
-            return f"{query}；补充冲突证据：{open_hint}"
-        return f"{query}；补充上下文：{open_hint}"
+            return f"{query}；定向补充（修订）：{slot_line}"
+        return f"{query}；定向补充：{slot_line}"
 
     @classmethod
     def _select_round_sources(
@@ -702,7 +824,7 @@ class RetrievalLoopService:
         selected: list[str] = []
         allowed = set(source_types)
         for slot in open_slots:
-            for source_type in sorted(cls._SLOT_SOURCE_MAP.get(slot, set())):
+            for source_type in sorted(cls._sources_for_slot(slot)):
                 if source_type in allowed and source_type not in selected:
                     selected.append(source_type)
                     if len(selected) >= 4:

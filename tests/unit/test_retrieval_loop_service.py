@@ -185,7 +185,14 @@ class TestRetrievalLoopService(unittest.TestCase):
         service = RetrievalLoopService(
             runtime_config=cfg,
             project_memory_service=_FakeProjectMemoryService(rows=[]),
-            story_context_provider=_FakeStoryContextProvider(),
+            story_context_provider=_FakeStoryContextProvider(
+                chapters=[{"id": "c1", "chapter_no": 1, "summary": "邻章摘要"}],
+                characters=[{"id": "ch1", "name": "主角", "profile_json": {"goal": "调查"}}],
+                world_entries=[{"id": "w1", "title": "硬规则", "content": "不可飞行"}],
+                timeline_events=[{"id": "t1", "event_title": "事件甲", "event_desc": "顺序锚点"}],
+                # 故意不提供伏笔条目，保留 open_slots，在覆盖率已达标时走 stale 分支
+                foreshadowings=[],
+            ),
             project_repo=_FakeProjectRepo(),
             outline_repo=_FakeOutlineRepo(),
             user_repo=None,
@@ -205,8 +212,40 @@ class TestRetrievalLoopService(unittest.TestCase):
         )
         self.assertEqual(summary.stop_reason, "stale_after_coverage")
         self.assertGreaterEqual(summary.coverage.coverage_score, 0.5)
-        self.assertIn("character", summary.coverage.open_slots)
+        self.assertIn("foreshadowing", summary.coverage.open_slots)
         self.assertGreaterEqual(len(summary.rounds), 3)
+
+    def test_merge_planner_hints_explicit_then_workflow_base(self) -> None:
+        merged = RetrievalLoopService._merge_inference_slots(
+            workflow_type="chapter_generation",
+            writing_goal="写一章",
+            planner_hints=["inventory", "power_rules"],
+            explicit_extra=["character"],
+        )
+        self.assertEqual(
+            merged[:3],
+            ["inventory", "power_rules", "character"],
+        )
+        self.assertIn("outline", merged)
+        self.assertIn("foreshadowing", merged)
+
+    def test_merge_without_planner_or_explicit_matches_workflow_base_only(self) -> None:
+        base = RetrievalLoopService._workflow_base_slots(
+            workflow_type="chapter_generation",
+            writing_goal="写一章",
+        )
+        merged = RetrievalLoopService._merge_inference_slots(
+            workflow_type="chapter_generation",
+            writing_goal="写一章",
+            planner_hints=None,
+            explicit_extra=None,
+        )
+        self.assertEqual(merged, base)
+
+    def test_unknown_slot_maps_to_broad_sources(self) -> None:
+        sources = RetrievalLoopService._sources_for_slot("custom_planner_slot_xyz")
+        self.assertTrue(sources)
+        self.assertIn("memory_fact", sources)
 
 
 if __name__ == "__main__":

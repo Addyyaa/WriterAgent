@@ -32,6 +32,7 @@ from .skill_evidence import SkillEvidence
 from .skill_finding import SkillFinding
 from .skill_metric import SkillMetric
 from .skill_run import SkillRun
+from .story_state_snapshot import StoryStateSnapshot
 from .timeline_event import TimelineEvent
 from .tool_call import ToolCall
 from .user import User

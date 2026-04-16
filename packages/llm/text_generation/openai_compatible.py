@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import uuid
 from dataclasses import replace
 from typing import Any
 
@@ -21,6 +22,7 @@ from packages.llm.text_generation.base import (
 )
 from packages.llm.text_generation.provider_registry import MatchResult
 from packages.llm.text_generation.schema_errors import ResponseSchemaValidationError
+from packages.llm.prompt_audit import record_llm_prompt_audit
 from packages.memory.working_memory.hybrid_compressor import HybridContextCompressor
 
 logger = logging.getLogger("writeragent.llm")
@@ -259,7 +261,8 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             compat_mode, self.base_url, self.model
         )
         logger.info(
-            "[LLM] provider init | pid=%s model=%s base_url=%s compat_mode=%s timeout=%.1fs",
+            "[LLM] provider init | pid=%s model=%s base_url=%s compat_mode=%s timeout=%.1fs "
+            "| 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id",
             os.getpid(),
             self.model,
             self.base_url,
@@ -297,7 +300,29 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             return min(max(float(request.timeout_seconds), 1.0), 900.0)
         return float(self.timeout_seconds)
 
+    def _record_llm_prompt_audit(
+        self,
+        *,
+        llm_task_id: str,
+        request: TextGenerationRequest,
+        prompt_guard_applied: bool,
+    ) -> None:
+        record_llm_prompt_audit(
+            llm_task_id=llm_task_id,
+            system_prompt=str(request.system_prompt or ""),
+            user_prompt=str(request.user_prompt or ""),
+            model=self.model,
+            provider_label="OpenAICompatibleTextProvider",
+            metadata=dict(request.metadata_json or {}),
+            prompt_guard_applied=prompt_guard_applied,
+        )
+
     def generate(self, request: TextGenerationRequest) -> TextGenerationResult:
+        llm_task_id = str(uuid.uuid4())
+        request = replace(
+            request,
+            metadata_json={**dict(request.metadata_json or {}), "llm_task_id": llm_task_id},
+        )
         effective_request = request
         input_validation = self._validate_request_input(request)
         prompt_guard = {"applied": False, "attempts": 0, "reason": "disabled_or_not_needed"}
@@ -306,7 +331,8 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         read_to = self._read_timeout_for(request)
         if request.timeout_seconds is not None and read_to != float(self.timeout_seconds):
             logger.info(
-                "[LLM] generate start | model=%s meta=%s prompt_len=%d max_tokens=%s read_timeout=%.1fs（按请求覆盖）",
+                "[LLM] generate start | llm_task_id=%s model=%s meta=%s prompt_len=%d max_tokens=%s read_timeout=%.1fs（按请求覆盖）",
+                llm_task_id,
                 self.model,
                 meta_tag,
                 len(request.user_prompt or ""),
@@ -315,8 +341,12 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             )
         else:
             logger.info(
-                "[LLM] generate start | model=%s meta=%s prompt_len=%d max_tokens=%s",
-                self.model, meta_tag, len(request.user_prompt or ""), request.max_tokens or "None",
+                "[LLM] generate start | llm_task_id=%s model=%s meta=%s prompt_len=%d max_tokens=%s",
+                llm_task_id,
+                self.model,
+                meta_tag,
+                len(request.user_prompt or ""),
+                request.max_tokens or "None",
             )
 
         if self._should_apply_prompt_guard(request):
@@ -324,6 +354,12 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
                 request=request,
                 force=False,
             )
+
+        self._record_llm_prompt_audit(
+            llm_task_id=llm_task_id,
+            request=effective_request,
+            prompt_guard_applied=bool(prompt_guard.get("applied")),
+        )
 
         url = f"{self.base_url}/chat/completions"
         headers = {
@@ -364,7 +400,26 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
                     force=True,
                 )
                 if retry_request.user_prompt != effective_request.user_prompt:
-                    logger.info("[LLM] retrying with compressed prompt | meta=%s", meta_tag)
+                    retry_task_id = str(uuid.uuid4())
+                    retry_request = replace(
+                        retry_request,
+                        metadata_json={
+                            **dict(retry_request.metadata_json or {}),
+                            "llm_task_id": retry_task_id,
+                            "llm_task_id_prior": llm_task_id,
+                        },
+                    )
+                    logger.info(
+                        "[LLM] retrying with compressed prompt | llm_task_id=%s prior=%s meta=%s",
+                        retry_task_id,
+                        llm_task_id,
+                        meta_tag,
+                    )
+                    self._record_llm_prompt_audit(
+                        llm_task_id=retry_task_id,
+                        request=retry_request,
+                        prompt_guard_applied=True,
+                    )
                     parsed, runtime_meta = self._send_with_schema_repair(
                         request=retry_request,
                         url=url,
@@ -616,6 +671,7 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             provider="openai_compatible",
             is_mock=False,
             raw_response_json=body,
+            request_metadata_json={},
         )
 
     @staticmethod
@@ -834,7 +890,7 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             )
             if not errors:
                 return (
-                    parsed,
+                    OpenAICompatibleTextProvider._attach_request_metadata(parsed, effective_request),
                     {
                         "schema_validation_applied": bool(effective_request.response_schema),
                         "schema_repair_attempts": attempt,
@@ -1233,6 +1289,21 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         return any(hint in message for hint in self._CONTEXT_ERROR_HINTS)
 
     @staticmethod
+    def _attach_request_metadata(
+        result: TextGenerationResult,
+        request: TextGenerationRequest,
+    ) -> TextGenerationResult:
+        return TextGenerationResult(
+            text=result.text,
+            json_data=dict(result.json_data or {}),
+            model=result.model,
+            provider=result.provider,
+            is_mock=result.is_mock,
+            raw_response_json=dict(result.raw_response_json or {}),
+            request_metadata_json=dict(request.metadata_json or {}),
+        )
+
+    @staticmethod
     def _with_prompt_guard(
         result: TextGenerationResult,
         *,
@@ -1247,6 +1318,7 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             provider=result.provider,
             is_mock=result.is_mock,
             raw_response_json=raw,
+            request_metadata_json=dict(result.request_metadata_json or {}),
         )
 
     @staticmethod
@@ -1264,4 +1336,5 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             provider=result.provider,
             is_mock=result.is_mock,
             raw_response_json=raw,
+            request_metadata_json=dict(result.request_metadata_json or {}),
         )

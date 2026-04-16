@@ -40,3 +40,5 @@ class ChapterGenerationResult:
     writer_structured: dict[str, Any] | None = None
     warnings: list[str] | None = None
     skill_runs: list[dict[str, Any]] | None = None
+    # 最后一轮成功 writer/扩写 LLM 调用的 request metadata（含 llm_task_id），供 Timeline 展示
+    llm_request_metadata: dict[str, Any] | None = None

@@ -1,4 +1,5 @@
 # WriterAgent 主链最小依赖（默认生产链路：PostgreSQL + pgvector + rule rerank）
+python-dotenv>=1.0,<2
 alembic>=1.13,<2
 fastapi>=0.111,<1
 httpx>=0.27,<1

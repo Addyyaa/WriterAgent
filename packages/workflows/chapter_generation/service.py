@@ -423,6 +423,7 @@ class ChapterGenerationWorkflowService:
                 last_bad_raw_len: int | None = None
                 last_issue: str | None = None
                 llm_output: Any = None
+                last_llm_request_metadata: dict[str, Any] | None = None
                 before: Any = None
                 after: Any = None
                 writer_structured: dict[str, Any] = {}
@@ -589,6 +590,9 @@ class ChapterGenerationWorkflowService:
                                     },
                                 )
                             )
+                            last_llm_request_metadata = dict(
+                                llm_output.request_metadata_json or {}
+                            )
                             expanded = dict(llm_output.json_data or {})
                             chapter_map = (
                                 dict(expanded.get("chapter") or {})
@@ -680,6 +684,9 @@ class ChapterGenerationWorkflowService:
                                         "word_count_max_attempts": int(max_word_attempts),
                                     },
                                 )
+                            )
+                            last_llm_request_metadata = dict(
+                                llm_output.request_metadata_json or {}
                             )
 
                             after = self.skill_runtime.run_after_generate(
@@ -1026,6 +1033,7 @@ class ChapterGenerationWorkflowService:
                         writer_structured=writer_structured,
                         warnings=all_warnings,
                         skill_runs=skill_runs_payload,
+                        llm_request_metadata=last_llm_request_metadata,
                     )
 
                 write_call = self.tool_call_repo.create_call(
@@ -1141,6 +1149,7 @@ class ChapterGenerationWorkflowService:
                     writer_structured=writer_structured,
                     warnings=all_warnings,
                     skill_runs=skill_runs_payload,
+                    llm_request_metadata=last_llm_request_metadata,
                 )
             except Exception as exc:
                 self._notify_live_progress(request, {"kind": "idle"})

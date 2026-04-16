@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { getOpenApiSpec, getProjects, getRetrievalEvalDaily, getSystemMetrics } from "@/generated/api/client";
+import {
+  getLlmPromptAudit,
+  getOpenApiSpec,
+  getProjects,
+  getRetrievalEvalDaily,
+  getSystemMetrics
+} from "@/generated/api/client";
 import { Card } from "@/shared/ui/card";
 
 function Stat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
@@ -27,6 +33,14 @@ function MiniBar({ value, max, color = "bg-ocean" }: { value: number; max: numbe
       <span className="text-xs text-graphite/60 tabular-nums w-10 text-right">{value}</span>
     </div>
   );
+}
+
+/** 校验日志中的 llm_task_id（UUID v1–v5） */
+const LLM_TASK_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isLlmTaskId(value: string): boolean {
+  return LLM_TASK_ID_RE.test(String(value || "").trim());
 }
 
 function StatusDistribution({ data }: { data: Record<string, number> }) {
@@ -56,6 +70,9 @@ export function MetricsDashboard() {
   const [promoteMessage, setPromoteMessage] = useState<string | null>(null);
   const [promoteError, setPromoteError] = useState<string | null>(null);
   const [abProjectId, setAbProjectId] = useState<string>("");
+  const [llmAuditInput, setLlmAuditInput] = useState("");
+  const [llmAuditQueryId, setLlmAuditQueryId] = useState<string | null>(null);
+  const [llmAuditHint, setLlmAuditHint] = useState<string | null>(null);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["system-metrics"],
     queryFn: getSystemMetrics,
@@ -90,8 +107,39 @@ export function MetricsDashboard() {
     enabled: Boolean(abProjectId),
     staleTime: 30_000,
   });
+  const {
+    data: llmAudit,
+    error: llmAuditError,
+    isFetching: llmAuditLoading,
+    refetch: refetchLlmAudit
+  } = useQuery({
+    queryKey: ["llm-prompt-audit", llmAuditQueryId],
+    queryFn: () => getLlmPromptAudit(llmAuditQueryId as string),
+    enabled: Boolean(llmAuditQueryId && isLlmTaskId(llmAuditQueryId)),
+    staleTime: 60_000,
+    retry: (failureCount, err) => {
+      const message = String((err as Error)?.message || "");
+      if (message.includes("需要管理员权限")) return false;
+      if (message.includes("未找到")) return false;
+      return failureCount < 2;
+    }
+  });
   const endpointCount = Object.keys(openapi?.paths || {}).length;
   const endpointPreview = Object.keys(openapi?.paths || {}).slice(0, 20);
+
+  const runLlmAuditLookup = () => {
+    setLlmAuditHint(null);
+    const tid = llmAuditInput.trim();
+    if (!isLlmTaskId(tid)) {
+      setLlmAuditHint("请输入日志中出现的合法 llm_task_id（UUID）。");
+      return;
+    }
+    if (llmAuditQueryId === tid) {
+      void refetchLlmAudit();
+    } else {
+      setLlmAuditQueryId(tid);
+    }
+  };
 
   const promoteToAdmin = async () => {
     setPromoteMessage(null);
@@ -305,6 +353,104 @@ export function MetricsDashboard() {
               </div>
             </Card>
           </section>
+
+          {/* LLM 上下文审计（按 llm_task_id） */}
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold text-ink">LLM 上下文审计</h2>
+            <p className="mt-1 text-sm text-graphite/70">
+              日志中的任务 ID 与{" "}
+              <span className="font-mono text-xs">generate start | llm_task_id=</span> 或{" "}
+              <span className="font-mono text-xs">writeragent.llm_audit · [LLM] llm_task_id=</span>{" "}
+              一致。默认会先查数据库，无记录时再读仓库内{" "}
+              <span className="font-mono text-xs">data/llm_prompt_audit.jsonl</span> 兜底（入库失败或未迁移时常见）。
+            </p>
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <label className="flex min-w-[280px] flex-1 flex-col gap-1 text-xs text-graphite/65">
+                <span className="font-medium text-graphite/80">llm_task_id</span>
+                <input
+                  className="rounded-lg border border-ink/15 bg-white px-3 py-2 font-mono text-sm text-ink"
+                  placeholder="例如 550e8400-e29b-41d4-a716-446655440000"
+                  value={llmAuditInput}
+                  onChange={(e) => setLlmAuditInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") runLlmAuditLookup();
+                  }}
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-label="LLM 任务 ID"
+                />
+              </label>
+              <button
+                type="button"
+                className="rounded-xl border border-ink/15 bg-ocean px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                onClick={runLlmAuditLookup}
+                disabled={llmAuditLoading}
+              >
+                {llmAuditLoading ? "查询中…" : "查询"}
+              </button>
+            </div>
+            {llmAuditHint ? <p className="mt-2 text-sm text-amber-800">{llmAuditHint}</p> : null}
+            {llmAuditError ? (
+              <p className="mt-2 text-sm text-rose-700">{String((llmAuditError as Error).message)}</p>
+            ) : null}
+            {llmAudit ? (
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-graphite/75">
+                  <span>
+                    时间:{" "}
+                    <span className="font-mono text-graphite/90">
+                      {llmAudit.created_at ?? "—（仅 JSONL 兜底，无入库时间）"}
+                    </span>
+                  </span>
+                  {llmAudit.model ? (
+                    <span>
+                      模型: <span className="font-semibold text-ink">{llmAudit.model}</span>
+                    </span>
+                  ) : null}
+                  {llmAudit.provider_label ? (
+                    <span>
+                      提供方: <span className="font-mono">{llmAudit.provider_label}</span>
+                    </span>
+                  ) : null}
+                  {llmAudit.workflow_type ? (
+                    <span>
+                      workflow: <span className="font-mono">{llmAudit.workflow_type}</span>
+                    </span>
+                  ) : null}
+                  {llmAudit.step_key ? (
+                    <span>
+                      step: <span className="font-mono">{llmAudit.step_key}</span>
+                    </span>
+                  ) : null}
+                  {llmAudit.role_id ? (
+                    <span>
+                      role: <span className="font-mono">{llmAudit.role_id}</span>
+                    </span>
+                  ) : null}
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-graphite/60">system_prompt</p>
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-ink/10 bg-slate-50 p-3 font-mono text-xs text-graphite/90">
+                    {llmAudit.system_prompt ?? "（空）"}
+                  </pre>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-graphite/60">user_prompt</p>
+                  <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-ink/10 bg-slate-50 p-3 font-mono text-xs text-graphite/90">
+                    {llmAudit.user_prompt ?? "（空）"}
+                  </pre>
+                </div>
+                {llmAudit.metadata_json && Object.keys(llmAudit.metadata_json).length > 0 ? (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-graphite/60">metadata_json</p>
+                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border border-ink/10 bg-slate-50 p-3 font-mono text-xs text-graphite/90">
+                      {JSON.stringify(llmAudit.metadata_json, null, 2)}
+                    </pre>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </Card>
 
           {/* API 能力面板 */}
           <Card className="p-5">

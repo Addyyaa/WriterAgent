@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 
 from packages.core.config import env_bool, env_float, env_float_or_none, env_int, env_str
+from packages.core.env_bootstrap import load_repo_dotenv
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class TextGenerationRuntimeConfig:
 
     @classmethod
     def from_env(cls) -> "TextGenerationRuntimeConfig":
+        load_repo_dotenv()
         return cls(
             base_url=env_str("WRITER_LLM_BASE_URL", "https://api.openai.com/v1"),
             api_key=env_str("WRITER_LLM_API_KEY", ""),

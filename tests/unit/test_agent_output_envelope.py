@@ -29,6 +29,10 @@ class TestAgentOutputEnvelope(unittest.TestCase):
                 "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
                 "choices": [{"finish_reason": "stop"}],
             },
+            request_metadata_json={
+                "llm_task_id": "550e8400-e29b-41d4-a716-446655440000",
+                "llm_task_id_prior": "660e8400-e29b-41d4-a716-446655440001",
+            },
         )
         meta, raw = build_agent_step_meta_raw(
             result=result,
@@ -40,6 +44,8 @@ class TestAgentOutputEnvelope(unittest.TestCase):
         )
         self.assertEqual(meta.get("usage", {}).get("total_tokens"), 3)
         self.assertEqual(meta.get("finish_reason"), "stop")
+        self.assertEqual(meta.get("llm_task_id"), "550e8400-e29b-41d4-a716-446655440000")
+        self.assertEqual(meta.get("llm_task_id_prior"), "660e8400-e29b-41d4-a716-446655440001")
         self.assertIn("text", raw)
         self.assertIn("response_summary", raw)
 

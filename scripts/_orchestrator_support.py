@@ -34,6 +34,9 @@ from packages.storage.postgres.repositories.retrieval_trace_repository import (
     RetrievalTraceRepository,
 )
 from packages.storage.postgres.repositories.skill_run_repository import SkillRunRepository
+from packages.storage.postgres.repositories.story_state_snapshot_repository import (
+    StoryStateSnapshotRepository,
+)
 from packages.storage.postgres.repositories.tool_call_repository import ToolCallRepository
 from packages.storage.postgres.repositories.user_repository import UserRepository
 from packages.storage.postgres.repositories.workflow_run_repository import (
@@ -219,4 +222,5 @@ def build_test_orchestrator_service(db: Session) -> WritingOrchestratorService:
         ),
         retrieval_trace_repo=retrieval_trace_repo,
         retrieval_loop=retrieval_loop,
+        story_state_snapshot_repo=StoryStateSnapshotRepository(db),
     )

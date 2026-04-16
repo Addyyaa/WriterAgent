@@ -1,5 +1,26 @@
 export type ApiEnvelope<T> = T;
 
+/** 运维按 llm_task_id 查询：发往 LLM 的上下文审计行（与 GET /v2/system/llm-prompts/{id} 一致） */
+export interface LlmPromptAuditRecord {
+  id: string;
+  /** 仅数据库行有值；JSONL 兜底无入库时间时为 null */
+  created_at: string | null;
+  trace_id: string | null;
+  workflow_run_id: string | null;
+  workflow_step_id: string | null;
+  role_id: string | null;
+  step_key: string | null;
+  workflow_type: string | null;
+  model: string | null;
+  provider_label: string | null;
+  system_prompt: string | null;
+  user_prompt: string | null;
+  system_chars: number | null;
+  user_chars: number | null;
+  metadata_json: Record<string, unknown> | null;
+  prompt_guard_applied: boolean | null;
+}
+
 export type ProjectRole = "owner" | "editor" | "viewer" | "admin";
 
 export interface Project {

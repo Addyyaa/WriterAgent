@@ -1,4 +1,10 @@
-import type { MetricsJson, Project, RunWsEvent, WorkflowRunDetail } from "@/generated/api/types";
+import type {
+  LlmPromptAuditRecord,
+  MetricsJson,
+  Project,
+  RunWsEvent,
+  WorkflowRunDetail
+} from "@/generated/api/types";
 
 async function parseJson<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
@@ -22,6 +28,15 @@ export async function getRunDetail(runId: string): Promise<WorkflowRunDetail> {
 export async function getSystemMetrics(): Promise<MetricsJson> {
   const res = await fetch("/api/system/metrics", { method: "GET", credentials: "include" });
   return parseJson<MetricsJson>(res);
+}
+
+export async function getLlmPromptAudit(taskId: string): Promise<LlmPromptAuditRecord> {
+  const tid = String(taskId || "").trim();
+  const res = await fetch(`/api/system/llm-prompts/${encodeURIComponent(tid)}`, {
+    method: "GET",
+    credentials: "include"
+  });
+  return parseJson<LlmPromptAuditRecord>(res);
 }
 
 export async function getWsToken(): Promise<{ token: string; ws_url: string }> {
@@ -79,4 +94,4 @@ export function buildRunWsUrl(baseUrl: string, runId: string, token: string, cur
   return url.toString();
 }
 
-export type { Project, WorkflowRunDetail, MetricsJson, RunWsEvent };
+export type { LlmPromptAuditRecord, Project, WorkflowRunDetail, MetricsJson, RunWsEvent };

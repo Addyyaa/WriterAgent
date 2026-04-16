@@ -170,6 +170,8 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         }
         bundle = build_retrieval_bundle_from_raw_state(raw_state)
         self.assertEqual(bundle["summary"]["key_facts"], ["a"])
+        self.assertEqual(bundle["summary"]["confirmed_facts"], ["a"])
+        self.assertEqual(bundle["summary"]["supporting_evidence"], ["hello world"])
         self.assertTrue(any("hello" in str(i.get("text")) for i in bundle["items"]))
 
     def test_retrieval_bundle_prefers_view_over_agent_output(self) -> None:

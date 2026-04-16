@@ -394,7 +394,14 @@ def build_retrieval_bundle_from_raw_state(raw_state: dict[str, dict]) -> dict[st
     agent_out = step_agent_view(step)
     if not isinstance(agent_out, dict) or not agent_out:
         return {
-            "summary": {"key_facts": [], "current_states": []},
+            "summary": {
+                "key_facts": [],
+                "current_states": [],
+                "confirmed_facts": [],
+                "supporting_evidence": [],
+                "conflicts": [],
+                "information_gaps": [],
+            },
             "items": [],
             "meta": {},
         }
@@ -420,8 +427,29 @@ def build_retrieval_bundle_from_raw_state(raw_state: dict[str, dict]) -> dict[st
             if desc:
                 items.append({"source": "potential_conflict", "score": None, "text": desc[:800]})
 
+    gaps = [str(x).strip() for x in list(agent_out.get("information_gaps") or []) if str(x).strip()]
+    conflicts_summary: list[str] = []
+    for cf in list(agent_out.get("potential_conflicts") or []):
+        if isinstance(cf, dict):
+            desc = str(cf.get("description") or "").strip()
+            if desc:
+                conflicts_summary.append(desc[:1200])
+    supporting_evidence: list[str] = []
+    for ev in list(agent_out.get("key_evidence") or []):
+        if isinstance(ev, dict):
+            sn = str(ev.get("snippet") or "").strip()
+            if sn:
+                supporting_evidence.append(sn[:1200])
+
     return {
-        "summary": {"key_facts": key_facts, "current_states": current_states},
+        "summary": {
+            "key_facts": key_facts,
+            "current_states": current_states,
+            "confirmed_facts": list(key_facts),
+            "supporting_evidence": supporting_evidence,
+            "conflicts": conflicts_summary,
+            "information_gaps": gaps,
+        },
         "items": items,
         "meta": {},
     }

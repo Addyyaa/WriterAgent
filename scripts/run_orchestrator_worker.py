@@ -39,6 +39,11 @@ def _setup_logging(*, log_file: str | None, log_level: str | None) -> None:
     llm_handler.setLevel(logging.DEBUG)
     llm_logger = logging.getLogger("writeragent.llm")
     llm_logger.addHandler(llm_handler)
+    audit_logger = logging.getLogger("writeragent.llm_audit")
+    if llm_handler not in audit_logger.handlers:
+        audit_logger.addHandler(llm_handler)
+    if audit_logger.getEffectiveLevel() > logging.DEBUG:
+        audit_logger.setLevel(logging.DEBUG)
 
 
 def main() -> None:

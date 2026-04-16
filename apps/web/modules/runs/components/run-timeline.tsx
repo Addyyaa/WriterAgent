@@ -159,6 +159,26 @@ function resolveLabel(
   return dictionary[key] || key.replace(/_/g, " ");
 }
 
+/** 从步骤 output_json.meta 读取 LLM 审计任务 ID（与日志 / Ops 控制台一致） */
+function resolveOutputMetaLlmIds(outputJson: unknown): {
+  llm_task_id?: string;
+  llm_task_id_prior?: string;
+} {
+  if (!outputJson || typeof outputJson !== "object") return {};
+  const o = outputJson as Record<string, unknown>;
+  const meta = o.meta;
+  if (!meta || typeof meta !== "object") return {};
+  const m = meta as Record<string, unknown>;
+  const id = m.llm_task_id;
+  const prior = m.llm_task_id_prior;
+  return {
+    llm_task_id:
+      typeof id === "string" && id.trim() ? id.trim() : undefined,
+    llm_task_id_prior:
+      typeof prior === "string" && prior.trim() ? prior.trim() : undefined,
+  };
+}
+
 const TRUNC_JSON_STR = 1600;
 const TRUNC_JSON_KEYS = 48;
 const TRUNC_JSON_ARR = 40;
@@ -793,6 +813,7 @@ export function RunTimeline({ runId }: { runId: string }) {
                 stepKeyRaw === "writer_draft" &&
                 String(status).toLowerCase() === "success" &&
                 writerPayloadUsesAssembler(writerGuidance);
+              const llmIds = resolveOutputMetaLlmIds(step.output_json);
               return (
                 <div
                   key={step.id}
@@ -830,6 +851,26 @@ export function RunTimeline({ runId }: { runId: string }) {
                       {stepTypeRaw}
                     </span>
                   </div>
+                  {llmIds.llm_task_id ? (
+                    <div
+                      className="mt-1.5 rounded-lg border border-ink/8 bg-slate-50/90 px-2 py-1.5 text-[11px] leading-snug text-graphite/80"
+                      title="可在系统指标控制台「LLM 上下文审计」中按此 ID 查询发往模型的上下文"
+                    >
+                      <span className="text-graphite/55">llm_task_id</span>{" "}
+                      <span className="break-all font-mono text-graphite/90">
+                        {llmIds.llm_task_id}
+                      </span>
+                      {llmIds.llm_task_id_prior ? (
+                        <>
+                          <span className="mx-1 text-graphite/35">·</span>
+                          <span className="text-graphite/55">压缩重试前</span>{" "}
+                          <span className="break-all font-mono text-graphite/75">
+                            {llmIds.llm_task_id_prior}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {showAssemblerContextHint ? (
                     <p
                       className="mt-1.5 text-xs text-graphite/65"

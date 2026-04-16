@@ -5,6 +5,11 @@
       "type": "string",
       "description": "用一句话概括整个计划的逻辑流"
     },
+    "global_required_slots": {
+      "type": "array",
+      "description": "全计划通用的信息槽位（snake_case，与检索循环 must_have_slots 对齐；可为空）",
+      "items": { "type": "string" }
+    },
     "steps": {
       "type": "array",
       "description": "3-7 个原子化执行步骤",
@@ -21,6 +26,20 @@
           },
           "risk_item": { "type": "string" },
           "fallback_strategy": { "type": "string" },
+          "required_slots": {
+            "type": "array",
+            "description": "本步写作前检索应覆盖的槽位（snake_case，如 character_inventory、power_rules）",
+            "items": { "type": "string" }
+          },
+          "must_verify_facts": {
+            "type": "array",
+            "description": "动笔前必须核验的事实陈述（供审校/检索侧重，可为空）",
+            "items": { "type": "string" }
+          },
+          "fallback_when_missing": {
+            "type": "string",
+            "description": "关键信息缺失时的处理原则（如：标记待补设定，不写死为既成事实）"
+          },
           "acceptance_criteria": {
             "type": "object",
             "properties": {

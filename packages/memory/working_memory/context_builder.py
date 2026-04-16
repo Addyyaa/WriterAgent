@@ -25,9 +25,35 @@ class ContextPackage:
     items: list[ContextItem]
 
     def to_retrieval_bundle(self) -> dict[str, Any]:
-        """与编排检索 context_bundle 形状对齐：summary / items / meta（summary 由 retrieval_agent 负责语义）。"""
+        """与编排检索 context_bundle 形状对齐：summary / items / meta。
+
+        无 retrieval_agent 视图时，按来源粗分层，便于 Writer 与评测消费统一合同字段。
+        """
+        confirmed: list[str] = []
+        states: list[str] = []
+        support: list[str] = []
+        for it in self.items:
+            src = str(it.source or "")
+            txt = str(it.text or "").strip()
+            if not txt:
+                continue
+            if src == "memory_fact":
+                confirmed.append(txt[:1200])
+            elif src == "chapter":
+                states.append(txt[:1200])
+            elif src in ("world_entry", "character", "outline", "timeline_event", "foreshadowing"):
+                support.append(f"[{src}] {txt[:900]}")
+        key_facts = confirmed[:16] or [it.text[:900] for it in self.items[:8] if str(it.text or "").strip()]
+        current_states = states[:16]
         return {
-            "summary": {"key_facts": [], "current_states": []},
+            "summary": {
+                "key_facts": key_facts,
+                "current_states": current_states,
+                "confirmed_facts": confirmed[:24],
+                "supporting_evidence": support[:28],
+                "conflicts": [],
+                "information_gaps": [],
+            },
             "items": [
                 {
                     "source": it.source,

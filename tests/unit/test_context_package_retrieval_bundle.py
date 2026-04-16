@@ -17,7 +17,11 @@ class TestContextPackageRetrievalBundle(unittest.TestCase):
             ],
         )
         b = pkg.to_retrieval_bundle()
-        self.assertEqual(b["summary"], {"key_facts": [], "current_states": []})
+        self.assertEqual(b["summary"]["key_facts"], ["hi"])
+        self.assertEqual(b["summary"]["confirmed_facts"], ["hi"])
+        self.assertEqual(b["summary"]["current_states"], [])
+        self.assertEqual(b["summary"]["conflicts"], [])
+        self.assertEqual(b["summary"]["information_gaps"], [])
         self.assertEqual(len(b["items"]), 1)
         self.assertEqual(b["items"][0]["source"], "memory_fact")
         self.assertEqual(b["meta"]["used_tokens"], 42)

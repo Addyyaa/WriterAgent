@@ -7,6 +7,10 @@ import os
 import threading
 import logging
 from pathlib import Path
+
+from packages.core.env_bootstrap import load_repo_dotenv
+
+load_repo_dotenv()
 from time import perf_counter
 from typing import Any, Callable
 from uuid import UUID
@@ -22,6 +26,7 @@ from packages.auth import AuthError, AuthRuntimeConfig, AuthService
 from packages.evaluation.service import OnlineEvaluationService
 from packages.llm.embeddings.base import EmbeddingProvider
 from packages.llm.embeddings.factory import create_embedding_provider_from_env
+from packages.llm.prompt_audit import try_read_llm_prompt_audit_fallback
 from packages.llm.text_generation.base import TextGenerationRequest
 from packages.llm.text_generation.factory import create_text_generation_provider
 from packages.memory.long_term.ingestion.ingestion_service import MemoryIngestionService
@@ -75,6 +80,9 @@ from packages.storage.postgres.repositories.audit_event_repository import (
 )
 from packages.storage.postgres.repositories.backup_run_repository import (
     BackupRunRepository,
+)
+from packages.storage.postgres.repositories.llm_prompt_request_repository import (
+    LlmPromptRequestRepository,
 )
 from packages.storage.postgres.repositories.webhook_delivery_repository import (
     WebhookDeliveryRepository,
@@ -1169,6 +1177,7 @@ def _serialize_transfer_job(row) -> dict:
 
 def _ensure_llm_file_logger() -> None:
     llm_logger = logging.getLogger("writeragent.llm")
+    audit_logger = logging.getLogger("writeragent.llm_audit")
     if any(isinstance(h, logging.FileHandler) for h in llm_logger.handlers):
         return
     llm_log_path = _resolve_repo_data_path(str(os.getenv("WRITER_LLM_LOG_FILE", "data/llm.log")))
@@ -1178,6 +1187,10 @@ def _ensure_llm_file_logger() -> None:
     fh.setLevel(logging.DEBUG)
     llm_logger.addHandler(fh)
     llm_logger.setLevel(logging.DEBUG)
+    if fh not in audit_logger.handlers:
+        audit_logger.addHandler(fh)
+    if audit_logger.getEffectiveLevel() > logging.DEBUG:
+        audit_logger.setLevel(logging.DEBUG)
 
 
 # 同一文件只建一个 FileHandler，挂到 worker 与 workflows 命名空间，避免重复写入
@@ -4145,6 +4158,29 @@ def create_app(
         if not _is_system_admin(user):
             raise HTTPException(status_code=403, detail="需要管理员权限")
         return _collect_system_metrics(req, db)
+
+    @app.get(
+        "/v2/system/llm-prompts/{llm_task_id}",
+        tags=["System"],
+        summary="按 llm_task_id 查询发往 LLM 的上下文",
+        description="返回 system_prompt / user_prompt 等审计字段；需管理员。llm_task_id 见日志 [LLM] llm_task_id=…",
+    )
+    def get_llm_prompt_audit(llm_task_id: UUID, req: Request, db: Session = Depends(get_db)) -> dict:
+        user = getattr(req.state, "current_user", None) or current_user(req, db)
+        if not _is_system_admin(user):
+            raise HTTPException(status_code=403, detail="需要管理员权限")
+        row = LlmPromptRequestRepository(db).get_by_id(llm_task_id)
+        if row is None:
+            row = try_read_llm_prompt_audit_fallback(llm_task_id)
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    "未找到该 llm_task_id 的审计记录（可能未开启审计、或仅写入 JSONL 兜底但 API 未读到文件；"
+                    "可检查 WRITER_LLM_PROMPT_AUDIT_API_JSONL_FALLBACK、alembic 与 DATABASE_URL）"
+                ),
+            )
+        return row
 
     @app.get(
         "/v2/system/backups/latest",

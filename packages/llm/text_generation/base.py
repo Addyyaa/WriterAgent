@@ -35,6 +35,8 @@ class TextGenerationResult:
     provider: str
     is_mock: bool
     raw_response_json: dict[str, Any] = field(default_factory=dict)
+    # 与当次 HTTP 调用对应的请求侧 metadata（含 openai_compatible 注入的 llm_task_id）
+    request_metadata_json: dict[str, Any] = field(default_factory=dict)
 
 
 class TextGenerationProvider(ABC):
