@@ -19,6 +19,7 @@
 # 输入字段（与 JSON user 负载对应，Assembler 对齐编排步骤）
 
 - `step_key` / `workflow_type` / `role_id`：当前步骤标识。**独立 API 章节生成**为 `chapter_draft`；**编排全链路 writer_draft** 为 `writer_draft`（`state` 下为 `outline_generation` 投影与各 `*_alignment` 投影 + `writer_focus` / `writer_context_slice` / `writer_evidence_pack` / `chapter_memory`）。
+- `outline.content`（若出现）：为**大纲梗概（outline synopsis）**，仅事件链与推进意图，不是正文半成稿；细粒度节拍以 `state.plot_alignment` 与 `structure_json` 为准。
 - `project` / `goal` / `target_words` / `writing_contract`：项目与字数契约。
 - `style_hint`：文风与节奏约束。
 - `state.chapter_memory`：记忆片段列表（`items[]`，含 `source` / `text` / `priority`）。

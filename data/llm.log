@@ -641,3 +641,939 @@
 2026-04-17 07:26:09,494 [INFO] writeragent.llm_audit - [LLM] llm_task_id=3bafb277-dd95-4ba2-bd89-1b2fddb6e4ac trace_id=1ea77522-001f-4ff9-a78b-8e543ee1e811 workflow_run_id=- role_id=- step_key=- model=glm-5 sys_chars=4072 user_chars=42988 guard=False
 2026-04-17 07:26:09,496 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=unknown
 2026-04-17 07:26:09,496 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 07:27:53,178 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 07:29:19,837 [INFO] writeragent.llm - writer_length_debug | chapter_raw_len=357 | chapter_non_ws=324 | segments_join_raw_len=0 | segments_join_non_ws=0 | word_count_field=None
+2026-04-17 07:29:19,840 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 07:30:29,646 [INFO] writeragent.llm - writer_length_debug | chapter_raw_len=1948 | chapter_non_ws=1773 | segments_join_raw_len=0 | segments_join_non_ws=0 | word_count_field=None
+2026-04-17 07:30:29,649 [INFO] writeragent.llm - [LLM] completion_meta | meta=unknown finish_reason=stop completion_tokens=2213 prompt_tokens=26219 total_tokens=28432
+2026-04-17 07:30:29,649 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=unknown text_len=190
+2026-04-17 07:30:29,650 [INFO] writeragent.llm - [LLM] response_lens | meta=unknown primary_text_len=190 json_dump_len=2602 chapter.content_strlen=1948 chapter.content_non_ws=1773 top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:30:29,650 [INFO] writeragent.llm - [LLM] response_word_stats | meta=unknown primary_text_non_ws=185 chapter.content_non_ws=1773 top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=chapter.content selected_non_ws=1773 target_words=1200 allowed=[1080,1320] gap_to_min=693 gap_to_max=-453
+2026-04-17 07:30:29,652 [INFO] writeragent.llm - [chapter_generation] writer_draft_lens | attempt=1/3 llm_primary_text_len=190 llm_json_dump_len=2602 legacy_content_strlen=1948 legacy_content_non_ws=1773 segments_n=0 segments_join_non_ws=0
+2026-04-17 07:30:29,652 [INFO] writeragent.llm - [chapter_generation] writer_draft_word_stats | attempt=1/3 target_words=1200 allowed=[1080,1320] actual_non_ws=1773 gap_to_min=693 gap_to_max=-453 issue=too_long
+2026-04-17 07:31:48,482 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=c7e707aa-c43c-4f9d-bb38-e95739f20428 model=glm-5 meta=consistency_agent prompt_len=29650 max_tokens=1500
+2026-04-17 07:31:48,492 [INFO] writeragent.llm_audit - [LLM] llm_task_id=c7e707aa-c43c-4f9d-bb38-e95739f20428 trace_id=1ea77522-001f-4ff9-a78b-8e543ee1e811 workflow_run_id=- role_id=consistency_agent step_key=- model=glm-5 sys_chars=1761 user_chars=29650 guard=False
+2026-04-17 07:31:48,494 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=consistency_agent
+2026-04-17 07:33:10,502 [INFO] writeragent.llm - [LLM] completion_meta | meta=consistency_agent finish_reason=tool_calls completion_tokens=2417 prompt_tokens=18781 total_tokens=21198
+2026-04-17 07:33:10,507 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=consistency_agent text_len=1209
+2026-04-17 07:33:10,507 [INFO] writeragent.llm - [LLM] response_lens | meta=consistency_agent primary_text_len=1209 json_dump_len=1209 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:33:10,507 [INFO] writeragent.llm - [LLM] response_word_stats | meta=consistency_agent primary_text_non_ws=1178 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=1178 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:33:11,702 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=e02824c1-74ea-40b7-8971-4c053eb8baaa model=glm-5 meta=unknown prompt_len=29904 max_tokens=24000
+2026-04-17 07:33:11,702 [INFO] writeragent.llm - [LLM] max_tokens 请求值 24000 超过厂商上限 8192，已裁剪
+2026-04-17 07:33:11,707 [INFO] writeragent.llm_audit - [LLM] llm_task_id=e02824c1-74ea-40b7-8971-4c053eb8baaa trace_id=1ea77522-001f-4ff9-a78b-8e543ee1e811 workflow_run_id=- role_id=- step_key=- model=glm-5 sys_chars=2105 user_chars=29904 guard=False
+2026-04-17 07:33:11,708 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=unknown
+2026-04-17 07:33:11,708 [INFO] writeragent.llm - [LLM] max_tokens 请求值 24000 超过厂商上限 8192，已裁剪
+2026-04-17 07:34:51,700 [INFO] writeragent.llm - writer_length_debug | chapter_raw_len=2022 | chapter_non_ws=1847 | segments_join_raw_len=1912 | segments_join_non_ws=1847 | word_count_field=2156
+2026-04-17 07:34:51,705 [INFO] writeragent.llm - [LLM] completion_meta | meta=unknown finish_reason=tool_calls completion_tokens=4611 prompt_tokens=18854 total_tokens=23465
+2026-04-17 07:34:51,705 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=unknown text_len=347
+2026-04-17 07:34:51,705 [INFO] writeragent.llm - [LLM] response_lens | meta=unknown primary_text_len=347 json_dump_len=7910 chapter.content_strlen=2022 chapter.content_non_ws=1847 top_level.content_strlen=None top_level.content_non_ws=None segments=56 segments_join_non_ws=1847
+2026-04-17 07:34:51,706 [INFO] writeragent.llm - [LLM] response_word_stats | meta=unknown primary_text_non_ws=343 chapter.content_non_ws=1847 top_level.content_non_ws=None segments_join_non_ws=1847 selected_metric=chapter.content selected_non_ws=1847 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:34:52,910 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=70ca1388-5394-4a6c-81d0-3b1b8cff26b3 model=glm-5 meta=writer_agent prompt_len=26093 max_tokens=32000
+2026-04-17 07:34:52,910 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 07:34:52,914 [INFO] writeragent.llm_audit - [LLM] llm_task_id=70ca1388-5394-4a6c-81d0-3b1b8cff26b3 trace_id=1ea77522-001f-4ff9-a78b-8e543ee1e811 workflow_run_id=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 role_id=writer_agent step_key=persist_artifacts model=glm-5 sys_chars=1276 user_chars=26093 guard=False
+2026-04-17 07:34:52,915 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=writer_agent
+2026-04-17 07:34:52,915 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 07:36:37,883 [INFO] writeragent.llm - writer_length_debug | chapter_raw_len=2022 | chapter_non_ws=1847 | segments_join_raw_len=1912 | segments_join_non_ws=1847 | word_count_field=2156
+2026-04-17 07:36:37,884 [INFO] writeragent.llm - [LLM] completion_meta | meta=writer_agent finish_reason=tool_calls completion_tokens=4516 prompt_tokens=16205 total_tokens=20721
+2026-04-17 07:36:37,884 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=writer_agent text_len=341
+2026-04-17 07:36:37,884 [INFO] writeragent.llm - [LLM] response_lens | meta=writer_agent primary_text_len=341 json_dump_len=7904 chapter.content_strlen=2022 chapter.content_non_ws=1847 top_level.content_strlen=None top_level.content_non_ws=None segments=56 segments_join_non_ws=1847
+2026-04-17 07:36:37,884 [INFO] writeragent.llm - [LLM] response_word_stats | meta=writer_agent primary_text_non_ws=331 chapter.content_non_ws=1847 top_level.content_non_ws=None segments_join_non_ws=1847 selected_metric=chapter.content selected_non_ws=1847 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:38:36,391 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=c19c04e4-5422-4d14-b89a-bd15186058e3 model=glm-5 meta=planner_agent prompt_len=10712 max_tokens=2000
+2026-04-17 07:38:36,398 [INFO] writeragent.llm_audit - [LLM] llm_task_id=c19c04e4-5422-4d14-b89a-bd15186058e3 trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 role_id=planner_agent step_key=planner_bootstrap model=glm-5 sys_chars=4013 user_chars=10712 guard=False
+2026-04-17 07:38:36,399 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=planner_agent
+2026-04-17 07:39:39,030 [INFO] writeragent.llm - [LLM] completion_meta | meta=planner_agent finish_reason=tool_calls completion_tokens=1971 prompt_tokens=9466 total_tokens=11437
+2026-04-17 07:39:39,035 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=planner_agent text_len=3824
+2026-04-17 07:39:39,035 [INFO] writeragent.llm - [LLM] response_lens | meta=planner_agent primary_text_len=3824 json_dump_len=3824 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:39:39,035 [INFO] writeragent.llm - [LLM] response_word_stats | meta=planner_agent primary_text_non_ws=3617 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=3617 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:39:39,147 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=7b7b61c8-1178-474b-86d7-8cdc265aca28 model=glm-5 meta=retrieval_agent prompt_len=14664 max_tokens=1600
+2026-04-17 07:39:39,150 [INFO] writeragent.llm_audit - [LLM] llm_task_id=7b7b61c8-1178-474b-86d7-8cdc265aca28 trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 role_id=retrieval_agent step_key=retrieval_context model=glm-5 sys_chars=1924 user_chars=14664 guard=False
+2026-04-17 07:39:39,150 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=retrieval_agent
+2026-04-17 07:40:24,090 [INFO] writeragent.llm - [LLM] completion_meta | meta=retrieval_agent finish_reason=tool_calls completion_tokens=1542 prompt_tokens=9585 total_tokens=11127
+2026-04-17 07:40:24,090 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=retrieval_agent text_len=2339
+2026-04-17 07:40:24,090 [INFO] writeragent.llm - [LLM] response_lens | meta=retrieval_agent primary_text_len=2339 json_dump_len=2339 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:40:24,090 [INFO] writeragent.llm - [LLM] response_word_stats | meta=retrieval_agent primary_text_non_ws=2263 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=2263 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:40:24,688 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=37dfb2d2-8eb2-4e69-a1b5-7d0f76f5be57 model=glm-5 meta=unknown prompt_len=13436 max_tokens=None
+2026-04-17 07:40:24,690 [INFO] writeragent.llm_audit - [LLM] llm_task_id=37dfb2d2-8eb2-4e69-a1b5-7d0f76f5be57 trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=- role_id=- step_key=- model=glm-5 sys_chars=56 user_chars=13436 guard=False
+2026-04-17 07:40:24,691 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=unknown
+2026-04-17 07:45:43,260 [INFO] writeragent.llm - [LLM] completion_meta | meta=unknown finish_reason=stop completion_tokens=5062 prompt_tokens=8222 total_tokens=13284
+2026-04-17 07:45:43,264 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=unknown text_len=6147
+2026-04-17 07:45:43,265 [INFO] writeragent.llm - [LLM] response_lens | meta=unknown primary_text_len=6147 json_dump_len=7621 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=6147 top_level.content_non_ws=5652 segments=0 segments_join_non_ws=0
+2026-04-17 07:45:43,265 [INFO] writeragent.llm - [LLM] response_word_stats | meta=unknown primary_text_non_ws=5652 chapter.content_non_ws=None top_level.content_non_ws=5652 segments_join_non_ws=0 selected_metric=top_level.content selected_non_ws=5652 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:45:43,353 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=0428890f-263a-4627-9901-f9433a7e6263 model=glm-5 meta=plot_agent prompt_len=19139 max_tokens=1200
+2026-04-17 07:45:43,357 [INFO] writeragent.llm_audit - [LLM] llm_task_id=0428890f-263a-4627-9901-f9433a7e6263 trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 role_id=plot_agent step_key=plot_alignment model=glm-5 sys_chars=1741 user_chars=19139 guard=False
+2026-04-17 07:45:43,358 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=plot_agent
+2026-04-17 07:48:52,709 [INFO] writeragent.llm - [LLM] completion_meta | meta=plot_agent finish_reason=stop completion_tokens=4716 prompt_tokens=12267 total_tokens=16983
+2026-04-17 07:48:52,713 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=plot_agent text_len=1883
+2026-04-17 07:48:52,714 [INFO] writeragent.llm - [LLM] response_lens | meta=plot_agent primary_text_len=1883 json_dump_len=1883 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:48:52,714 [INFO] writeragent.llm - [LLM] response_word_stats | meta=plot_agent primary_text_non_ws=1824 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=1824 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:48:52,821 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=0f359d5b-2b8c-4313-96eb-36262c9a6cf6 model=glm-5 meta=character_agent prompt_len=27967 max_tokens=24576
+2026-04-17 07:48:52,821 [INFO] writeragent.llm - [LLM] max_tokens 请求值 24576 超过厂商上限 8192，已裁剪
+2026-04-17 07:48:52,830 [INFO] writeragent.llm_audit - [LLM] llm_task_id=0f359d5b-2b8c-4313-96eb-36262c9a6cf6 trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 role_id=character_agent step_key=character_alignment model=glm-5 sys_chars=1798 user_chars=27967 guard=False
+2026-04-17 07:48:52,831 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=character_agent
+2026-04-17 07:48:52,831 [INFO] writeragent.llm - [LLM] max_tokens 请求值 24576 超过厂商上限 8192，已裁剪
+2026-04-17 07:49:45,075 [INFO] writeragent.llm - [LLM] completion_meta | meta=character_agent finish_reason=tool_calls completion_tokens=1375 prompt_tokens=18038 total_tokens=19413
+2026-04-17 07:49:45,079 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=character_agent text_len=1451
+2026-04-17 07:49:45,079 [INFO] writeragent.llm - [LLM] response_lens | meta=character_agent primary_text_len=1451 json_dump_len=1451 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:49:45,079 [INFO] writeragent.llm - [LLM] response_word_stats | meta=character_agent primary_text_non_ws=1418 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=1418 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:49:45,155 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=c70dd036-c647-41f6-a7db-9531fd5d946f model=glm-5 meta=world_agent prompt_len=29090 max_tokens=2500
+2026-04-17 07:49:45,161 [INFO] writeragent.llm_audit - [LLM] llm_task_id=c70dd036-c647-41f6-a7db-9531fd5d946f trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 role_id=world_agent step_key=world_alignment model=glm-5 sys_chars=1662 user_chars=29090 guard=False
+2026-04-17 07:49:45,161 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=world_agent
+2026-04-17 07:50:44,558 [INFO] writeragent.llm - [LLM] completion_meta | meta=world_agent finish_reason=tool_calls completion_tokens=1840 prompt_tokens=18667 total_tokens=20507
+2026-04-17 07:50:44,558 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=world_agent text_len=2331
+2026-04-17 07:50:44,558 [INFO] writeragent.llm - [LLM] response_lens | meta=world_agent primary_text_len=2331 json_dump_len=2331 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:50:44,558 [INFO] writeragent.llm - [LLM] response_word_stats | meta=world_agent primary_text_non_ws=2256 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=2256 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:50:44,627 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=f7fddbaf-db51-4fac-9e11-f82326ee28df model=glm-5 meta=style_agent prompt_len=17672 max_tokens=2048
+2026-04-17 07:50:44,631 [INFO] writeragent.llm_audit - [LLM] llm_task_id=f7fddbaf-db51-4fac-9e11-f82326ee28df trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 role_id=style_agent step_key=style_alignment model=glm-5 sys_chars=1837 user_chars=17672 guard=False
+2026-04-17 07:50:44,631 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=style_agent
+2026-04-17 07:52:09,282 [INFO] writeragent.llm - [LLM] completion_meta | meta=style_agent finish_reason=stop completion_tokens=1229 prompt_tokens=11498 total_tokens=12727
+2026-04-17 07:52:09,286 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=style_agent text_len=908
+2026-04-17 07:52:09,287 [INFO] writeragent.llm - [LLM] response_lens | meta=style_agent primary_text_len=908 json_dump_len=908 chapter.content_strlen=None chapter.content_non_ws=None top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:52:09,287 [INFO] writeragent.llm - [LLM] response_word_stats | meta=style_agent primary_text_non_ws=863 chapter.content_non_ws=None top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=primary_text selected_non_ws=863 target_words=None allowed=[None,None] gap_to_min=None gap_to_max=None
+2026-04-17 07:52:10,282 [INFO] writeragent.llm - [chapter_generation] writer_draft_generation_mode | attempt=1/3 mode=full_regenerate enabled=True trigger_attempt=3 prev_issue=None prev_wc=None schema_min_len=626
+2026-04-17 07:52:10,293 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=a51bd3d6-9746-4578-9664-1e2cbad8b479 model=glm-5 meta=unknown prompt_len=40148 max_tokens=32000
+2026-04-17 07:52:10,293 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 07:52:10,299 [INFO] writeragent.llm_audit - [LLM] llm_task_id=a51bd3d6-9746-4578-9664-1e2cbad8b479 trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=- role_id=- step_key=- model=glm-5 sys_chars=4072 user_chars=40148 guard=False
+2026-04-17 07:52:10,299 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=unknown
+2026-04-17 07:52:10,299 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 07:54:29,135 [INFO] writeragent.llm - writer_length_debug | chapter_raw_len=2631 | chapter_non_ws=2439 | segments_join_raw_len=0 | segments_join_non_ws=0 | word_count_field=None
+2026-04-17 07:54:29,139 [INFO] writeragent.llm - [LLM] completion_meta | meta=unknown finish_reason=tool_calls completion_tokens=5316 prompt_tokens=24833 total_tokens=30149
+2026-04-17 07:54:29,139 [INFO] writeragent.llm - [LLM] success | model=glm-5 provider=openai_compatible meta=unknown text_len=3221
+2026-04-17 07:54:29,139 [INFO] writeragent.llm - [LLM] response_lens | meta=unknown primary_text_len=3221 json_dump_len=3221 chapter.content_strlen=2631 chapter.content_non_ws=2439 top_level.content_strlen=None top_level.content_non_ws=None segments=0 segments_join_non_ws=0
+2026-04-17 07:54:29,139 [INFO] writeragent.llm - [LLM] response_word_stats | meta=unknown primary_text_non_ws=3211 chapter.content_non_ws=2439 top_level.content_non_ws=None segments_join_non_ws=0 selected_metric=chapter.content selected_non_ws=2439 target_words=1200 allowed=[1080,1320] gap_to_min=1359 gap_to_max=-1119
+2026-04-17 07:54:29,139 [INFO] writeragent.llm - [chapter_generation] writer_draft_lens | attempt=1/3 llm_primary_text_len=3221 llm_json_dump_len=3221 legacy_content_strlen=2631 legacy_content_non_ws=2439 segments_n=0 segments_join_non_ws=0
+2026-04-17 07:54:29,139 [INFO] writeragent.llm - [chapter_generation] writer_draft_word_stats | attempt=1/3 target_words=1200 allowed=[1080,1320] actual_non_ws=2439 gap_to_min=1359 gap_to_max=-1119 issue=too_long
+2026-04-17 07:56:57,565 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 07:56:57,565 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 07:56:57,565 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 07:56:57,565 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 07:56:57,565 [INFO] writeragent.llm - [LLM] provider init | pid=19062 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 07:59:01,082 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=e710d566-efa8-417f-93d2-e5696d35b31f model=glm-5 meta=consistency_agent prompt_len=33253 max_tokens=1500
+2026-04-17 07:59:01,088 [INFO] writeragent.llm_audit - [LLM] llm_task_id=e710d566-efa8-417f-93d2-e5696d35b31f trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=- role_id=consistency_agent step_key=- model=glm-5 sys_chars=1761 user_chars=33253 guard=False
+2026-04-17 07:59:01,089 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=consistency_agent
+2026-04-17 08:03:24,470 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:03:24,471 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:03:24,471 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:03:24,471 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:03:24,471 [INFO] writeragent.llm - [LLM] provider init | pid=24145 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:03:25,559 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:03:25,559 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:03:25,559 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:03:25,559 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:03:25,559 [INFO] writeragent.llm - [LLM] provider init | pid=24159 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:03:31,372 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:03:31,372 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:03:31,372 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:03:31,372 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:03:31,373 [INFO] writeragent.llm - [LLM] provider init | pid=24263 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:12:02,804 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:12:02,804 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:12:02,804 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:12:02,804 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:12:02,804 [INFO] writeragent.llm - [LLM] provider init | pid=30787 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:12:03,703 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:12:03,703 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:12:03,703 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:12:03,703 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:12:03,703 [INFO] writeragent.llm - [LLM] provider init | pid=30799 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:12:06,994 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:12:06,994 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:12:06,994 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:12:06,994 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:12:06,994 [INFO] writeragent.llm - [LLM] provider init | pid=30843 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:12:10,344 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:12:10,344 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:12:10,344 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:12:10,344 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:12:10,344 [INFO] writeragent.llm - [LLM] provider init | pid=30889 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:12:44,337 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:12:44,337 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:12:44,337 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:12:44,337 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:12:44,337 [INFO] writeragent.llm - [LLM] provider init | pid=31371 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:12:47,437 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:12:47,437 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:12:47,437 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:12:47,437 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:12:47,437 [INFO] writeragent.llm - [LLM] provider init | pid=31426 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:12:51,736 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:12:51,736 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:12:51,736 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:12:51,736 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:12:51,736 [INFO] writeragent.llm - [LLM] provider init | pid=31493 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:00,202 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:00,202 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:00,202 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:00,202 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:00,202 [INFO] writeragent.llm - [LLM] provider init | pid=31603 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:02,781 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:02,781 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:02,781 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:02,781 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:02,781 [INFO] writeragent.llm - [LLM] provider init | pid=31642 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:03,963 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:03,963 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:03,963 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:03,963 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:03,963 [INFO] writeragent.llm - [LLM] provider init | pid=31664 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:05,451 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:05,453 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:05,453 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:05,453 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:05,453 [INFO] writeragent.llm - [LLM] provider init | pid=31687 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:06,557 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:06,557 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:06,557 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:06,557 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:06,557 [INFO] writeragent.llm - [LLM] provider init | pid=31701 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:08,702 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:08,702 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:08,703 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:08,703 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:08,703 [INFO] writeragent.llm - [LLM] provider init | pid=31738 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:11,379 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:11,379 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:11,379 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:11,379 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:11,379 [INFO] writeragent.llm - [LLM] provider init | pid=31773 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:19,437 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:19,437 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:19,437 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:19,437 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:19,437 [INFO] writeragent.llm - [LLM] provider init | pid=31890 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:25,315 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:25,315 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:25,316 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:25,316 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:25,316 [INFO] writeragent.llm - [LLM] provider init | pid=31970 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:26,947 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:26,947 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:26,947 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:26,947 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:26,947 [INFO] writeragent.llm - [LLM] provider init | pid=31997 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:13:49,657 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:13:49,657 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:13:49,657 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:13:49,658 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:13:49,658 [INFO] writeragent.llm - [LLM] provider init | pid=32368 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:14:06,524 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:14:06,525 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:14:06,525 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:14:06,525 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:14:06,527 [INFO] writeragent.llm - [LLM] provider init | pid=32622 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:19:34,728 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:19:34,728 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:19:34,728 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:19:34,728 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:19:34,728 [INFO] writeragent.llm - [LLM] provider init | pid=36884 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:19:45,028 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:19:45,028 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:19:45,028 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:19:45,028 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:19:45,028 [INFO] writeragent.llm - [LLM] provider init | pid=37038 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:20:06,983 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:20:06,983 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:20:06,984 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:20:06,984 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:20:06,984 [INFO] writeragent.llm - [LLM] provider init | pid=37323 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:20:08,034 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:20:08,034 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:20:08,034 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:20:08,034 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:20:08,034 [INFO] writeragent.llm - [LLM] provider init | pid=37336 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:20:09,351 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:20:09,351 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:20:09,351 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:20:09,351 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:20:09,351 [INFO] writeragent.llm - [LLM] provider init | pid=37360 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:20:10,766 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:20:10,766 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:20:10,766 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:20:10,766 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:20:10,766 [INFO] writeragent.llm - [LLM] provider init | pid=37382 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:20:13,022 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:20:13,022 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:20:13,022 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:20:13,022 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:20:13,022 [INFO] writeragent.llm - [LLM] provider init | pid=37416 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:20:14,219 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:20:14,219 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:20:14,219 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:20:14,219 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:20:14,219 [INFO] writeragent.llm - [LLM] provider init | pid=37439 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:20:15,760 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:20:15,760 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:20:15,760 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:20:15,760 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:20:15,760 [INFO] writeragent.llm - [LLM] provider init | pid=37462 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:20:24,821 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:20:24,824 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:20:24,825 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:20:24,825 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:20:24,825 [INFO] writeragent.llm - [LLM] provider init | pid=37604 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:37,115 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:37,115 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:37,115 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:37,115 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:37,115 [INFO] writeragent.llm - [LLM] provider init | pid=41030 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:49,176 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:49,177 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:49,177 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:49,177 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:49,177 [INFO] writeragent.llm - [LLM] provider init | pid=41197 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:50,110 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:50,110 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:50,110 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:50,110 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:50,110 [INFO] writeragent.llm - [LLM] provider init | pid=41211 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:51,155 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:51,155 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:51,155 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:51,155 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:51,155 [INFO] writeragent.llm - [LLM] provider init | pid=41223 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:54,110 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:54,110 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:54,110 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:54,110 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:54,111 [INFO] writeragent.llm - [LLM] provider init | pid=41269 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:55,223 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:55,223 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:55,223 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:55,223 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:55,224 [INFO] writeragent.llm - [LLM] provider init | pid=41283 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:56,206 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:56,206 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:56,206 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:56,206 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:56,206 [INFO] writeragent.llm - [LLM] provider init | pid=41295 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:57,185 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:57,185 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:57,186 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:57,186 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:57,186 [INFO] writeragent.llm - [LLM] provider init | pid=41317 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:24:59,946 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:24:59,946 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:24:59,946 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:24:59,946 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:24:59,946 [INFO] writeragent.llm - [LLM] provider init | pid=41367 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:03,865 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:03,866 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:03,866 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:03,866 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:03,866 [INFO] writeragent.llm - [LLM] provider init | pid=41425 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:06,562 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:06,562 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:06,562 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:06,562 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:06,562 [INFO] writeragent.llm - [LLM] provider init | pid=41459 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:16,993 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:16,994 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:16,994 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:16,994 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:16,994 [INFO] writeragent.llm - [LLM] provider init | pid=41630 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:18,143 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:18,143 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:18,143 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:18,143 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:18,143 [INFO] writeragent.llm - [LLM] provider init | pid=41646 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:19,172 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:19,172 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:19,172 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:19,172 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:19,172 [INFO] writeragent.llm - [LLM] provider init | pid=41669 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:20,196 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:20,196 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:20,196 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:20,196 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:20,196 [INFO] writeragent.llm - [LLM] provider init | pid=41682 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:39,810 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:39,810 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:39,810 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:39,810 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:39,810 [INFO] writeragent.llm - [LLM] provider init | pid=41971 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:40,795 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:40,795 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:40,795 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:40,795 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:40,795 [INFO] writeragent.llm - [LLM] provider init | pid=41985 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:25:57,222 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:25:57,222 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:25:57,222 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:25:57,222 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:25:57,222 [INFO] writeragent.llm - [LLM] provider init | pid=42248 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:26:13,388 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:26:13,388 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:26:13,388 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:26:13,388 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:26:13,388 [INFO] writeragent.llm - [LLM] provider init | pid=42532 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:33:23,937 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:33:23,937 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:33:23,937 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:33:23,937 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:33:23,937 [INFO] writeragent.llm - [LLM] provider init | pid=48181 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:33:27,131 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:33:27,131 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:33:27,131 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:33:27,131 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:33:27,131 [INFO] writeragent.llm - [LLM] provider init | pid=48246 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:33:28,121 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:33:28,121 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:33:28,121 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:33:28,121 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:33:28,121 [INFO] writeragent.llm - [LLM] provider init | pid=48268 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:33:39,684 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:33:39,684 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:33:39,685 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:33:39,685 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:33:39,685 [INFO] writeragent.llm - [LLM] provider init | pid=48494 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:33:40,490 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:33:40,490 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:33:40,490 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:33:40,490 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:33:40,490 [INFO] writeragent.llm - [LLM] provider init | pid=48512 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:34:01,171 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:34:01,171 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:34:01,171 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:34:01,171 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:34:01,171 [INFO] writeragent.llm - [LLM] provider init | pid=48778 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:34:02,093 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:34:02,093 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:34:02,093 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:34:02,093 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:34:02,093 [INFO] writeragent.llm - [LLM] provider init | pid=48792 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:34:03,217 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:34:03,217 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:34:03,217 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:34:03,217 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:34:03,217 [INFO] writeragent.llm - [LLM] provider init | pid=48804 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:34:14,000 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:34:14,000 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:34:14,000 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:34:14,000 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:34:14,000 [INFO] writeragent.llm - [LLM] provider init | pid=48959 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:34:23,157 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:34:23,157 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:34:23,157 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:34:23,157 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:34:23,157 [INFO] writeragent.llm - [LLM] provider init | pid=49114 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:34:29,485 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:34:29,485 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:34:29,485 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:34:29,485 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:34:29,485 [INFO] writeragent.llm - [LLM] provider init | pid=49210 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:34:31,747 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:34:31,747 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:34:31,747 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:34:31,747 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:34:31,747 [INFO] writeragent.llm - [LLM] provider init | pid=49259 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:09,769 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:09,769 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:09,769 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:09,769 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:09,769 [INFO] writeragent.llm - [LLM] provider init | pid=64888 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:14,390 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:14,390 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:14,390 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:14,390 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:14,390 [INFO] writeragent.llm - [LLM] provider init | pid=64957 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:15,474 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:15,474 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:15,474 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:15,474 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:15,474 [INFO] writeragent.llm - [LLM] provider init | pid=64971 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:16,949 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:16,949 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:16,949 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:16,949 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:16,949 [INFO] writeragent.llm - [LLM] provider init | pid=64994 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:19,254 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:19,254 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:19,254 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:19,254 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:19,254 [INFO] writeragent.llm - [LLM] provider init | pid=65031 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:21,051 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:21,051 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:21,051 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:21,051 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:21,051 [INFO] writeragent.llm - [LLM] provider init | pid=65055 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:27,078 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:27,079 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:27,079 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:27,079 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:27,079 [INFO] writeragent.llm - [LLM] provider init | pid=65144 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:28,456 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:28,456 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:28,456 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:28,456 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:28,456 [INFO] writeragent.llm - [LLM] provider init | pid=65156 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:29,970 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:29,970 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:29,970 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:29,970 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:29,970 [INFO] writeragent.llm - [LLM] provider init | pid=65179 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:31,495 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:31,495 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:31,495 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:31,495 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:31,495 [INFO] writeragent.llm - [LLM] provider init | pid=65203 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:50,813 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:50,813 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:50,813 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:50,813 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:50,813 [INFO] writeragent.llm - [LLM] provider init | pid=65475 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:54,564 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:54,564 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:54,564 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:54,564 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:54,564 [INFO] writeragent.llm - [LLM] provider init | pid=65524 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:54:58,724 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:54:58,724 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:54:58,724 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:54:58,724 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:54:58,724 [INFO] writeragent.llm - [LLM] provider init | pid=65583 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:55:17,733 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:55:17,733 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:55:17,733 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:55:17,733 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:55:17,733 [INFO] writeragent.llm - [LLM] provider init | pid=65852 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:55:19,787 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:55:19,787 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:55:19,787 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:55:19,787 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:55:19,788 [INFO] writeragent.llm - [LLM] provider init | pid=65881 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:55:20,991 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:55:20,991 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:55:20,991 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:55:20,991 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:55:20,991 [INFO] writeragent.llm - [LLM] provider init | pid=65903 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:55:27,467 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:55:27,467 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:55:27,467 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:55:27,467 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:55:27,467 [INFO] writeragent.llm - [LLM] provider init | pid=65991 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:55:42,509 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:55:42,509 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:55:42,509 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:55:42,509 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:55:42,509 [INFO] writeragent.llm - [LLM] provider init | pid=66224 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:55:43,509 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:55:43,509 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:55:43,509 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:55:43,511 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:55:43,511 [INFO] writeragent.llm - [LLM] provider init | pid=66238 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:55:49,300 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:55:49,300 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:55:49,300 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:55:49,300 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:55:49,300 [INFO] writeragent.llm - [LLM] provider init | pid=66353 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 08:55:51,029 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 08:55:51,029 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 08:55:51,029 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 08:55:51,030 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 08:55:51,030 [INFO] writeragent.llm - [LLM] provider init | pid=66385 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:01:10,799 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:01:10,800 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:01:10,800 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:01:10,800 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:01:10,800 [INFO] writeragent.llm - [LLM] provider init | pid=70582 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:01:13,453 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:01:13,453 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:01:13,453 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:01:13,453 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:01:13,453 [INFO] writeragent.llm - [LLM] provider init | pid=70620 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:01:24,513 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:01:24,513 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:01:24,513 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:01:24,513 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:01:24,513 [INFO] writeragent.llm - [LLM] provider init | pid=70782 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:10:26,544 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:10:26,544 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:10:26,544 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:10:26,544 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:10:26,544 [INFO] writeragent.llm - [LLM] provider init | pid=77795 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:10:27,398 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:10:27,398 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:10:27,398 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:10:27,398 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:10:27,398 [INFO] writeragent.llm - [LLM] provider init | pid=77811 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:10:28,920 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:10:28,920 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:10:28,920 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:10:28,920 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:10:28,920 [INFO] writeragent.llm - [LLM] provider init | pid=77834 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:10:55,360 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:10:55,360 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:10:55,360 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:10:55,360 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:10:55,360 [INFO] writeragent.llm - [LLM] provider init | pid=78196 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:11:09,267 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:11:09,267 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:11:09,267 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:11:09,267 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:11:09,267 [INFO] writeragent.llm - [LLM] provider init | pid=78460 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:11:10,247 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:11:10,247 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:11:10,247 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:11:10,247 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:11:10,247 [INFO] writeragent.llm - [LLM] provider init | pid=78475 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:11:12,824 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:11:12,824 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:11:12,824 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:11:12,824 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:11:12,824 [INFO] writeragent.llm - [LLM] provider init | pid=78534 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:11:14,987 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:11:14,987 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:11:14,987 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:11:14,987 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:11:14,987 [INFO] writeragent.llm - [LLM] provider init | pid=78557 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:11:19,367 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:11:19,367 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:11:19,367 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:11:19,367 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:11:19,367 [INFO] writeragent.llm - [LLM] provider init | pid=78625 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:11:24,138 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:11:24,138 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:11:24,139 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:11:24,139 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:11:24,139 [INFO] writeragent.llm - [LLM] provider init | pid=78685 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:11:37,445 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:11:37,445 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:11:37,445 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:11:37,445 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:11:37,445 [INFO] writeragent.llm - [LLM] provider init | pid=78880 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:23:13,665 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:23:13,665 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:23:13,665 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:23:13,665 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:23:13,665 [INFO] writeragent.llm - [LLM] provider init | pid=87992 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:23:47,854 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:23:47,855 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:23:47,855 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:23:47,855 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:23:47,855 [INFO] writeragent.llm - [LLM] provider init | pid=88465 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:24:27,035 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:24:27,035 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:24:27,035 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:24:27,035 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:24:27,035 [INFO] writeragent.llm - [LLM] provider init | pid=88965 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:24:36,340 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:24:36,340 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:24:36,340 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:24:36,340 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:24:36,340 [INFO] writeragent.llm - [LLM] provider init | pid=89082 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:24:52,812 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:24:52,812 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:24:52,812 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:24:52,812 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:24:52,812 [INFO] writeragent.llm - [LLM] provider init | pid=89294 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:24:54,179 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:24:54,179 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:24:54,179 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:24:54,179 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:24:54,179 [INFO] writeragent.llm - [LLM] provider init | pid=89318 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:26:07,717 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:26:07,717 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:26:07,717 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:26:07,717 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:26:07,717 [INFO] writeragent.llm - [LLM] provider init | pid=90237 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:26:10,224 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:26:10,224 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:26:10,224 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:26:10,224 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:26:10,224 [INFO] writeragent.llm - [LLM] provider init | pid=90272 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:26:11,159 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:26:11,159 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:26:11,159 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:26:11,159 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:26:11,159 [INFO] writeragent.llm - [LLM] provider init | pid=90294 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:26:12,211 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:26:12,211 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:26:12,211 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:26:12,211 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:26:12,211 [INFO] writeragent.llm - [LLM] provider init | pid=90306 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:26:17,774 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:26:17,774 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:26:17,775 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:26:17,775 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:26:17,775 [INFO] writeragent.llm - [LLM] provider init | pid=90381 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:26:20,166 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:26:20,166 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:26:20,166 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:26:20,166 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:26:20,166 [INFO] writeragent.llm - [LLM] provider init | pid=90406 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:26:26,127 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:26:26,127 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:26:26,127 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:26:26,127 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:26:26,127 [INFO] writeragent.llm - [LLM] provider init | pid=90491 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:27:18,535 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:27:18,535 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:27:18,535 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:27:18,535 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:27:18,535 [INFO] writeragent.llm - [LLM] provider init | pid=91160 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:27:30,773 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:27:30,773 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:27:30,773 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:27:30,773 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:27:30,773 [INFO] writeragent.llm - [LLM] provider init | pid=91364 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:30:36,835 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:30:36,835 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:30:36,835 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:30:36,835 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:30:36,835 [INFO] writeragent.llm - [LLM] provider init | pid=93841 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:30:51,897 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:30:51,897 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:30:51,897 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:30:51,897 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:30:51,897 [INFO] writeragent.llm - [LLM] provider init | pid=94049 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:31:03,553 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:31:03,553 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:31:03,553 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:31:03,553 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:31:03,553 [INFO] writeragent.llm - [LLM] provider init | pid=94232 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:31:23,432 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:31:23,432 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:31:23,432 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:31:23,432 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:31:23,432 [INFO] writeragent.llm - [LLM] provider init | pid=94532 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:31:24,611 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:31:24,611 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:31:24,611 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:31:24,611 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:31:24,611 [INFO] writeragent.llm - [LLM] provider init | pid=94545 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:32:09,204 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:32:09,205 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:32:09,205 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:32:09,205 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:32:09,205 [INFO] writeragent.llm - [LLM] provider init | pid=95167 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:33:14,587 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:33:14,587 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:33:14,587 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:33:14,587 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:33:14,587 [INFO] writeragent.llm - [LLM] provider init | pid=96249 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:33:51,439 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=d52d0618-09fe-4178-ac90-cd2cad6424fe model=glm-5 meta=consistency_agent prompt_len=29359 max_tokens=1500
+2026-04-17 09:33:51,444 [INFO] writeragent.llm_audit - [LLM] llm_task_id=d52d0618-09fe-4178-ac90-cd2cad6424fe trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=- role_id=consistency_agent step_key=- model=glm-5 sys_chars=1761 user_chars=29359 guard=False
+2026-04-17 09:33:51,445 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=consistency_agent
+2026-04-17 09:43:14,842 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:43:14,842 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:43:14,842 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:43:14,842 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:43:14,842 [INFO] writeragent.llm - [LLM] provider init | pid=4368 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:43:52,504 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:43:52,504 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:43:52,504 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:43:52,504 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:43:52,504 [INFO] writeragent.llm - [LLM] provider init | pid=4859 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:44:05,521 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:44:05,521 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:44:05,521 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:44:05,521 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:44:05,522 [INFO] writeragent.llm - [LLM] provider init | pid=5068 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:44:25,547 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:44:25,548 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:44:25,548 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:44:25,548 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:44:25,548 [INFO] writeragent.llm - [LLM] provider init | pid=5351 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:44:26,513 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:44:26,513 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:44:26,513 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:44:26,513 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:44:26,513 [INFO] writeragent.llm - [LLM] provider init | pid=5365 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:44:32,532 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:44:32,532 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:44:32,533 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:44:32,533 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:44:32,533 [INFO] writeragent.llm - [LLM] provider init | pid=5452 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:44:40,671 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:44:40,671 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:44:40,671 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:44:40,671 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:44:40,671 [INFO] writeragent.llm - [LLM] provider init | pid=5590 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:44:46,569 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:44:46,569 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:44:46,569 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:44:46,569 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:44:46,569 [INFO] writeragent.llm - [LLM] provider init | pid=5714 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:44:52,209 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:44:52,209 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:44:52,209 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:44:52,209 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:44:52,209 [INFO] writeragent.llm - [LLM] provider init | pid=5785 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:45:14,653 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:45:14,653 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:45:14,653 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:45:14,653 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:45:14,653 [INFO] writeragent.llm - [LLM] provider init | pid=6088 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 09:46:06,337 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 09:46:06,337 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 09:46:06,337 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 09:46:06,337 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 09:46:06,337 [INFO] writeragent.llm - [LLM] provider init | pid=6974 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:04:30,930 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:04:30,930 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:04:30,930 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:04:30,930 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:04:30,930 [INFO] writeragent.llm - [LLM] provider init | pid=21696 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:10:08,834 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:10:08,834 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:10:08,834 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:10:08,834 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:10:08,834 [INFO] writeragent.llm - [LLM] provider init | pid=26147 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:10:11,848 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:10:11,849 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:10:11,849 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:10:11,849 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:10:11,849 [INFO] writeragent.llm - [LLM] provider init | pid=26204 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:10:13,424 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:10:13,424 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:10:13,424 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:10:13,424 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:10:13,424 [INFO] writeragent.llm - [LLM] provider init | pid=26234 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:10:21,815 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:10:21,815 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:10:21,815 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:10:21,815 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:10:21,815 [INFO] writeragent.llm - [LLM] provider init | pid=26360 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:10:23,224 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:10:23,224 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:10:23,224 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:10:23,224 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:10:23,224 [INFO] writeragent.llm - [LLM] provider init | pid=26375 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:10:27,109 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:10:27,109 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:10:27,109 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:10:27,109 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:10:27,109 [INFO] writeragent.llm - [LLM] provider init | pid=26430 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:10:29,395 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:10:29,395 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:10:29,395 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:10:29,395 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:10:29,395 [INFO] writeragent.llm - [LLM] provider init | pid=26466 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:12:29,164 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=a0fc0fc3-c6bc-4452-915b-5a004f9635af model=glm-5 meta=consistency_agent prompt_len=29517 max_tokens=1500
+2026-04-17 10:12:29,169 [INFO] writeragent.llm_audit - [LLM] llm_task_id=a0fc0fc3-c6bc-4452-915b-5a004f9635af trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=- role_id=consistency_agent step_key=- model=glm-5 sys_chars=2003 user_chars=29517 guard=False
+2026-04-17 10:12:29,170 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=consistency_agent
+2026-04-17 10:22:29,552 [WARNING] writeragent.llm - [LLM] API error | meta=consistency_agent error=Server disconnected without sending a response.
+2026-04-17 10:22:30,829 [INFO] writeragent.llm - [LLM] generate start | llm_task_id=ce0dca53-d25a-4f80-b57a-e2599b8f40a9 model=glm-5 meta=writer_agent prompt_len=18097 max_tokens=32000
+2026-04-17 10:22:30,830 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 10:22:30,842 [INFO] writeragent.llm_audit - [LLM] llm_task_id=ce0dca53-d25a-4f80-b57a-e2599b8f40a9 trace_id=eeaf1ba9-cbc8-4f88-bfd4-ffbce3f89665 workflow_run_id=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 role_id=writer_agent step_key=persist_artifacts model=glm-5 sys_chars=1276 user_chars=18097 guard=False
+2026-04-17 10:22:30,843 [INFO] writeragent.llm - [LLM] sending to https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions | model=glm-5 meta=writer_agent
+2026-04-17 10:22:30,844 [INFO] writeragent.llm - [LLM] max_tokens 请求值 32000 超过厂商上限 8192，已裁剪
+2026-04-17 10:23:08,985 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:23:08,985 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:23:08,985 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:23:08,985 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:23:08,985 [INFO] writeragent.llm - [LLM] provider init | pid=36350 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:23:22,276 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:23:22,276 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:23:22,276 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:23:22,276 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:23:22,276 [INFO] writeragent.llm - [LLM] provider init | pid=36540 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:23:27,802 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:23:27,802 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:23:27,802 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:23:27,802 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:23:27,802 [INFO] writeragent.llm - [LLM] provider init | pid=36618 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:23:29,185 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:23:29,185 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:23:29,185 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:23:29,185 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:23:29,185 [INFO] writeragent.llm - [LLM] provider init | pid=36642 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:23:54,117 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:23:54,117 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:23:54,117 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:23:54,117 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:23:54,117 [INFO] writeragent.llm - [LLM] provider init | pid=36961 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:23:55,776 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:23:55,777 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:23:55,777 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:23:55,777 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:23:55,777 [INFO] writeragent.llm - [LLM] provider init | pid=36995 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:23:57,394 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:23:57,394 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:23:57,394 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:23:57,394 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:23:57,394 [INFO] writeragent.llm - [LLM] provider init | pid=37017 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:23:58,404 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:23:58,404 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:23:58,404 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:23:58,404 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:23:58,404 [INFO] writeragent.llm - [LLM] provider init | pid=37032 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:24:18,587 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:24:18,587 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:24:18,587 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:24:18,587 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:24:18,588 [INFO] writeragent.llm - [LLM] provider init | pid=37351 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 10:53:49,650 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 10:53:49,650 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 10:53:49,650 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 10:53:49,650 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 10:53:49,650 [INFO] writeragent.llm - [LLM] provider init | pid=60712 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:14:40,618 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:14:40,619 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:14:40,619 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:14:40,619 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:14:40,619 [INFO] writeragent.llm - [LLM] provider init | pid=76916 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:14:41,490 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:14:41,490 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:14:41,490 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:14:41,490 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:14:41,490 [INFO] writeragent.llm - [LLM] provider init | pid=76930 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:14:48,418 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:14:48,418 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:14:48,418 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:14:48,418 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:14:48,418 [INFO] writeragent.llm - [LLM] provider init | pid=77028 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:14:51,402 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:14:51,402 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:14:51,402 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:14:51,402 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:14:51,402 [INFO] writeragent.llm - [LLM] provider init | pid=77082 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:14:54,551 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:14:54,552 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:14:54,552 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:14:54,552 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:14:54,552 [INFO] writeragent.llm - [LLM] provider init | pid=77129 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:15:11,082 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:15:11,082 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:15:11,082 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:15:11,082 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:15:11,082 [INFO] writeragent.llm - [LLM] provider init | pid=77349 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:15:13,981 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:15:13,981 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:15:13,981 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:15:13,981 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:15:13,981 [INFO] writeragent.llm - [LLM] provider init | pid=77398 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:15:25,396 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:15:25,396 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:15:25,396 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:15:25,396 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:15:25,396 [INFO] writeragent.llm - [LLM] provider init | pid=77539 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:15:27,542 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:15:27,542 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:15:27,542 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:15:27,542 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:15:27,542 [INFO] writeragent.llm - [LLM] provider init | pid=77595 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:15:28,397 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:15:28,397 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:15:28,397 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:15:28,397 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:15:28,397 [INFO] writeragent.llm - [LLM] provider init | pid=77606 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:16:49,056 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:16:49,056 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:16:49,056 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:16:49,056 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:16:49,056 [INFO] writeragent.llm - [LLM] provider init | pid=78753 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:16:49,998 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:16:49,998 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:16:49,998 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:16:49,998 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:16:49,998 [INFO] writeragent.llm - [LLM] provider init | pid=78766 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:16:51,023 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:16:51,023 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:16:51,023 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:16:51,023 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:16:51,023 [INFO] writeragent.llm - [LLM] provider init | pid=78779 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id
+2026-04-17 11:16:55,884 [INFO] writeragent.llm - [LLM] 读超时 60.0s → 300.0s（厂商建议下限=300.0s，WRITER_LLM_TIMEOUT_USE_PROFILE_FLOOR=true）
+2026-04-17 11:16:55,884 [INFO] writeragent.llm - [LLM] max_output_tokens 将裁剪至 ≤8192（WRITER_LLM_MAX_OUTPUT_TOKENS=（未设），profile=8192）
+2026-04-17 11:16:55,884 [INFO] writeragent.llm - [LLM Provider] ✓ 自动识别厂商: 阿里云 DashScope（通义千问） | matched_by=url confidence=high | compat_mode=basic | json_schema=False function_calling=True | 默认超时=300.0s 上下文窗口=262144
+2026-04-17 11:16:55,884 [INFO] writeragent.llm - [LLM Provider] 备注: 通义千问系列，function_calling 可用但 json_schema 不支持；max_tokens 常见上限 8192
+2026-04-17 11:16:55,884 [INFO] writeragent.llm - [LLM] provider init | pid=78848 model=glm-5 base_url=https://dashscope.aliyuncs.com/compatible-mode/v1 compat_mode=basic timeout=300.0s | 尚无步骤上下文；具体 agent/步骤见同文件后续「generate start」的 meta= 与 llm_task_id

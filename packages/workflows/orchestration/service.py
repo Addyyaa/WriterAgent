@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import logging
+import re
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -30,7 +31,55 @@ def _coerce_enforce_chapter_word_count(raw: Any) -> bool:
     return True
 
 
-from packages.core.context_bundle_decision import mirror_context_bundle_lists_from_summary
+# plot_context：弧光阶段 / 钩子类型在 structure_json 与 metadata_json 中的兼容键（自上而下优先）
+_PLOT_ARC_STAGE_KEYS: tuple[str, ...] = (
+    "current_arc_stage",
+    "arc_stage",
+    "story_arc_stage",
+    "narrative_arc_stage",
+    "arc_phase",
+)
+_PLOT_NEXT_HOOK_KEYS: tuple[str, ...] = (
+    "next_hook_type",
+    "next_hook",
+    "chapter_hook_type",
+    "hook_type",
+)
+
+
+def _first_string_plot_hint(mapping: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+    """取第一个非空标量并规范为短字符串；忽略 dict/list，避免把嵌套对象误当作阶段标签。"""
+    for key in keys:
+        raw = mapping.get(key)
+        if raw is None:
+            continue
+        if isinstance(raw, (dict, list)):
+            continue
+        if isinstance(raw, str):
+            s = raw.strip()
+            if s:
+                return s
+        if isinstance(raw, (int, float, bool)):
+            return str(raw)
+    return None
+
+
+def _resolve_plot_arc_stage(outline_structure: dict[str, Any], meta_proj: dict[str, Any]) -> str | None:
+    s = _first_string_plot_hint(outline_structure, _PLOT_ARC_STAGE_KEYS)
+    if s is not None:
+        return s
+    return _first_string_plot_hint(meta_proj, _PLOT_ARC_STAGE_KEYS)
+
+
+def _resolve_plot_next_hook_type(meta_proj: dict[str, Any]) -> str | None:
+    return _first_string_plot_hint(meta_proj, _PLOT_NEXT_HOOK_KEYS)
+
+
+from packages.core.context_bundle_decision import (
+    mirror_context_bundle_lists_from_summary,
+    read_decision_fields_from_bundle,
+    read_key_facts_from_bundle,
+)
 from packages.core.tracing import new_request_id, new_trace_id, request_context
 from packages.core.utils import ensure_non_empty_string
 from packages.evaluation.writing import build_writing_score_breakdown
@@ -97,7 +146,10 @@ from packages.webhooks.service import WebhookService
 from packages.workflows.chapter_generation.context_provider import (
     SQLAlchemyStoryContextProvider,
 )
-from packages.workflows.orchestration.agent_output_envelope import build_agent_step_meta_raw
+from packages.workflows.orchestration.agent_output_envelope import (
+    build_agent_step_meta_raw,
+    step_agent_view,
+)
 from packages.workflows.orchestration.agent_registry import AgentRegistry
 from packages.workflows.chapter_generation.service import ChapterGenerationWorkflowService
 from packages.workflows.chapter_generation.types import ChapterGenerationRequest
@@ -106,6 +158,10 @@ from packages.workflows.consistency_review.service import (
     ConsistencyReviewWorkflowService,
 )
 from packages.workflows.orchestration.planner import DynamicPlanner, create_dynamic_planner
+from packages.workflows.orchestration.planner_planning_pack import (
+    build_planning_pack,
+    soft_cap_premise_for_planner,
+)
 from packages.workflows.orchestration.planner_knowledge import (
     merge_planner_preferred_tools,
     merge_planner_retrieval_slots,
@@ -115,7 +171,6 @@ from packages.workflows.orchestration.planner_knowledge import (
 from packages.workflows.orchestration.prompt_payload_assembler import (
     PromptPayloadAssembler,
     build_retrieval_bundle_from_raw_state,
-    build_writer_alignment_supplement_text,
 )
 from packages.workflows.orchestration.retrieval_loop import (
     RetrievalLoopRequest,
@@ -132,6 +187,11 @@ from packages.workflows.outline_generation.service import (
     OutlineGenerationRequest,
     OutlineGenerationWorkflowService,
 )
+from packages.workflows.revision.issue_retrieval_policy import (
+    preferred_tools_for_slots,
+    revision_slots_for_issues,
+)
+from packages.workflows.revision.retrieval_item_filter import filter_revision_context_bundle_items
 from packages.workflows.revision.service import RevisionRequest, RevisionWorkflowService
 
 
@@ -225,6 +285,32 @@ class WritingOrchestratorService:
         self._timeline_repo = timeline_repo
         self.story_state_snapshot_repo = story_state_snapshot_repo
         self.prompt_payload_assembler = PromptPayloadAssembler()
+
+    def _local_data_tool_llm_fields(self) -> dict[str, Any]:
+        """将本地数据查询以 OpenAI `tools` 形式挂载；由 Provider 内多轮 tool 回灌执行。"""
+        from packages.tools.system_tools.local_data_tools_dispatch import (
+            LOCAL_DATA_TOOLS_OPENAI,
+            execute_local_data_tool,
+        )
+
+        if self.retrieval_loop is None:
+            return {}
+        db = self.agent_message_repo.db
+        pms = self.retrieval_loop.project_memory_service
+
+        def _run(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+            return execute_local_data_tool(
+                name=name,
+                arguments=arguments,
+                db=db,
+                project_memory_service=pms,
+            )
+
+        return {
+            "extra_function_tools": tuple(LOCAL_DATA_TOOLS_OPENAI),
+            "local_data_tool_executor": _run,
+            "local_data_tool_max_rounds": 8,
+        }
 
     @classmethod
     def build_default(cls, db, text_provider: TextGenerationProvider | None = None) -> "WritingOrchestratorService":
@@ -330,6 +416,7 @@ class WritingOrchestratorService:
             project_repo=project_repo,
             outline_repo=outline_repo,
             text_provider=text_provider,
+            project_memory_service=project_memory_service,
         )
 
         consistency_service = ConsistencyReviewWorkflowService(
@@ -347,6 +434,7 @@ class WritingOrchestratorService:
             agent_registry=agent_registry,
             schema_registry=schema_registry,
             skill_runtime=skill_runtime,
+            project_memory_service=project_memory_service,
         )
 
         evaluation_service = None
@@ -678,7 +766,18 @@ class WritingOrchestratorService:
         return True
 
     def retry_run(self, run_id) -> bool:
-        row = self.workflow_run_repo.retry_run(run_id)
+        row0 = self.workflow_run_repo.get(run_id)
+        if row0 is None:
+            return False
+        steps0 = self.workflow_step_repo.list_by_run(workflow_run_id=run_id)
+        incomplete = any(str(s.status) not in {"success", "skipped"} for s in steps0)
+        st = str(row0.status)
+        if st in {"failed", "cancelled"}:
+            row = self.workflow_run_repo.retry_run(run_id)
+        elif st == "success" and incomplete:
+            row = self.workflow_run_repo.requeue_after_manual_retry(run_id)
+        else:
+            return False
         if row is None:
             return False
         self.workflow_step_repo.reset_for_retry(workflow_run_id=row.id)
@@ -694,6 +793,10 @@ class WritingOrchestratorService:
             except Exception:
                 pass
         return True
+
+    @staticmethod
+    def _steps_all_success_or_skipped(steps) -> bool:
+        return all(str(s.status) in {"success", "skipped"} for s in steps)
 
     def approve_candidate(self, candidate_id, *, approved_by) -> dict[str, Any] | None:
         candidate = self.chapter_candidate_repo.get(candidate_id)
@@ -969,6 +1072,24 @@ class WritingOrchestratorService:
                 latest = self.workflow_run_repo.get(row.id)
                 if latest is not None and str(latest.status) == "waiting_review":
                     return
+                if latest is not None and str(latest.status) in {"cancelled", "failed"}:
+                    return
+                steps_final = self.workflow_step_repo.list_by_run(workflow_run_id=row.id)
+                if not self._steps_all_success_or_skipped(steps_final):
+                    logger.error(
+                        "run %s: 循环退出但步骤未全部 success/skipped，拒绝 succeed。步骤=%s",
+                        row.id,
+                        [(s.step_key, s.status) for s in steps_final],
+                    )
+                    if latest is not None and str(latest.status) == "running":
+                        self.workflow_run_repo.fail(
+                            row.id,
+                            error_code="InconsistentCompletion",
+                            error_message="存在未完成步骤，未完成标记 success",
+                            retryable=True,
+                            retry_delay_seconds=self.runtime_config.default_retry_delay_seconds,
+                        )
+                    return
                 detail = self.get_run_detail(row.id) or {}
                 latency_ms = int((perf_counter() - started_at) * 1000)
                 score_breakdown = build_writing_score_breakdown(detail)
@@ -1049,11 +1170,20 @@ class WritingOrchestratorService:
             return
 
         project = self.project_repo.get(row.project_id)
+        db = self.workflow_run_repo.db
+        planning_pack = build_planning_pack(
+            db,
+            project_id=row.project_id,
+            input_json=dict(row.input_json or {}),
+            workflow_type=row.workflow_type,
+        )
+        premise_raw = project.premise if project is not None else None
+        premise_for_planner = soft_cap_premise_for_planner(premise_raw, planning_pack=planning_pack)
         context_json = {
             "project": {
                 "title": project.title if project is not None else None,
                 "genre": project.genre if project is not None else None,
-                "premise": project.premise if project is not None else None,
+                "premise": premise_for_planner,
                 **(
                     {
                         "target_audience": (getattr(project, "metadata_json", None) or {}).get("target_audience"),
@@ -1065,6 +1195,7 @@ class WritingOrchestratorService:
                 ),
             },
             "input": dict(row.input_json or {}),
+            "planning_pack": planning_pack,
         }
 
         req = WorkflowRunRequest(
@@ -1102,17 +1233,6 @@ class WritingOrchestratorService:
             prompt_hash = None
             schema_version = None
 
-            if self.agent_registry is not None and role_id:
-                profile, strategy, _, _ = self.agent_registry.resolve(
-                    role_id=role_id,
-                    workflow_type=node.workflow_type,
-                    step_key=node.step_key,
-                    strategy_mode=node.strategy_mode,
-                )
-                strategy_version = strategy.version
-                schema_version = profile.schema_version
-                prompt_hash = hashlib.sha256(profile.prompt.encode("utf-8")).hexdigest()[:16]
-
             base_inp = dict(node.input_json or {})
             plan_inp: dict[str, Any] = {}
             if getattr(node, "required_slots", None):
@@ -1125,6 +1245,37 @@ class WritingOrchestratorService:
                 plan_inp["plan_allowed_assumptions"] = list(node.allowed_assumptions)
             if getattr(node, "fallback_when_missing", None) and str(node.fallback_when_missing or "").strip():
                 plan_inp["plan_fallback_when_missing"] = str(node.fallback_when_missing).strip()
+            merged_inp: dict[str, Any] = {
+                **base_inp,
+                **plan_inp,
+                "workflow_type": node.workflow_type,
+                "strategy_mode": node.strategy_mode,
+            }
+            if str(node.step_key or "") == "character_alignment":
+                merged_inp.setdefault("character_mode", "guardrails")
+
+            if self.agent_registry is not None and role_id:
+                class _PlanStep:
+                    pass
+
+                ps = _PlanStep()
+                ps.role_id = role_id
+                ps.agent_name = node.agent_name
+                ps.step_key = node.step_key
+                ps.input_json = merged_inp
+                profile, strategy, _, _ = self.agent_registry.resolve(
+                    role_id=role_id,
+                    workflow_type=node.workflow_type,
+                    step_key=node.step_key,
+                    strategy_mode=self._agent_strategy_mode_for_resolve(row, ps, role_id),
+                )
+                strategy_version = strategy.version
+                schema_version = profile.schema_version
+                role_prompt = self._character_agent_system_prompt(
+                    row=row, step=ps, profile_prompt=profile.prompt
+                )
+                prompt_hash = hashlib.sha256(role_prompt.encode("utf-8")).hexdigest()[:16]
+
             self.workflow_step_repo.create_step(
                 workflow_run_id=row.id,
                 step_key=node.step_key,
@@ -1135,12 +1286,7 @@ class WritingOrchestratorService:
                 prompt_hash=prompt_hash,
                 schema_version=schema_version,
                 depends_on_keys=node.depends_on,
-                input_json={
-                    **base_inp,
-                    **plan_inp,
-                    "workflow_type": node.workflow_type,
-                    "strategy_mode": node.strategy_mode,
-                },
+                input_json=merged_inp,
                 status="pending",
             )
 
@@ -1150,20 +1296,22 @@ class WritingOrchestratorService:
             raise RuntimeError("workflow run 不存在")
 
         while True:
-            if run_started_at is not None:
-                elapsed = perf_counter() - run_started_at
-                if elapsed > float(self.runtime_config.workflow_run_timeout_seconds):
-                    raise TimeoutError(
-                        f"workflow run 超时（>{self.runtime_config.workflow_run_timeout_seconds}s）"
-                    )
             current = self.workflow_run_repo.get(run_id)
             if current is None:
                 raise RuntimeError("workflow run 丢失")
             if str(current.status) == "cancelled":
                 self.workflow_step_repo.cancel_pending_steps(workflow_run_id=run_id)
                 return
+            # 须在超时检查之前：writer_draft 落库候选后会把 run 标为 waiting_review，
+            # 若下一轮先判超时会在边界上误杀本应暂停待人审的 run。
             if str(current.status) == "waiting_review":
                 return
+            if run_started_at is not None:
+                elapsed = perf_counter() - run_started_at
+                if elapsed > float(self.runtime_config.workflow_run_timeout_seconds):
+                    raise TimeoutError(
+                        f"workflow run 超时（>{self.runtime_config.workflow_run_timeout_seconds}s）"
+                    )
 
             steps = self.workflow_step_repo.list_by_run(workflow_run_id=run_id)
             failed = [item for item in steps if str(item.status) == "failed"]
@@ -1173,6 +1321,17 @@ class WritingOrchestratorService:
             pending = [item for item in steps if str(item.status) in {"pending", "queued"}]
             running = [item for item in steps if str(item.status) == "running"]
             if not pending and not running:
+                stalled = [
+                    item
+                    for item in steps
+                    if str(item.status) not in {"success", "skipped"}
+                ]
+                if stalled:
+                    if str(current.status) == "cancelled":
+                        return
+                    raise RuntimeError(
+                        f"工作流存在未完成步骤: {stalled[0].step_key}={stalled[0].status}"
+                    )
                 return
 
             ready = self.workflow_step_repo.list_ready_steps(workflow_run_id=run_id)
@@ -1182,6 +1341,9 @@ class WritingOrchestratorService:
 
             for step in ready:
                 self._execute_single_step(run_id, step.id, evaluation_run_id=evaluation_run_id)
+                cur_after = self.workflow_run_repo.get(run_id)
+                if cur_after is not None and str(cur_after.status) in {"waiting_review", "cancelled"}:
+                    break
 
     def _execute_single_step(self, run_id, step_id, *, evaluation_run_id=None) -> None:
         row = self.workflow_run_repo.get(run_id)
@@ -1210,10 +1372,13 @@ class WritingOrchestratorService:
                 role_id=role_id,
                 workflow_type=workflow_type,
                 step_key=str(step.step_key),
-                strategy_mode=(step.input_json or {}).get("strategy_mode"),
+                strategy_mode=self._agent_strategy_mode_for_resolve(row, step, role_id),
+            )
+            role_prompt = self._character_agent_system_prompt(
+                row=row, step=step, profile_prompt=profile.prompt
             )
             strategy_version = strategy.version
-            prompt_hash = hashlib.sha256(profile.prompt.encode("utf-8")).hexdigest()[:16]
+            prompt_hash = hashlib.sha256(role_prompt.encode("utf-8")).hexdigest()[:16]
             schema_version = profile.schema_version
             skill_warnings = [str(item) for item in list(warnings or []) if str(item).strip()]
             skill_warnings.extend(
@@ -1406,9 +1571,11 @@ class WritingOrchestratorService:
                 role_id=role_id,
                 workflow_type=workflow_type,
                 step_key=str(step.step_key),
-                strategy_mode=(step.input_json or {}).get("strategy_mode"),
+                strategy_mode=self._agent_strategy_mode_for_resolve(row, step, role_id),
             )
-            role_prompt = profile.prompt
+            role_prompt = self._character_agent_system_prompt(
+                row=row, step=step, profile_prompt=profile.prompt
+            )
             strategy_temperature = float(strategy.temperature)
             strategy_max_tokens = int(strategy.max_tokens)
             strategy_version = strategy.version
@@ -1443,7 +1610,11 @@ class WritingOrchestratorService:
                 role_id=role_id,
                 workflow_type=workflow_type,
                 step_key=str(step.step_key),
-                mode=str((step.input_json or {}).get("strategy_mode") or ""),
+                mode=str(
+                    self._agent_strategy_mode_for_resolve(row, step, role_id)
+                    or (step.input_json or {}).get("strategy_mode")
+                    or ""
+                ),
             ),
         )
         self.agent_message_repo.create_message(
@@ -1502,6 +1673,7 @@ class WritingOrchestratorService:
                     "strategy_version": strategy_version,
                     "prompt_hash": prompt_hash,
                 },
+                **self._local_data_tool_llm_fields(),
             )
         )
 
@@ -1513,7 +1685,11 @@ class WritingOrchestratorService:
                 role_id=role_id,
                 workflow_type=workflow_type,
                 step_key=str(step.step_key),
-                mode=str((step.input_json or {}).get("strategy_mode") or ""),
+                mode=str(
+                    self._agent_strategy_mode_for_resolve(row, step, role_id)
+                    or (step.input_json or {}).get("strategy_mode")
+                    or ""
+                ),
             ),
         )
         view_payload = dict(after.output_payload or {})
@@ -1816,6 +1992,785 @@ class WritingOrchestratorService:
             return str(agent_output.get("plan_summary") or "").strip() or fallback_text
         return fallback_text
 
+    @staticmethod
+    def _retrieval_prefetch_bundle_has_evidence(bundle: dict[str, Any] | None) -> bool:
+        if not bundle:
+            return False
+        items = list(bundle.get("items") or [])
+        if items:
+            return True
+        summary = dict(bundle.get("summary") or {})
+        for key in ("key_facts", "current_states", "confirmed_facts", "supporting_evidence"):
+            if list(summary.get(key) or []):
+                return True
+        return False
+
+    def _build_planner_retrieval_intent(
+        self,
+        raw_state: dict[str, dict],
+        row,
+        step,
+    ) -> dict[str, Any]:
+        """供 retrieval_context 步骤：归一化检索意图，替代整包 planner_bootstrap。"""
+        step_inp = dict(step.input_json or {})
+        ri = dict(row.input_json or {})
+        meta = ri.get("metadata_json") if isinstance(ri.get("metadata_json"), dict) else {}
+        fc = ri.get("focus_character_id") or meta.get("focus_character_id")
+        focus_character_id = str(fc).strip() if fc else None
+        return {
+            "writing_goal": ri.get("writing_goal"),
+            "chapter_no": ri.get("chapter_no"),
+            "focus_character_id": focus_character_id,
+            "normalized_required_slots": self._planner_slot_hints_from_state(raw_state, step_inp),
+            "normalized_preferred_tools": self._planner_preferred_tools_from_state(raw_state, step_inp),
+            "must_verify_facts": self._planner_verify_facts_from_state(raw_state, step_inp),
+            "project_id": str(row.project_id),
+        }
+
+    def _chapter_repo_for_orchestrator(self) -> ChapterRepository | None:
+        wf = getattr(self.chapter_tool, "workflow_service", None)
+        return getattr(wf, "chapter_repo", None) if wf is not None else None
+
+    def _resolve_effective_chapter_no(self, row) -> int | None:
+        """与章节工具对齐的章节号：input 未给时使用下一章序号。"""
+        ch_raw = (row.input_json or {}).get("chapter_no")
+        if ch_raw is not None:
+            try:
+                return int(ch_raw)
+            except (TypeError, ValueError):
+                pass
+        ch_repo = self._chapter_repo_for_orchestrator()
+        if ch_repo is not None:
+            return ch_repo.get_next_chapter_no(row.project_id)
+        return None
+
+    def _project_brief_for_outline(self, project) -> dict[str, Any]:
+        """与 plot_brief 对齐：收窄 premise 与 metadata，供 outline_intake。"""
+        meta = getattr(project, "metadata_json", None) or {}
+        if not isinstance(meta, dict):
+            meta = {}
+        brief_meta: dict[str, Any] = {}
+        for k in ("current_arc_brief", "current_chapter_position_brief", "series_brief"):
+            if k in meta and meta.get(k) is not None:
+                brief_meta[k] = meta[k]
+        premise = str(getattr(project, "premise", None) or "").strip()
+        max_ch = 1400
+        if len(premise) > max_ch:
+            premise = premise[: max_ch - 1] + "…"
+        return {
+            "id": str(project.id),
+            "title": getattr(project, "title", None),
+            "genre": getattr(project, "genre", None),
+            "premise": premise,
+            "metadata_json": brief_meta,
+        }
+
+    @staticmethod
+    def _cap_string_list(values: list[Any], *, max_items: int, max_chars: int) -> list[str]:
+        out: list[str] = []
+        for x in values[:max_items]:
+            if isinstance(x, dict):
+                s = str(x.get("description") or x).strip()
+            else:
+                s = str(x).strip()
+            if not s:
+                continue
+            if len(s) > max_chars:
+                s = s[: max_chars - 1] + "…"
+            out.append(s)
+        return out
+
+    def _build_outline_generation_intake(
+        self,
+        *,
+        row,
+        project,
+        retrieval,
+    ) -> dict[str, Any]:
+        """结构化大纲输入：与扁平 retrieval_context 去重，单通道供 LLM。"""
+        bundle: dict[str, Any] = (
+            dict(retrieval.context_bundle) if isinstance(retrieval.context_bundle, dict) else {}
+        )
+        decision = read_decision_fields_from_bundle(bundle)
+        key_facts_raw = read_key_facts_from_bundle(bundle)
+
+        confirmed = self._cap_string_list(
+            decision["confirmed_facts"], max_items=36, max_chars=1000
+        )
+        states = self._cap_string_list(
+            decision["current_states"], max_items=32, max_chars=1000
+        )
+        support = self._cap_string_list(
+            decision["supporting_evidence"], max_items=40, max_chars=1000
+        )
+        conflicts = self._cap_string_list(decision["conflicts"], max_items=16, max_chars=1200)
+        gaps = self._cap_string_list(
+            decision["information_gaps"], max_items=16, max_chars=800
+        )
+        key_facts = self._cap_string_list(key_facts_raw, max_items=32, max_chars=800)
+
+        item_snippets: list[str] = []
+        for it in list(bundle.get("items") or [])[:8]:
+            if not isinstance(it, dict):
+                continue
+            tx = str(it.get("text") or "").strip()
+            if not tx:
+                continue
+            src = str(it.get("source") or it.get("source_type") or "evidence")
+            line = f"[{src}] {tx[:800]}"
+            item_snippets.append(line)
+        supporting_evidence = support + item_snippets[:5]
+
+        meta_proj = getattr(project, "metadata_json", None) or {}
+        if not isinstance(meta_proj, dict):
+            meta_proj = {}
+        eff_ch = self._resolve_effective_chapter_no(row)
+        prior = self._previous_chapter_ref_for_plot(
+            project_id=row.project_id,
+            effective_chapter_no=eff_ch,
+        )
+
+        return {
+            "project_brief": self._project_brief_for_outline(project),
+            "target_chapter_position": {
+                "chapter_no": eff_ch,
+                "target_words": (row.input_json or {}).get("target_words"),
+                "arc_stage": _resolve_plot_arc_stage({}, meta_proj),
+                "next_hook_type": _resolve_plot_next_hook_type(meta_proj),
+            },
+            "prior_chapter_summary": prior,
+            "confirmed_facts": confirmed,
+            "current_states": states,
+            "supporting_evidence": supporting_evidence,
+            "conflicts": conflicts,
+            "information_gaps": gaps,
+            "key_facts": key_facts,
+        }
+
+    def _previous_chapter_ref_for_plot(
+        self,
+        *,
+        project_id,
+        effective_chapter_no: int | None,
+        summary_limit: int = 500,
+    ) -> dict[str, Any] | None:
+        if effective_chapter_no is None or effective_chapter_no <= 1:
+            return None
+        ch_repo = self._chapter_repo_for_orchestrator()
+        if ch_repo is None:
+            return None
+        prev = ch_repo.get_by_project_chapter_no(project_id, effective_chapter_no - 1)
+        if prev is None:
+            return None
+        summary_src = (getattr(prev, "summary", None) or "").strip() or (
+            getattr(prev, "content", None) or ""
+        ).strip()
+        summary = summary_src[:summary_limit] + ("…" if len(summary_src) > summary_limit else "")
+        return {
+            "chapter_no": int(prev.chapter_no),
+            "title": getattr(prev, "title", None),
+            "summary": summary or None,
+        }
+
+    def _agent_strategy_mode_for_resolve(self, row, step, role_id: str) -> str | None:
+        """character_agent：有效模式（audit 无正文时降级为 guardrails）；其它角色仅 strategy_mode。"""
+        rid = str(role_id or "").strip().lower()
+        if rid == "character_agent":
+            return self._effective_character_mode_for_step(row, step)
+        sm = (step.input_json or {}).get("strategy_mode")
+        s = str(sm or "").strip()
+        return s or None
+
+    def _effective_character_mode_for_step(self, row, step) -> str:
+        """请求 audit 但缺少章节正文证据时降级为 guardrails，并与 payload / prompt 选择保持一致。"""
+        sm = (step.input_json or {}).get("strategy_mode")
+        cm = (step.input_json or {}).get("character_mode") or (row.input_json or {}).get(
+            "character_mode"
+        )
+        raw = str(sm or cm or "").strip().lower()
+        if raw == "planning":
+            raw = "guardrails"
+        if raw != "audit":
+            return "guardrails"
+        chapter_text, _ = self._character_audit_chapter_inputs(row, step)
+        if not str(chapter_text or "").strip():
+            logger.warning(
+                json.dumps(
+                    {
+                        "event": "character_audit_degraded_no_chapter_text",
+                        "workflow_run_id": str(getattr(row, "id", "") or ""),
+                        "step_key": str(getattr(step, "step_key", "") or ""),
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            return "guardrails"
+        return "audit"
+
+    def _character_agent_system_prompt(self, *, row, step, profile_prompt: str) -> str:
+        if self.agent_registry is None:
+            return profile_prompt
+        if str(step.role_id or step.agent_name or "").strip() != "character_agent":
+            return profile_prompt
+        char_mode = self._effective_character_mode_for_step(row, step)
+        sub = "prompt_audit.md" if char_mode == "audit" else "prompt_guardrails.md"
+        pp = self.agent_registry.root / "character_agent" / sub
+        if pp.is_file():
+            return self.agent_registry.compose_prompt_with_shared_tools(
+                pp.read_text(encoding="utf-8").strip()
+            )
+        return profile_prompt
+
+    def _resolve_focus_character_id(self, row, step) -> str | None:
+        ri = dict(row.input_json or {})
+        si = dict(step.input_json or {})
+        meta = ri.get("metadata_json") if isinstance(ri.get("metadata_json"), dict) else {}
+        fc = si.get("focus_character_id") or ri.get("focus_character_id") or meta.get(
+            "focus_character_id"
+        )
+        if fc:
+            return str(fc).strip()
+        repo = getattr(self, "_character_repo", None)
+        if repo is None:
+            return None
+        chars = repo.list_by_project(project_id=row.project_id, limit=1, canonical_only=True)
+        if not chars:
+            chars = repo.list_by_project(project_id=row.project_id, limit=1, canonical_only=False)
+        if chars:
+            return str(chars[0].id)
+        return None
+
+    @staticmethod
+    def _character_evidence_line_unresolved(line: str) -> bool:
+        t = str(line or "").strip()
+        return bool(t) and ("待核实" in t or "待确认" in t or "未确认" in t)
+
+    def _split_character_confirmed_and_gaps(
+        self,
+        *,
+        key_facts: list[str],
+        current_states: list[str],
+        confirmed_facts: list[str],
+        conflicts: list[Any],
+        information_gaps: list[str],
+        max_confirmed: int = 40,
+        max_gaps: int = 24,
+    ) -> tuple[list[str], list[str]]:
+        gaps_out: list[str] = []
+        seen_g: set[str] = set()
+
+        def add_gap(x: str) -> None:
+            t = str(x).strip()
+            if t and t not in seen_g:
+                seen_g.add(t)
+                gaps_out.append(t)
+
+        for g in information_gaps:
+            add_gap(str(g))
+        for c in conflicts:
+            if isinstance(c, dict):
+                add_gap(str(c.get("description") or c))
+            else:
+                add_gap(str(c))
+
+        confirmed_out: list[str] = []
+        seen_c: set[str] = set()
+
+        def add_conf(x: str) -> None:
+            t = str(x).strip()
+            if not t or t in seen_c:
+                return
+            if self._character_evidence_line_unresolved(t):
+                add_gap(t)
+                return
+            seen_c.add(t)
+            confirmed_out.append(t)
+
+        for x in confirmed_facts:
+            add_conf(str(x))
+        for x in key_facts:
+            add_conf(str(x))
+        for x in current_states:
+            add_conf(str(x))
+
+        return confirmed_out[:max_confirmed], gaps_out[:max_gaps]
+
+    def _build_focus_role_profile(
+        self,
+        *,
+        row,
+        outline_structure: dict[str, Any],
+        story_state_snapshot: dict[str, Any] | None,
+        focus_id: str | None,
+    ) -> dict[str, Any]:
+        empty = {
+            "focus_character": {"id": focus_id, "display_name": None},
+            "personality_core": "",
+            "speech_habits": "",
+            "core_beliefs": "",
+            "defenses_and_wounds": "",
+            "arc_position": "",
+            "relationships_relevant": [],
+            "state_before_chapter": None,
+        }
+        if not focus_id or not getattr(self, "_character_repo", None):
+            return empty
+        try:
+            uid = UUID(str(focus_id))
+        except (ValueError, TypeError):
+            return empty
+        ch = self._character_repo.get(uid)
+        if ch is None:
+            return empty
+        pj = dict(ch.profile_json or {})
+        sj = dict(ch.speech_style_json or {})
+        aj = dict(ch.arc_status_json or {})
+        name = str(ch.name or "").strip()
+        arc_position = str(aj.get("stage") or aj.get("arc_phase") or "").strip()
+        if not arc_position:
+            for line in list(outline_structure.get("character_arcs") or []):
+                s = str(line)
+                if name and name in s:
+                    arc_position = s[:800]
+                    break
+        rel = pj.get("relationships")
+        if isinstance(rel, list):
+            rel_out = rel[:12]
+        elif isinstance(rel, dict):
+            rel_out = [{"other": str(k), "note": str(v)[:200]} for k, v in list(rel.items())[:12]]
+        else:
+            rel_out = []
+        snap = None
+        if isinstance(story_state_snapshot, dict):
+            snap = {
+                "after_chapter_no": story_state_snapshot.get("after_chapter_no"),
+                "location": story_state_snapshot.get("location"),
+                "party": story_state_snapshot.get("party"),
+                "relationships": story_state_snapshot.get("relationships"),
+            }
+        return {
+            "focus_character": {"id": str(ch.id), "display_name": name or None},
+            "personality_core": str(pj.get("personality") or pj.get("summary") or pj.get("core") or "")[
+                :2500
+            ],
+            "speech_habits": str(sj.get("habits") or sj.get("summary") or "")[:1500],
+            "core_beliefs": str(pj.get("core_beliefs") or pj.get("beliefs") or "")[:1500],
+            "defenses_and_wounds": str(pj.get("wounds") or pj.get("defenses") or "")[:1500],
+            "arc_position": arc_position[:1200],
+            "relationships_relevant": rel_out,
+            "state_before_chapter": snap,
+        }
+
+    def _build_character_recent_background(
+        self,
+        *,
+        row,
+        project_context: dict[str, Any],
+        outline_state: dict[str, Any],
+        plot_view: dict[str, Any],
+    ) -> dict[str, Any]:
+        premise = str(project_context.get("premise") or "")
+        excerpt = premise[:1000] + ("…" if len(premise) > 1000 else "")
+        hook = str(outline_state.get("title") or "").strip()
+        cg = str(plot_view.get("chapter_goal") or "").strip()
+        if cg:
+            hook = f"{hook} | 本章目标: {cg[:280]}" if hook else cg[:500]
+        prior: list[str] = []
+        prev = self._previous_chapter_ref_for_plot(
+            project_id=row.project_id,
+            effective_chapter_no=self._resolve_effective_chapter_no(row),
+        )
+        if isinstance(prev, dict):
+            psum = str(prev.get("summary") or "").strip()
+            if psum:
+                prior.append(f"上一章（{prev.get('chapter_no')}）: {psum[:800]}")
+        return {
+            "premise_excerpt": excerpt,
+            "outline_hook": hook[:1200],
+            "prior_events": prior[:4],
+        }
+
+    def _character_audit_chapter_inputs(self, row, step) -> tuple[str, list[str]]:
+        raw_sn = (step.input_json or {}).get("audit_dialogue_snippets")
+        snippets: list[str] = (
+            [str(x).strip() for x in raw_sn if str(x).strip()]
+            if isinstance(raw_sn, list)
+            else []
+        )
+        raw_text = (step.input_json or {}).get("audit_chapter_text") or (
+            row.input_json or {}
+        ).get("audit_chapter_text")
+        if isinstance(raw_text, str) and raw_text.strip():
+            return raw_text.strip()[:120000], snippets[:32]
+        ch_repo = self._chapter_repo_for_orchestrator()
+        if ch_repo is None:
+            return "", snippets[:32]
+        ch_raw = (row.input_json or {}).get("chapter_no")
+        if ch_raw is None:
+            return "", snippets[:32]
+        try:
+            ch_no = int(ch_raw)
+        except (TypeError, ValueError):
+            return "", snippets[:32]
+        ch = ch_repo.get_by_project_chapter_no(row.project_id, ch_no)
+        if ch is None:
+            return "", snippets[:32]
+        body = str(getattr(ch, "content", None) or "").strip()
+        return body[:120000], snippets[:32]
+
+    @staticmethod
+    def _world_keyword_tokens(blob: str) -> set[str]:
+        return {
+            p
+            for p in re.findall(r"[\u4e00-\u9fff]{2,}|[A-Za-z][A-Za-z0-9_]{2,}", str(blob or ""))
+            if len(p) >= 2
+        }
+
+    @staticmethod
+    def _resolve_chapter_title_from_structure(
+        structure: dict[str, Any],
+        chapter_no: int | None,
+        outline_title: str | None,
+    ) -> str | None:
+        if chapter_no is None:
+            return str(outline_title).strip() if outline_title else None
+        for key in ("chapters", "chapter_outlines", "acts", "beats"):
+            block = structure.get(key)
+            if not isinstance(block, list):
+                continue
+            for item in block:
+                if not isinstance(item, dict):
+                    continue
+                raw_cn = item.get("chapter_no") or item.get("no") or item.get("index")
+                try:
+                    if int(raw_cn) != int(chapter_no):
+                        continue
+                except (TypeError, ValueError):
+                    continue
+                t = item.get("title") or item.get("chapter_title") or item.get("name")
+                if t:
+                    return str(t).strip()
+        ot = str(outline_title or "").strip()
+        if ot:
+            return f"{ot} · 第{chapter_no}章"
+        return f"第{chapter_no}章"
+
+    def _build_world_lore_brief(self, project_context: dict[str, Any]) -> dict[str, Any]:
+        meta = project_context.get("metadata_json") if isinstance(project_context.get("metadata_json"), dict) else {}
+        brief_meta: dict[str, Any] = {}
+        for k in ("tone", "target_audience"):
+            if k in meta and meta.get(k) is not None:
+                brief_meta[k] = meta[k]
+        premise = str(project_context.get("premise") or "").strip()
+        max_ch = 1100
+        if len(premise) > max_ch:
+            premise = premise[: max_ch - 1] + "…"
+        return {
+            "title": project_context.get("title"),
+            "genre": project_context.get("genre"),
+            "premise_excerpt": premise or None,
+            "metadata_json": brief_meta,
+        }
+
+    def _build_chapter_intent_world(
+        self,
+        *,
+        row,
+        outline_state: dict[str, Any],
+        outline_structure: dict[str, Any],
+        project_context: dict[str, Any],
+        effective_chapter_no: int | None,
+        plot_view: dict[str, Any],
+    ) -> dict[str, Any]:
+        meta_proj = project_context.get("metadata_json") or {}
+        if not isinstance(meta_proj, dict):
+            meta_proj = {}
+        arc_stage = _resolve_plot_arc_stage(outline_structure, meta_proj)
+        narcotic = plot_view.get("narcotic_arc")
+        beats: list[dict[str, Any]] = []
+        if isinstance(narcotic, list):
+            beats = [dict(x) for x in narcotic[:8] if isinstance(x, dict)]
+        planned: list[str] = []
+        for key in ("core_conflict", "climax_twist"):
+            v = plot_view.get(key)
+            if v:
+                planned.append(str(v).strip())
+        cg = plot_view.get("chapter_goal")
+        if cg:
+            planned.insert(0, str(cg).strip())
+        scene_types_raw = meta_proj.get("target_scene_types") or meta_proj.get("chapter_scene_types")
+        target_scene_types: list[str] = []
+        if isinstance(scene_types_raw, list):
+            target_scene_types = [str(x).strip() for x in scene_types_raw if str(x).strip()][:12]
+        elif isinstance(scene_types_raw, str) and scene_types_raw.strip():
+            target_scene_types = [scene_types_raw.strip()]
+        ch_title = self._resolve_chapter_title_from_structure(
+            outline_structure,
+            effective_chapter_no,
+            outline_state.get("title"),
+        )
+        return {
+            "chapter_no": effective_chapter_no,
+            "chapter_title": ch_title,
+            "arc_stage": arc_stage,
+            "writing_goal": (row.input_json or {}).get("writing_goal"),
+            "target_words": (row.input_json or {}).get("target_words"),
+            "chapter_goal": plot_view.get("chapter_goal"),
+            "outline_beats": beats,
+            "planned_conflicts": [x for x in planned if x][:6],
+            "target_scene_types": target_scene_types,
+        }
+
+    def _build_chapter_world_slice(
+        self,
+        *,
+        row,
+        chapter_no: int | None,
+        chapter_intent: dict[str, Any],
+        retrieval_bundle: dict[str, Any],
+        retrieval_view: dict[str, Any],
+    ) -> dict[str, Any]:
+        relevance_parts: list[str] = [
+            str(chapter_intent.get("writing_goal") or ""),
+            str(chapter_intent.get("chapter_goal") or ""),
+            str(chapter_intent.get("chapter_title") or ""),
+        ]
+        for pc in list(chapter_intent.get("planned_conflicts") or []):
+            if pc:
+                relevance_parts.append(str(pc))
+        for b in list(chapter_intent.get("outline_beats") or [])[:5]:
+            if isinstance(b, dict):
+                relevance_parts.append(
+                    " ".join(
+                        str(b.get(k) or "")
+                        for k in ("phase", "plot_beat", "outcome", "pacing_note")
+                    ).strip()
+                )
+        relevance_blob = " ".join(x for x in relevance_parts if x).strip()[:12000]
+
+        world_entries_out: list[dict[str, Any]] = []
+        provider = getattr(getattr(self, "retrieval_loop", None), "story_context_provider", None)
+        if provider is not None:
+            try:
+                ctx = provider.load_focused(
+                    project_id=row.project_id,
+                    chapter_no=chapter_no,
+                    relevance_blob=relevance_blob,
+                )
+            except (TypeError, ValueError):
+                ctx = provider.load(project_id=row.project_id, chapter_no=chapter_no)
+            raw_we = list(ctx.world_entries or [])
+            scored: list[tuple[int, dict[str, Any]]] = []
+            tokens = self._world_keyword_tokens(relevance_blob)
+            for e in raw_we[:40]:
+                if not isinstance(e, dict):
+                    continue
+                title = str(e.get("title") or "")
+                et = str(e.get("entry_type") or "")
+                text = f"{title} {et} {str(e.get('content') or '')[:200]}"
+                score = sum(1 for w in tokens if len(w) > 1 and w in text)
+                scored.append((score, e))
+            scored.sort(key=lambda x: -x[0])
+            for _, e in scored[:10]:
+                world_entries_out.append(
+                    {
+                        "id": e.get("id"),
+                        "entry_type": e.get("entry_type"),
+                        "title": e.get("title"),
+                        "content_excerpt": str(e.get("content") or "")[:480],
+                    }
+                )
+
+        hints: list[str] = []
+        worldish = ("世界", "规则", "魔法", "设定", "势力", "组织", "地理", "科技", "物理", "社会", "法律")
+        for item in list(retrieval_bundle.get("items") or [])[:16]:
+            if not isinstance(item, dict):
+                continue
+            txt = str(item.get("text") or "")
+            if any(t in txt for t in worldish) and len(txt) > 10:
+                hints.append(txt[:300])
+            if len(hints) >= 5:
+                break
+        if len(hints) < 3:
+            for ev in list(retrieval_view.get("supporting_evidence") or [])[:6]:
+                s = str(ev).strip() if not isinstance(ev, dict) else str(ev.get("text") or ev).strip()
+                if s and any(t in s for t in worldish):
+                    hints.append(s[:300])
+                if len(hints) >= 5:
+                    break
+
+        locations: list[str] = []
+        factions: list[str] = []
+        items_concepts: list[str] = []
+        for e in world_entries_out:
+            et = str(e.get("entry_type") or "").lower()
+            tit = str(e.get("title") or "").strip()
+            if not tit:
+                continue
+            if "location" in et or "地点" in et or "地理" in et:
+                locations.append(tit)
+            elif "faction" in et or "组织" in et or "势力" in et:
+                factions.append(tit)
+            else:
+                items_concepts.append(tit)
+
+        return {
+            "world_entries": world_entries_out,
+            "retrieval_world_hints": hints[:5],
+            "locations": locations[:8],
+            "factions": factions[:8],
+            "items_concepts": items_concepts[:12],
+            "notes": {"entry_limit": 10, "chapter_no": chapter_no},
+        }
+
+    def _world_gatekeeper_evidence_layers(
+        self,
+        *,
+        retrieval_view: dict[str, Any],
+        key_facts: list[str],
+        current_states: list[str],
+        chapter_intent: dict[str, Any],
+    ) -> tuple[list[str], list[str], list[str]]:
+        blob = json.dumps(chapter_intent, ensure_ascii=False)
+        tokens = self._world_keyword_tokens(blob)
+        cf_raw = [
+            str(x).strip()
+            for x in list(retrieval_view.get("confirmed_facts") or [])
+            if str(x).strip()
+        ]
+        soft = retrieval_view.get("soft_gaps")
+        extra_gaps: list[str] = []
+        if isinstance(soft, dict):
+            extra_gaps = [
+                str(x).strip()
+                for x in list(soft.get("information_gaps") or [])
+                if str(x).strip()
+            ]
+        info_gaps = [
+            str(x).strip()
+            for x in list(retrieval_view.get("information_gaps") or [])
+            if str(x).strip()
+        ]
+        conflicts = list(retrieval_view.get("conflicts") or [])
+        gaps: list[str] = []
+        seen_g: set[str] = set()
+
+        def add_gap(x: str) -> None:
+            t = str(x).strip()
+            if t and t not in seen_g:
+                seen_g.add(t)
+                gaps.append(t)
+
+        for g in info_gaps + extra_gaps:
+            add_gap(str(g))
+        for c in conflicts:
+            if isinstance(c, dict):
+                add_gap(str(c.get("description") or c))
+            else:
+                add_gap(str(c))
+        conf_facts: list[str] = []
+        seen_c: set[str] = set()
+
+        def add_conf(x: str) -> None:
+            t = str(x).strip()
+            if not t or t in seen_c:
+                return
+            if self._character_evidence_line_unresolved(t):
+                add_gap(t)
+                return
+            seen_c.add(t)
+            conf_facts.append(t)
+
+        for x in cf_raw:
+            add_conf(str(x))
+        for x in key_facts:
+            add_conf(str(x))
+        for ev in list(retrieval_view.get("supporting_evidence") or [])[:8]:
+            s = (
+                str(ev).strip()
+                if not isinstance(ev, dict)
+                else str(ev.get("text") or ev.get("summary") or ev).strip()
+            )
+            if s:
+                add_conf(s[:420])
+
+        applicable_scored: list[tuple[int, str]] = []
+        for s in current_states:
+            t = str(s).strip()
+            if not t:
+                continue
+            if self._character_evidence_line_unresolved(t):
+                add_gap(t)
+                continue
+            score = sum(1 for tok in tokens if tok and tok in t)
+            applicable_scored.append((score, t))
+        applicable_scored.sort(key=lambda x: (-x[0], len(x[1])))
+        applicable = [x[1] for x in applicable_scored[:16]]
+        return conf_facts[:36], applicable, gaps[:24]
+
+    def _build_world_gatekeeper_payload(
+        self,
+        *,
+        row,
+        step,
+        core: dict[str, Any],
+        project_context: dict[str, Any],
+        outline_state: dict[str, Any],
+        outline_structure: dict[str, Any],
+        raw_state: dict[str, dict],
+        retrieval_bundle: dict[str, Any],
+        retrieval_view: dict[str, Any],
+        key_facts: list[str],
+        current_states: list[str],
+        effective_chapter_no: int | None,
+    ) -> dict[str, Any]:
+        world_lore_brief = self._build_world_lore_brief(project_context)
+        plot_step = dict(raw_state.get("plot_alignment") or {})
+        plot_raw = step_agent_view(plot_step)
+        plot_view: dict[str, Any] = {**plot_step, **plot_raw} if plot_raw else plot_step
+        if not isinstance(plot_view, dict):
+            plot_view = {}
+        chapter_intent = self._build_chapter_intent_world(
+            row=row,
+            outline_state=outline_state,
+            outline_structure=outline_structure,
+            project_context=project_context,
+            effective_chapter_no=effective_chapter_no,
+            plot_view=plot_view,
+        )
+        chapter_world_slice = self._build_chapter_world_slice(
+            row=row,
+            chapter_no=effective_chapter_no,
+            chapter_intent=chapter_intent,
+            retrieval_bundle=retrieval_bundle,
+            retrieval_view=retrieval_view,
+        )
+        cwf, cap_st, ugap = self._world_gatekeeper_evidence_layers(
+            retrieval_view=retrieval_view,
+            key_facts=key_facts,
+            current_states=current_states,
+            chapter_intent=chapter_intent,
+        )
+        tools = (
+            self.agent_registry.local_data_tools_catalog()
+            if self.agent_registry is not None
+            else []
+        )
+        return {
+            "step_key": core.get("step_key"),
+            "workflow_type": core.get("workflow_type"),
+            "role_id": core.get("role_id"),
+            "goal": (row.input_json or {}).get("writing_goal"),
+            "state": {"world_input_contract_version": "v1"},
+            "local_data_tools": tools,
+            "world_lore_brief": world_lore_brief,
+            "chapter_world_slice": chapter_world_slice,
+            "chapter_intent": chapter_intent,
+            "confirmed_world_facts": cwf,
+            "chapter_applicable_states": cap_st,
+            "unresolved_gaps": ugap,
+        }
+
     def _build_role_prompt_payload(
         self,
         *,
@@ -1825,6 +2780,8 @@ class WritingOrchestratorService:
         role_id: str,
     ) -> dict[str, Any]:
         workflow_type = str((step.input_json or {}).get("workflow_type") or step.step_type)
+        rid = str(role_id or "").strip().lower()
+        sk = str(step.step_key or "").strip()
         project = self.project_repo.get(row.project_id)
         project_context = {
             "id": str(row.project_id),
@@ -1833,38 +2790,68 @@ class WritingOrchestratorService:
             "premise": getattr(project, "premise", None),
             "metadata_json": getattr(project, "metadata_json", None) or {},
         }
-        outline_state = dict(raw_state.get("outline_generation") or {})
+        outline_step = dict(raw_state.get("outline_generation") or {})
+        outline_view = step_agent_view(outline_step)
+        outline_state = {**outline_step, **outline_view} if outline_view else outline_step
         outline_structure = outline_state.get("structure_json")
         if not isinstance(outline_structure, dict):
             outline_structure = {}
 
-        story_state_snapshot: dict[str, Any] | None = None
-        if self.story_state_snapshot_repo is not None:
-            ch_raw = (row.input_json or {}).get("chapter_no")
-            if ch_raw is not None:
-                try:
-                    ch_no = int(ch_raw)
-                except (TypeError, ValueError):
-                    ch_no = None
-                if ch_no is not None:
-                    snap = self.story_state_snapshot_repo.get_latest_before(
-                        project_id=row.project_id,
-                        before_chapter_no=ch_no,
-                    )
-                    if snap is not None:
-                        st = dict(snap.state_json or {})
-                        story_state_snapshot = {
-                            "after_chapter_no": int(snap.chapter_no),
-                            "source": snap.source,
-                            "location": st.get("location"),
-                            "party": st.get("party"),
-                            "relationships": st.get("relationships"),
-                            "knowledge": st.get("knowledge"),
-                            "identity_exposure": st.get("identity_exposure"),
-                            "state": st,
-                        }
+        effective_chapter_no = self._resolve_effective_chapter_no(row)
 
+        story_state_snapshot: dict[str, Any] | None = None
+        if self.story_state_snapshot_repo is not None and effective_chapter_no is not None:
+            snap = self.story_state_snapshot_repo.get_latest_before(
+                project_id=row.project_id,
+                before_chapter_no=effective_chapter_no,
+            )
+            if snap is not None:
+                st = dict(snap.state_json or {})
+                story_state_snapshot = {
+                    "after_chapter_no": int(snap.chapter_no),
+                    "source": snap.source,
+                    "location": st.get("location"),
+                    "party": st.get("party"),
+                    "relationships": st.get("relationships"),
+                    "knowledge": st.get("knowledge"),
+                    "identity_exposure": st.get("identity_exposure"),
+                    "state": st,
+                }
+
+        raw_state_for_build: dict[str, dict] = raw_state
         retrieval_bundle = build_retrieval_bundle_from_raw_state(raw_state)
+        retrieval_evidence_status: str | None = None
+
+        if rid == "retrieval_agent" and sk == "retrieval_context":
+            intent = self._build_planner_retrieval_intent(raw_state, row, step)
+            raw_state_for_build = {**raw_state, "planner_retrieval_intent": {"view": intent}}
+            prefetch = self._run_retrieval_loop(
+                row=row,
+                step=step,
+                workflow_type=workflow_type,
+                writing_goal=str((row.input_json or {}).get("writing_goal") or ""),
+                chapter_no=(row.input_json or {}).get("chapter_no"),
+                raw_state=raw_state,
+            )
+            retrieval_bundle = copy.deepcopy(prefetch.context_bundle or {})
+            if self.retrieval_loop is None:
+                retrieval_evidence_status = "loop_disabled"
+            elif self._retrieval_prefetch_bundle_has_evidence(retrieval_bundle):
+                retrieval_evidence_status = "ok"
+            else:
+                retrieval_evidence_status = "empty"
+                logger.warning(
+                    json.dumps(
+                        {
+                            "event": "retrieval_context_prefetch_no_evidence",
+                            "workflow_run_id": str(row.id),
+                            "step_key": sk,
+                            "trace_id": row.trace_id,
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+
         wn_raw = (row.input_json or {}).get("working_notes")
         working_notes_arg = wn_raw if isinstance(wn_raw, (list, dict)) else None
 
@@ -1873,7 +2860,7 @@ class WritingOrchestratorService:
             step_key=str(step.step_key),
             workflow_type=workflow_type,
             project_context=project_context,
-            raw_state=raw_state,
+            raw_state=raw_state_for_build,
             retrieval_bundle=retrieval_bundle,
             outline_state=outline_state,
             working_notes=working_notes_arg,
@@ -1887,7 +2874,35 @@ class WritingOrchestratorService:
             if str(x).strip()
         ]
 
-        base_payload = {
+        if rid == "world_agent" and sk == "world_alignment":
+            if effective_chapter_no is None:
+                logger.warning(
+                    json.dumps(
+                        {
+                            "event": "world_gatekeeper_chapter_no_missing",
+                            "workflow_run_id": str(row.id),
+                            "step_key": sk,
+                            "trace_id": row.trace_id,
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+            return self._build_world_gatekeeper_payload(
+                row=row,
+                step=step,
+                core=core,
+                project_context=project_context,
+                outline_state=outline_state,
+                outline_structure=outline_structure,
+                raw_state=raw_state_for_build,
+                retrieval_bundle=retrieval_bundle,
+                retrieval_view=retrieval_view,
+                key_facts=key_facts,
+                current_states=current_states,
+                effective_chapter_no=effective_chapter_no,
+            )
+
+        base_payload: dict[str, Any] = {
             **core,
             "goal": (row.input_json or {}).get("writing_goal"),
             "local_data_tools": (
@@ -1895,32 +2910,109 @@ class WritingOrchestratorService:
                 if self.agent_registry is not None
                 else []
             ),
-            "retrieval_summary": {
+        }
+        if rid != "plot_agent":
+            base_payload["retrieval_summary"] = {
                 "key_facts": key_facts,
                 "current_states": current_states,
-            },
-        }
+            }
+        elif retrieval_view:
+            logger.info(
+                json.dumps(
+                    {
+                        "event": "plot_agent_retrieval_single_bundle",
+                        "workflow_run_id": str(row.id),
+                        "step_key": sk,
+                        "retrieval_chars": len(json.dumps(retrieval_view, ensure_ascii=False)),
+                    },
+                    ensure_ascii=False,
+                )
+            )
         if story_state_snapshot is not None:
             base_payload["story_state_snapshot"] = story_state_snapshot
-        rid = str(role_id or "").strip().lower()
+        if retrieval_evidence_status is not None:
+            base_payload["retrieval_evidence_status"] = retrieval_evidence_status
+        if rid == "retrieval_agent" and story_state_snapshot is not None:
+            base_payload["current_story_state"] = story_state_snapshot
         if rid == "character_agent":
+            plot_step = dict(raw_state.get("plot_alignment") or {})
+            plot_view_raw = step_agent_view(plot_step)
+            plot_view: dict[str, Any] = (
+                {**plot_step, **plot_view_raw} if plot_view_raw else plot_step
+            )
+            if not isinstance(plot_view, dict):
+                plot_view = {}
+            char_mode = self._effective_character_mode_for_step(row, step)
+            chapter_text, dialogue_snippets = self._character_audit_chapter_inputs(row, step)
+            focus_id = self._resolve_focus_character_id(row, step)
+            role_profile = self._build_focus_role_profile(
+                row=row,
+                outline_structure=outline_structure,
+                story_state_snapshot=story_state_snapshot,
+                focus_id=focus_id,
+            )
+            cf_raw = [
+                str(x).strip()
+                for x in list(retrieval_view.get("confirmed_facts") or [])
+                if str(x).strip()
+            ]
+            soft_gap_lines = retrieval_view.get("soft_gaps")
+            extra_gaps: list[str] = []
+            if isinstance(soft_gap_lines, dict):
+                extra_gaps = [
+                    str(x).strip()
+                    for x in list(soft_gap_lines.get("information_gaps") or [])
+                    if str(x).strip()
+                ]
+            conf_f, gaps_u = self._split_character_confirmed_and_gaps(
+                key_facts=key_facts,
+                current_states=current_states,
+                confirmed_facts=cf_raw,
+                conflicts=list(retrieval_view.get("conflicts") or []),
+                information_gaps=[
+                    str(x).strip()
+                    for x in list(retrieval_view.get("information_gaps") or [])
+                    if str(x).strip()
+                ]
+                + extra_gaps,
+            )
+            recent_bg = self._build_character_recent_background(
+                row=row,
+                project_context=project_context,
+                outline_state=outline_state,
+                plot_view=plot_view,
+            )
+            narcotic = plot_view.get("narcotic_arc")
+            beats_excerpt = (
+                [dict(x) for x in narcotic[:6] if isinstance(x, dict)]
+                if isinstance(narcotic, list)
+                else []
+            )
+            chapter_plan = {
+                "chapter_goal": plot_view.get("chapter_goal"),
+                "core_conflict": plot_view.get("core_conflict"),
+                "climax_twist": plot_view.get("climax_twist"),
+            }
+            current_chapter: dict[str, Any] = {
+                "chapter_no": (row.input_json or {}).get("chapter_no"),
+                "target_words": (row.input_json or {}).get("target_words"),
+                "writing_goal": (row.input_json or {}).get("writing_goal"),
+                "chapter_plan": chapter_plan,
+                "beats_excerpt": beats_excerpt,
+                "confirmed_character_evidence": conf_f,
+                "unresolved_gaps": gaps_u,
+            }
+            if char_mode == "audit":
+                current_chapter["chapter_text"] = chapter_text
+                current_chapter["dialogue_snippets"] = dialogue_snippets
             return {
                 **base_payload,
-                "Role_Profile": {
-                    "character_arcs": list(outline_structure.get("character_arcs") or []),
-                    "key_facts": key_facts,
-                },
-                "Story_Background": {
-                    "project": project_context,
-                    "outline_title": outline_state.get("title"),
-                },
-                "Current_Chapter": {
-                    "goal": (row.input_json or {}).get("writing_goal"),
-                    "chapter_no": (row.input_json or {}).get("chapter_no"),
-                    "signals": current_states,
-                },
+                "character_mode": char_mode,
+                "role_profile": role_profile,
+                "recent_character_background": recent_bg,
+                "Current_Chapter": current_chapter,
             }
-        if rid == "world_agent":
+        if rid == "world_agent" and sk != "world_alignment":
             return {
                 **base_payload,
                 "world_context": {
@@ -1938,11 +3030,23 @@ class WritingOrchestratorService:
                 },
             }
         if rid == "plot_agent":
+            meta_proj = project_context.get("metadata_json") or {}
+            if not isinstance(meta_proj, dict):
+                meta_proj = {}
+            arc_stage = _resolve_plot_arc_stage(outline_structure, meta_proj)
+            next_hook_type = _resolve_plot_next_hook_type(meta_proj)
+            prev_ref = self._previous_chapter_ref_for_plot(
+                project_id=row.project_id,
+                effective_chapter_no=effective_chapter_no,
+            )
             return {
                 **base_payload,
                 "plot_context": {
-                    "chapter_no": (row.input_json or {}).get("chapter_no"),
+                    "chapter_no": effective_chapter_no,
                     "target_words": (row.input_json or {}).get("target_words"),
+                    "previous_chapter_ref": prev_ref,
+                    "arc_stage": arc_stage,
+                    "next_hook_type": next_hook_type,
                 },
             }
         return base_payload
@@ -1957,17 +3061,20 @@ class WritingOrchestratorService:
             chapter_no=(row.input_json or {}).get("chapter_no"),
             raw_state=raw_state,
         )
-        effective_goal = base_goal
-        if retrieval.context_text:
-            effective_goal = f"{base_goal}\n\n可用证据：\n{retrieval.context_text}"
+        project = self.project_repo.get(row.project_id)
+        if project is None:
+            raise RuntimeError("project 不存在")
+        outline_intake = self._build_outline_generation_intake(
+            row=row, project=project, retrieval=retrieval
+        )
         result = self.outline_service.run(
             OutlineGenerationRequest(
                 project_id=row.project_id,
-                writing_goal=effective_goal,
+                writing_goal=base_goal,
                 style_hint=(row.input_json or {}).get("style_hint"),
+                outline_intake=outline_intake,
                 request_id=row.request_id,
                 trace_id=row.trace_id,
-                retrieval_context=retrieval.context_text or None,
             )
         )
         return {
@@ -2174,7 +3281,30 @@ class WritingOrchestratorService:
         )
         chapter_id = chapter.get("id")
         if not chapter_id:
-            raise RuntimeError("consistency_review 缺少 chapter_id")
+            # 候选章节已审批时，approve 会把正式 chapter 写回 writer_draft.output_json；若内存态仍缺 id，从 DB 候选解析。
+            wd_out = dict(raw_state.get("writer_draft") or {})
+            cand_meta = dict(wd_out.get("candidate") or {})
+            cand_raw = cand_meta.get("id")
+            if cand_raw:
+                cand_row = self.chapter_candidate_repo.get(cand_raw)
+                if cand_row is not None and getattr(cand_row, "approved_chapter_id", None):
+                    ch_repo = self.chapter_tool.workflow_service.chapter_repo
+                    persisted = ch_repo.get(cand_row.approved_chapter_id)
+                    if persisted is not None:
+                        chapter = {
+                            "id": str(persisted.id),
+                            "chapter_no": int(persisted.chapter_no),
+                            "title": persisted.title,
+                            "summary": persisted.summary,
+                            "content": persisted.content,
+                            "draft_version": int(getattr(persisted, "draft_version", 0) or 0),
+                        }
+                        chapter_id = chapter.get("id")
+        if not chapter_id:
+            raise RuntimeError(
+                "consistency_review 缺少 chapter_id：章节候选尚未审批落库，或 writer_draft 输出不完整。"
+                "请先审批候选章节后再继续本步，或检查超时重试前是否已完成审批。"
+            )
 
         chapter_summary = str(chapter.get("summary") or chapter.get("content") or "")[:600]
         retrieval = self._run_retrieval_loop(
@@ -2277,7 +3407,13 @@ class WritingOrchestratorService:
 
         consistency = dict(raw_state.get("consistency_review", {}) or {})
         force = str(consistency.get("status") or "warning") in {"warning", "failed"}
-        alignment_supplement = build_writer_alignment_supplement_text(raw_state)
+        issues_list: list[dict] = []
+        raw_issues = consistency.get("issues")
+        if isinstance(raw_issues, list):
+            issues_list = [x for x in raw_issues if isinstance(x, dict)]
+        issue_slots = revision_slots_for_issues(issues_list)
+        issue_tools = preferred_tools_for_slots(issue_slots)
+        # 修订步：issue-scoped 槽位 + 不并入 workflow 宽默认；不注入 alignment 起草长文
         retrieval = self._run_retrieval_loop(
             row=row,
             step=step,
@@ -2287,25 +3423,16 @@ class WritingOrchestratorService:
                 f"报告摘要：{str(consistency.get('summary') or '')}"
             ),
             chapter_no=chapter.get("chapter_no") or (row.input_json or {}).get("chapter_no"),
-            must_have_slots=[
-                "character",
-                "world_rule",
-                "timeline",
-                "foreshadowing",
-                "conflict_evidence",
-                "chapter_neighborhood",
-            ],
+            must_have_slots=None,
             raw_state=raw_state,
+            planner_slot_hints_override=issue_slots,
+            planner_verify_facts_override=[],
+            planner_preferred_tools_override=issue_tools,
+            slot_merge_skip_workflow_base=True,
         )
 
         retrieval_bundle = copy.deepcopy(dict(retrieval.context_bundle or {}))
-        summary = dict(retrieval_bundle.get("summary") or {})
-        key_facts = list(summary.get("key_facts") or [])
-        if alignment_supplement:
-            sup = str(alignment_supplement).strip()
-            if sup:
-                key_facts.insert(0, sup[:12000])
-        retrieval_bundle["summary"] = {**summary, "key_facts": key_facts}
+        filter_revision_context_bundle_items(retrieval_bundle, max_items=8)
 
         project = self.project_repo.get(row.project_id)
         project_context = {
@@ -2408,6 +3535,10 @@ class WritingOrchestratorService:
         chapter_no: int | None = None,
         must_have_slots: list[str] | None = None,
         raw_state: dict[str, dict] | None = None,
+        planner_slot_hints_override: list[str] | None = None,
+        planner_verify_facts_override: list[str] | None = None,
+        planner_preferred_tools_override: list[str] | None = None,
+        slot_merge_skip_workflow_base: bool = False,
     ) -> RetrievalLoopSummary:
         if self.retrieval_loop is None:
             disabled_bundle: dict[str, Any] = {
@@ -2428,9 +3559,21 @@ class WritingOrchestratorService:
                 context_bundle=disabled_bundle,
             )
         step_inp = dict(step.input_json or {}) if step is not None else {}
-        planner_hints = self._planner_slot_hints_from_state(raw_state, step_inp)
-        verify_facts = self._planner_verify_facts_from_state(raw_state, step_inp)
-        preferred_tools = self._planner_preferred_tools_from_state(raw_state, step_inp)
+        planner_hints = (
+            list(planner_slot_hints_override)
+            if planner_slot_hints_override is not None
+            else self._planner_slot_hints_from_state(raw_state, step_inp)
+        )
+        verify_facts = (
+            list(planner_verify_facts_override)
+            if planner_verify_facts_override is not None
+            else self._planner_verify_facts_from_state(raw_state, step_inp)
+        )
+        preferred_tools = (
+            list(planner_preferred_tools_override)
+            if planner_preferred_tools_override is not None
+            else self._planner_preferred_tools_from_state(raw_state, step_inp)
+        )
         relevance_blob = RetrievalLoopService.build_relevance_blob(
             writing_goal=writing_goal,
             planner_slots=planner_hints,
@@ -2457,6 +3600,7 @@ class WritingOrchestratorService:
                 planner_verify_facts=verify_facts or None,
                 planner_preferred_tools=preferred_tools or None,
                 focus_character_id=focus_character_id,
+                slot_merge_skip_workflow_base=bool(slot_merge_skip_workflow_base),
             )
         )
 

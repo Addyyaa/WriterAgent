@@ -82,6 +82,13 @@ LOCAL_DATA_TOOLS_OPENAI: list[dict[str, Any]] = [
     },
 ]
 
+# 与 LOCAL_DATA_TOOLS_OPENAI 中注册的 function.name 一致，供 LLM 侧区分「交作业」与本地查询工具
+LOCAL_DATA_TOOL_NAMES: frozenset[str] = frozenset(
+    str(item["function"]["name"])
+    for item in LOCAL_DATA_TOOLS_OPENAI
+    if isinstance(item.get("function"), dict) and str(item["function"].get("name") or "").strip()
+)
+
 
 def parse_tool_arguments(raw: str | None) -> dict[str, Any]:
     text = str(raw or "").strip()

@@ -532,18 +532,26 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
             for k, v in request.response_schema.items()
             if not k.startswith("$")
         }
-        payload["tools"] = [
-            {
-                "type": "function",
-                "function": {
-                    "name": function_name,
-                    "description": function_desc,
-                    "parameters": clean_params,
-                },
-            }
-        ]
-        # DashScope 等网关拒绝「强制工具调用」语义（报 tool_choice 不支持 required）
-        if self._forced_function_tool_choice_supported():
+        output_tool = {
+            "type": "function",
+            "function": {
+                "name": function_name,
+                "description": function_desc,
+                "parameters": clean_params,
+            },
+        }
+        merge_local = bool(
+            request.local_data_tool_executor and request.extra_function_tools
+        )
+        tools_list: list[dict[str, Any]] = []
+        if merge_local:
+            for spec in request.extra_function_tools or ():
+                if isinstance(spec, dict):
+                    tools_list.append(spec)
+        tools_list.append(output_tool)
+        payload["tools"] = tools_list
+        # 挂载本地查询工具时必须 auto，否则网关强制仅 output function 将无法发起 list/get/search
+        if self._forced_function_tool_choice_supported() and not merge_local:
             payload["tool_choice"] = {
                 "type": "function",
                 "function": {"name": function_name},
@@ -775,6 +783,163 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         return candidates[0]
 
     @staticmethod
+    def _tool_call_function_name(tc: dict[str, Any]) -> str:
+        fn = tc.get("function")
+        if isinstance(fn, dict):
+            return str(fn.get("name") or "").strip()
+        return ""
+
+    def _json_from_output_tool_call(self, tc: dict[str, Any]) -> dict[str, Any] | None:
+        fn = tc.get("function")
+        if not isinstance(fn, dict):
+            return None
+        args_raw = fn.get("arguments")
+        if not isinstance(args_raw, str) or not args_raw.strip():
+            return None
+        try:
+            parsed = json.loads(args_raw)
+        except Exception:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+    def _multi_turn_local_tools_until_output(
+        self,
+        *,
+        request: TextGenerationRequest,
+        url: str,
+        headers: dict[str, str],
+    ) -> tuple[dict[str, Any], dict[str, Any], str]:
+        """多轮挂载本地数据 tools：执行 tool 回灌直至模型调用 output function 或返回 content JSON。"""
+        # 延迟导入：避免 local_data_tools_dispatch → chapter_tools → chapter_generation 与 LLM 层环依赖
+        from packages.tools.system_tools.local_data_tools_dispatch import (
+            LOCAL_DATA_TOOL_NAMES,
+            parse_tool_arguments,
+        )
+
+        executor = request.local_data_tool_executor
+        if executor is None:
+            raise RuntimeError("internal: local_data_tool_executor 未设置")
+        output_fn = self._resolve_function_name(request)
+        max_rounds = max(1, int(request.local_data_tool_max_rounds or 8))
+
+        payload = self.build_chat_payload(request)
+        raw_msgs = payload.get("messages") or []
+        messages: list[dict[str, Any]] = [dict(m) for m in raw_msgs if isinstance(m, dict)]
+        if len(messages) < 2:
+            raise RuntimeError("build_chat_payload 消息格式异常")
+
+        tools = payload.get("tools")
+        if not isinstance(tools, list) or not tools:
+            raise RuntimeError("internal: tools 为空")
+
+        base: dict[str, Any] = {
+            "model": payload["model"],
+            "temperature": payload["temperature"],
+        }
+        eff_mt = self._effective_max_tokens(request)
+        if eff_mt is not None:
+            base["max_tokens"] = int(eff_mt)
+
+        read_to = self._read_timeout_for(request)
+        last_body: dict[str, Any] = {}
+
+        for _ in range(max_rounds):
+            req_body = {
+                **base,
+                "messages": messages,
+                "tools": tools,
+                "tool_choice": "auto",
+            }
+            last_body = self._post_chat_payload(
+                url=url,
+                headers=headers,
+                payload=req_body,
+                read_timeout=read_to,
+            )
+            try:
+                choices = last_body["choices"]
+                first = choices[0]
+                msg = first["message"]
+            except Exception as exc:
+                raise RuntimeError("LLM 响应格式非法：缺少 choices/message") from exc
+
+            if not isinstance(msg, dict):
+                raise RuntimeError("LLM message 非对象")
+
+            tool_calls = msg.get("tool_calls")
+            if isinstance(tool_calls, list) and tool_calls:
+                local_calls: list[dict[str, Any]] = []
+                output_calls: list[dict[str, Any]] = []
+                unknown_calls: list[dict[str, Any]] = []
+                for tc in tool_calls:
+                    if not isinstance(tc, dict):
+                        continue
+                    fname = self._tool_call_function_name(tc)
+                    if fname == output_fn:
+                        output_calls.append(tc)
+                    elif fname in LOCAL_DATA_TOOL_NAMES:
+                        local_calls.append(tc)
+                    else:
+                        unknown_calls.append(tc)
+
+                messages.append(msg)
+
+                for tc in unknown_calls:
+                    tid = str(tc.get("id") or "")
+                    bad = self._tool_call_function_name(tc) or "?"
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tid,
+                            "content": json.dumps(
+                                {"error": f"未知工具: {bad}"},
+                                ensure_ascii=False,
+                            ),
+                        }
+                    )
+
+                for tc in local_calls:
+                    tid = str(tc.get("id") or "")
+                    fn_block = tc.get("function")
+                    args_raw = fn_block.get("arguments") if isinstance(fn_block, dict) else None
+                    args = (
+                        parse_tool_arguments(args_raw)
+                        if isinstance(args_raw, str)
+                        else {}
+                    )
+                    name = self._tool_call_function_name(tc)
+                    result = executor(name, args)
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tid,
+                            "content": json.dumps(result, ensure_ascii=False),
+                        }
+                    )
+
+                if output_calls:
+                    for tc in output_calls:
+                        json_data = self._json_from_output_tool_call(tc)
+                        if isinstance(json_data, dict):
+                            text = self._extract_primary_text(json_data)
+                            return last_body, json_data, text
+                    raise RuntimeError(
+                        "LLM 调用了 output function 但 arguments 无法解析为 JSON 对象"
+                    )
+                continue
+
+            json_data = self._try_parse_content_message_to_dict(msg.get("content"))
+            if isinstance(json_data, dict):
+                text = self._extract_primary_text(json_data)
+                return last_body, json_data, text
+
+            raise RuntimeError("LLM 既未调用工具也未返回可解析的 JSON content")
+
+        raise RuntimeError(
+            f"本地数据工具轮次耗尽（max_rounds={max_rounds}）仍未得到合法输出"
+        )
+
+    @staticmethod
     def _extract_json_from_text(text: str) -> dict[str, Any] | None:
         """从 LLM 混合输出中提取最外层 JSON 对象（处理 markdown fence、前后缀文字、截断等）。"""
         import re
@@ -841,13 +1006,33 @@ class OpenAICompatibleTextProvider(TextGenerationProvider):
         for attempt in range(repair_limit + 1):
             payload = self.build_chat_payload(effective_request)
             try:
-                body = self._post_chat_payload(
-                    url=url,
-                    headers=headers,
-                    payload=payload,
-                    read_timeout=self._read_timeout_for(effective_request),
-                )
-                parsed = self.parse_chat_response(body)
+                if (
+                    effective_request.use_function_calling
+                    and effective_request.local_data_tool_executor
+                    and effective_request.extra_function_tools
+                ):
+                    body, json_obj, primary_text = self._multi_turn_local_tools_until_output(
+                        request=effective_request,
+                        url=url,
+                        headers=headers,
+                    )
+                    parsed = TextGenerationResult(
+                        text=primary_text,
+                        json_data=json_obj,
+                        model=str(body.get("model") or self.model),
+                        provider="openai_compatible",
+                        is_mock=False,
+                        raw_response_json=body,
+                        request_metadata_json={},
+                    )
+                else:
+                    body = self._post_chat_payload(
+                        url=url,
+                        headers=headers,
+                        payload=payload,
+                        read_timeout=self._read_timeout_for(effective_request),
+                    )
+                    parsed = self.parse_chat_response(body)
             except Exception:
                 if effective_request.use_function_calling and not downgraded_fc:
                     effective_request = replace(

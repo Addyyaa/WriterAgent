@@ -4,6 +4,7 @@ import unittest
 
 from packages.llm.text_generation.base import TextGenerationRequest
 from packages.llm.text_generation.openai_compatible import OpenAICompatibleTextProvider
+from packages.tools.system_tools.local_data_tools_dispatch import LOCAL_DATA_TOOLS_OPENAI
 
 
 class TestOpenAICompatiblePayloadBasicFC(unittest.TestCase):
@@ -96,6 +97,37 @@ class TestOpenAICompatiblePayloadBasicFC(unittest.TestCase):
             timeout_seconds=1000.0,
         )
         self.assertEqual(provider._read_timeout_for(over), 900.0)
+
+    def test_full_mode_merges_local_tools_tool_choice_auto(self) -> None:
+        """挂载本地查询 tools 时不可再强制仅 output function，须 tool_choice=auto。"""
+
+        def _noop_exec(_name: str, _arguments: dict) -> dict:
+            return {}
+
+        provider = OpenAICompatibleTextProvider(
+            api_key="k",
+            model="gpt-4o-mini",
+            base_url="https://api.openai.com/v1",
+            compat_mode="full",
+        )
+        payload = provider.build_chat_payload(
+            TextGenerationRequest(
+                system_prompt="sys",
+                user_prompt="user",
+                temperature=0.4,
+                response_schema={
+                    "type": "object",
+                    "required": ["content"],
+                    "properties": {"content": {"type": "string"}},
+                },
+                use_function_calling=True,
+                function_name="chapter_output",
+                extra_function_tools=tuple(LOCAL_DATA_TOOLS_OPENAI[:1]),
+                local_data_tool_executor=_noop_exec,
+            )
+        )
+        self.assertGreaterEqual(len(payload["tools"]), 2)
+        self.assertEqual(payload["tool_choice"], "auto")
 
 
 if __name__ == "__main__":

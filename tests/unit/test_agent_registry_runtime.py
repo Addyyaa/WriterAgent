@@ -45,6 +45,22 @@ class TestAgentRegistryRuntime(unittest.TestCase):
         self.assertTrue(str(profile.schema_ref).startswith("inline://"))
         self.assertIsInstance(profile.output_schema, dict)
 
+        _, char_guard, _, _ = registry.resolve(
+            role_id="character_agent",
+            workflow_type="character_alignment",
+            step_key="character_alignment",
+            strategy_mode="guardrails",
+        )
+        _, char_audit, _, _ = registry.resolve(
+            role_id="character_agent",
+            workflow_type="character_alignment",
+            step_key="character_alignment",
+            strategy_mode="audit",
+        )
+        self.assertEqual(char_guard.mode, "guardrails")
+        self.assertEqual(char_audit.mode, "audit")
+        self.assertNotEqual(char_guard.temperature, char_audit.temperature)
+
         _, draft_strategy, _, _ = registry.resolve(
             role_id="writer_agent",
             workflow_type="chapter_generation",

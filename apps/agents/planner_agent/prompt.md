@@ -9,7 +9,7 @@
 # Input
 
 - [Goal]: 用户的写作目标（如：“写一段主角发现密室的悬疑场景”）。
-- [Context]: 当前的故事背景、已有的剧情线索。
+- [Context]: 当前的故事背景、已有的剧情线索；通常包含 `planning_pack`（章节索引、故事状态摘要、开放伏笔与时间线信号等），**请优先依据 planning_pack 与 Goal 做承接式规划**，不要只依据全量 `project.premise` 做大而空的排期。
 
 # 双轨输出说明（必读）
 
@@ -21,8 +21,8 @@
 
 | 字段 | 说明 |
 |------|------|
-| `required_slots` | `string[]`，snake_case，本节点执行前检索应覆盖的槽位（如 `current_inventory`、`power_rules`、`chapter_neighborhood`） |
-| `preferred_tools` | `string[]`，优先工具名（如 `character_inventory`） |
+| `required_slots` | `string[]`，**仅使用下方「规范槽位」表中的 snake_case 名称**（或语义接近的别名将由服务端映射）；勿把 `memory_fact` 等**数据源类型**当作槽位 |
+| `preferred_tools` | `string[]`，**仅允许**以下四个**可执行工具名**（逐字一致）：`get_character_inventory`、`list_project_chapters`、`search_project_memory_vectors`、`get_chapter_content` |
 | `must_verify_facts` | `string[]`，动笔前必须用证据核验的陈述（中文短句） |
 | `allowed_assumptions` | `string[]`，证据不足时仍允许的**显式**假设及边界 |
 | `fallback_when_missing` | `string`，关键信息缺失时的写作原则（一句） |
@@ -32,6 +32,39 @@
 ## (B) `planner_bootstrap` 步骤 JSON（`plan_summary` + `steps`）
 
 当输出为 **bootstrap 专用** 结构时，使用 `plan_summary`、`global_required_slots`、`global_preferred_tools`（可选）、`steps[]`，每步含 `required_slots`、`preferred_tools`、`must_verify_facts`、`allowed_assumptions`、`fallback_when_missing` 等，含义与 (A) 列一致。
+
+# 规范槽位（required_slots 闭集）
+
+下列名称与检索层 `_SLOT_SOURCE_MAP` 一致，**请优先从中择用**（自然语言别名将由服务端归一，例如 `recent_trigger_events`→`timeline`，`scene_constraints`→`scene_state`）：
+
+| 槽位 | 用途提示 |
+|------|----------|
+| `project_goal` | 项目目标与总方向 |
+| `outline` | 大纲/卷纲 |
+| `chapter_neighborhood` | 当前章前后邻章、衔接 |
+| `character` | 角色设定与一致性 |
+| `world_rule` | 世界观规则条目 |
+| `timeline` | 时间线与关键事件 |
+| `foreshadowing` | 伏笔埋设与回收 |
+| `style_preference` | 风格与读者偏好 |
+| `conflict_evidence` | 冲突/矛盾证据 |
+| `inventory` / `current_inventory` / `character_inventory` | 物品、背包、财富一致性 |
+| `power_rules` / `power_rule` / `known_power_rules` | 异能/规则边界 |
+| `scene` / `location` | 场景与地点 |
+| `relationship` / `witnesses` | 人物关系与目击者 |
+| `previous_chapter` | 紧前章承接 |
+| `story_state` / `scene_state` | 故事/场景状态快照 |
+
+**禁止**将 `memory_fact`、`chapter`、`world_entry` 等**数据源类型**填入 `required_slots`。
+
+# 规范工具（preferred_tools 白名单）
+
+**仅**允许下列四字串（需要时再填，无则 `[]`）：
+
+1. `get_character_inventory` — 角色当前物品/财富（道具一致性）
+2. `list_project_chapters` — 已有章节列表与摘要（结构、避免重复）
+3. `search_project_memory_vectors` — 项目记忆向量检索（设定/伏笔/前文）
+4. `get_chapter_content` — 读取指定章节正文（续写、引用、对比）
 
 # Workflow & Constraints
 
@@ -50,8 +83,8 @@
    - 定义每个步骤完成的具体标准（如：字数范围、必须包含的关键词、必须触发的剧情点）。
 
 5. **知识需求（Knowledge / Retrieval）**:
-   - 槽位用 **snake_case**，与下游检索循环对齐（如 `character`、`world_rule`、`current_inventory`、`power_rules`、`chapter_neighborhood`、`recent_trigger_events`、`scene_constraints`）。
-   - **验收示例**：若目标为「主角研究异能并尝试使用」，则至少应显式提出：`current_inventory`（当前物品）、`power_rules`（异能规则边界）、`memory_fact` 或自定义槽如 `recent_power_activations`（最近触发记录）、`scene_constraints`（场景限制）等中的若干项，并配合 `must_verify_facts` 与 `preferred_tools`（如 `character_inventory`）。
+   - 续写或指定章节号时，**必须**在 `required_slots` 中体现承接需求（如 `chapter_neighborhood`、`story_state`、`timeline`、`foreshadowing` 的组合），并在 `must_verify_facts` 中列出与前几章相关的可核验点。
+   - **验收示例**：若目标为「主角研究异能并尝试使用」，至少应包含：`current_inventory` 或 `power_rules`、`timeline` 等中的若干项，并配合 `must_verify_facts` 与 `preferred_tools`（如 `get_character_inventory`、`search_project_memory_vectors`）。
 
 # Bootstrap JSON：知识合同（必选键）
 
@@ -72,8 +105,8 @@
 
 {
 "plan_summary": "用一句话概括整个计划的逻辑流",
-"global_required_slots": ["可选：跨步骤通用槽位，snake_case"],
-"global_preferred_tools": ["可选：如 character_inventory"],
+"global_required_slots": ["可选：跨步骤通用槽位，须为规范槽位之一"],
+"global_preferred_tools": ["可选：仅白名单四字工具名"],
 "steps": [
 {
 "step_id": 1,

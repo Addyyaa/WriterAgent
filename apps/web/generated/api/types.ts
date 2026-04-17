@@ -156,6 +156,11 @@ export interface MetricsJson {
     delivery_success_total: number;
     delivery_dead_total: number;
   };
+  /** 动态规划器强/弱 schema 路径计数（API 进程内 metrics） */
+  planner?: {
+    by_event: Record<string, number>;
+    by_workflow_event: Record<string, number>;
+  };
 }
 
 export interface RunWsEvent {

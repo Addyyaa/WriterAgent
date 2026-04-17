@@ -2027,3 +2027,339 @@ httpx.RemoteProtocolError: Server disconnected without sending a response.
 2026-04-17 07:26:08,309 [INFO] packages.workflows.orchestration.service - step done run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1133 key=style_alignment latency=49982ms
 2026-04-17 07:26:08,328 [INFO] packages.workflows.orchestration.service - step start run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1134 key=writer_draft type=workflow
 2026-04-17 07:26:09,471 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "writer_agent", "step_key": "writer_draft", "context_tier": "generative", "raw_state_keys": ["chapter_memory", "character_alignment", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "story_assets", "style_alignment", "world_alignment", "writer_context_slice", "writer_evidence_pack", "writer_focus"], "projected_state_keys": ["chapter_memory", "character_alignment", "outline_generation", "plot_alignment", "retrieval_context", "style_alignment", "world_alignment", "writer_context_slice", "writer_evidence_pack", "writer_focus"], "dependency_keys": ["outline_generation", "plot_alignment", "character_alignment", "world_alignment", "style_alignment", "retrieval_context", "chapter_memory", "writer_focus", "writer_context_slice", "writer_evidence_pack"], "retrieval_mode": "compact_items", "payload_size_chars": 41641, "payload_chunk_chars": {"project": 9592, "outline": 2260, "state": 20411, "retrieval": 4604, "retrieval_decision": 4604, "state.outline_generation": 1629, "state.plot_alignment": 2051, "state.character_alignment": 926, "state.world_alignment": 2328, "state.style_alignment": 1421, "state.retrieval_context": 2630, "state.chapter_memory": 802, "state.writer_focus": 878, "state.writer_context_slice": 7428, "state.writer_evidence_pack": 94}}
+2026-04-17 07:30:29,736 [INFO] packages.workflows.orchestration.service - step done run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1134 key=writer_draft latency=261409ms
+2026-04-17 07:30:29,749 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-17 07:31:43,796 [INFO] packages.workflows.orchestration.service - claimed run c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 (workflow=writing_full)
+2026-04-17 07:31:43,827 [INFO] packages.workflows.orchestration.service - execute_run start run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 07:31:43,873 [INFO] packages.workflows.orchestration.service - step start run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1135 key=consistency_review type=workflow
+2026-04-17 07:31:48,481 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "consistency_agent", "step_key": "chapter_audit", "context_tier": "strict_review", "raw_state_keys": ["chapter_draft_audit", "review_context", "review_contract", "review_evidence_pack", "review_focus"], "projected_state_keys": ["chapter_draft_audit", "review_context", "review_contract", "review_evidence_pack", "review_focus"], "dependency_keys": ["review_contract", "review_focus", "review_context", "review_evidence_pack", "chapter_draft_audit"], "retrieval_mode": "compact_items", "payload_size_chars": 29650, "payload_chunk_chars": {"project": 9592, "state": 6779, "retrieval": 6558, "retrieval_decision": 6558, "state.review_contract": 304, "state.review_focus": 341, "state.review_context": 2891, "state.review_evidence_pack": 724, "state.chapter_draft_audit": 2409}}
+2026-04-17 07:33:10,550 [INFO] packages.workflows.orchestration.service - step done run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1135 key=consistency_review latency=86676ms
+2026-04-17 07:33:10,568 [INFO] packages.workflows.orchestration.service - step start run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1136 key=writer_revision type=workflow
+2026-04-17 07:33:11,699 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "writer_agent", "step_key": "writer_revision", "context_tier": "generative", "raw_state_keys": ["character_alignment", "consistency_review", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "revision_chapter", "revision_context_slice", "revision_evidence_pack", "revision_focus", "style_alignment", "world_alignment", "writer_draft"], "projected_state_keys": ["consistency_review", "revision_chapter", "revision_context_slice", "revision_evidence_pack", "revision_focus"], "dependency_keys": ["revision_chapter", "consistency_review", "revision_focus", "revision_context_slice", "revision_evidence_pack"], "retrieval_mode": "compact_items", "payload_size_chars": 28938, "payload_chunk_chars": {"project": 9592, "state": 5080, "retrieval": 7058, "retrieval_decision": 7058, "state.revision_chapter": 2363, "state.consistency_review": 1230, "state.revision_focus": 338, "state.revision_context_slice": 366, "state.revision_evidence_pack": 661}}
+2026-04-17 07:34:52,833 [INFO] packages.workflows.orchestration.service - step done run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1136 key=writer_revision latency=102264ms
+2026-04-17 07:34:52,864 [INFO] packages.workflows.orchestration.service - step start run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1137 key=persist_artifacts type=agent
+2026-04-17 07:34:52,900 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "writer_agent", "step_key": "persist_artifacts", "context_tier": "generative", "raw_state_keys": ["character_alignment", "consistency_review", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "style_alignment", "world_alignment", "writer_draft", "writer_revision"], "projected_state_keys": ["consistency_review", "writer_draft", "writer_revision"], "dependency_keys": ["writer_revision", "writer_draft", "consistency_review"], "retrieval_mode": "none", "payload_size_chars": 25149, "payload_chunk_chars": {"project": 9592, "outline": 2260, "state": 13162, "state.writer_revision": 8042, "state.writer_draft": 3812, "state.consistency_review": 1245}}
+2026-04-17 07:36:37,922 [INFO] packages.workflows.orchestration.service - step done run=c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 step=1137 key=persist_artifacts latency=105057ms
+2026-04-17 07:36:37,961 [INFO] packages.workflows.orchestration.service - run c6eb68a8-6ab4-4d1b-be03-2fe5a7fe2811 completed latency=294122ms
+2026-04-17 07:36:37,983 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-17 07:38:36,249 [INFO] packages.workflows.orchestration.service - claimed run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 (workflow=writing_full)
+2026-04-17 07:38:36,250 [INFO] packages.workflows.orchestration.service - execute_run start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 07:38:36,318 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1138 key=planner_bootstrap type=agent
+2026-04-17 07:38:36,378 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "planner_agent", "step_key": "planner_bootstrap", "context_tier": "planning", "raw_state_keys": [], "projected_state_keys": [], "dependency_keys": [], "retrieval_mode": "none", "payload_size_chars": 9707, "payload_chunk_chars": {"project": 9592, "state": 2}}
+2026-04-17 07:39:39,099 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1138 key=planner_bootstrap latency=62779ms
+2026-04-17 07:39:39,116 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1139 key=retrieval_context type=agent
+2026-04-17 07:39:39,141 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "retrieval_agent", "step_key": "retrieval_context", "context_tier": "planning", "raw_state_keys": ["planner_bootstrap"], "projected_state_keys": ["planner_bootstrap"], "dependency_keys": ["planner_bootstrap"], "retrieval_mode": "compact_items", "payload_size_chars": 13659, "payload_chunk_chars": {"project": 9592, "state": 3617, "retrieval": 143, "retrieval_decision": 143, "state.planner_bootstrap": 3594}}
+2026-04-17 07:40:24,140 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1139 key=retrieval_context latency=45023ms
+2026-04-17 07:40:24,154 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1140 key=outline_generation type=workflow
+2026-04-17 07:45:43,310 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1140 key=outline_generation latency=319156ms
+2026-04-17 07:45:43,325 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1141 key=plot_alignment type=agent
+2026-04-17 07:45:43,348 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "plot_agent", "step_key": "plot_alignment", "context_tier": "generative", "raw_state_keys": ["outline_generation", "planner_bootstrap", "retrieval_context"], "projected_state_keys": ["outline_generation", "retrieval_context"], "dependency_keys": ["outline_generation", "retrieval_context"], "retrieval_mode": "summary_only", "payload_size_chars": 17779, "payload_chunk_chars": {"project": 9592, "outline": 2063, "state": 2722, "retrieval": 1618, "retrieval_decision": 1618, "state.outline_generation": 1403, "state.retrieval_context": 1272}}
+2026-04-17 07:48:52,766 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1141 key=plot_alignment latency=189440ms
+2026-04-17 07:48:52,784 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1142 key=character_alignment type=agent
+2026-04-17 07:48:52,812 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "character_agent", "step_key": "character_alignment", "context_tier": "generative", "raw_state_keys": ["outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context"], "projected_state_keys": ["outline_generation", "retrieval_context"], "dependency_keys": ["outline_generation", "retrieval_context"], "retrieval_mode": "summary_only", "payload_size_chars": 16330, "payload_chunk_chars": {"project": 9592, "outline": 2063, "state": 1258, "retrieval": 1618, "retrieval_decision": 1618, "state.outline_generation": 719, "state.retrieval_context": 492}}
+2026-04-17 07:49:45,102 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1142 key=character_alignment latency=52317ms
+2026-04-17 07:49:45,118 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1143 key=world_alignment type=agent
+2026-04-17 07:49:45,149 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "world_agent", "step_key": "world_alignment", "context_tier": "generative", "raw_state_keys": ["character_alignment", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context"], "projected_state_keys": ["outline_generation", "retrieval_context"], "dependency_keys": ["outline_generation", "retrieval_context"], "retrieval_mode": "compact_items", "payload_size_chars": 17411, "payload_chunk_chars": {"project": 9592, "outline": 2063, "state": 2325, "retrieval": 1631, "retrieval_decision": 1631, "state.outline_generation": 719, "state.retrieval_context": 1559}}
+2026-04-17 07:50:44,587 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1143 key=world_alignment latency=59468ms
+2026-04-17 07:50:44,597 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1144 key=style_alignment type=agent
+2026-04-17 07:50:44,621 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "style_agent", "step_key": "style_alignment", "context_tier": "generative", "raw_state_keys": ["character_alignment", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "world_alignment"], "projected_state_keys": ["outline_generation", "retrieval_context"], "dependency_keys": ["outline_generation", "retrieval_context"], "retrieval_mode": "summary_only", "payload_size_chars": 16318, "payload_chunk_chars": {"project": 9592, "outline": 2063, "state": 1258, "retrieval": 1618, "retrieval_decision": 1618, "state.outline_generation": 719, "state.retrieval_context": 492}}
+2026-04-17 07:52:09,331 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1144 key=style_alignment latency=84733ms
+2026-04-17 07:52:09,353 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1145 key=writer_draft type=workflow
+2026-04-17 07:52:10,282 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "writer_agent", "step_key": "writer_draft", "context_tier": "generative", "raw_state_keys": ["chapter_memory", "character_alignment", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "story_assets", "style_alignment", "world_alignment", "writer_context_slice", "writer_evidence_pack", "writer_focus"], "projected_state_keys": ["chapter_memory", "character_alignment", "outline_generation", "plot_alignment", "retrieval_context", "style_alignment", "world_alignment", "writer_context_slice", "writer_evidence_pack", "writer_focus"], "dependency_keys": ["outline_generation", "plot_alignment", "character_alignment", "world_alignment", "style_alignment", "retrieval_context", "chapter_memory", "writer_focus", "writer_context_slice", "writer_evidence_pack"], "retrieval_mode": "compact_items", "payload_size_chars": 38818, "payload_chunk_chars": {"project": 9592, "outline": 2063, "state": 18143, "retrieval": 4425, "retrieval_decision": 4425, "state.outline_generation": 1403, "state.plot_alignment": 1883, "state.character_alignment": 1451, "state.world_alignment": 2339, "state.style_alignment": 908, "state.retrieval_context": 2339, "state.chapter_memory": 918, "state.writer_focus": 888, "state.writer_context_slice": 5696, "state.writer_evidence_pack": 94}}
+2026-04-17 07:54:29,212 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1145 key=writer_draft latency=139858ms
+2026-04-17 07:54:29,226 [ERROR] packages.workflows.orchestration.service - run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 failed: TimeoutError: workflow run 超时（>900s）
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 964, in _execute_run
+    self._execute_steps_loop(
+    ~~~~~~~~~~~~~~~~~~~~~~~~^
+        row.id,
+        ^^^^^^^
+        evaluation_run_id=evaluation_run.id if evaluation_run is not None else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        run_started_at=started_at,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1156, in _execute_steps_loop
+    raise TimeoutError(
+        f"workflow run 超时（>{self.runtime_config.workflow_run_timeout_seconds}s）"
+    )
+TimeoutError: workflow run 超时（>900s）
+2026-04-17 07:54:29,232 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-17 07:54:53,900 [INFO] packages.workflows.orchestration.service - claimed run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 (workflow=writing_full)
+2026-04-17 07:54:53,901 [INFO] packages.workflows.orchestration.service - execute_run start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 07:54:53,912 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1146 key=consistency_review type=workflow
+2026-04-17 07:54:53,959 [ERROR] packages.workflows.orchestration.service - step failed run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1146 key=consistency_review: consistency_review 缺少 chapter_id
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1281, in _execute_single_step
+    output = self._dispatch_step(
+        row=row,
+    ...<3 lines>...
+        skill_warnings=skill_warnings,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1376, in _dispatch_step
+    return self._run_consistency_step(row=row, step=step, raw_state=raw_state)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 2177, in _run_consistency_step
+    raise RuntimeError("consistency_review 缺少 chapter_id")
+RuntimeError: consistency_review 缺少 chapter_id
+2026-04-17 07:54:54,008 [ERROR] packages.workflows.orchestration.service - run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 failed: RuntimeError: consistency_review 缺少 chapter_id
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 964, in _execute_run
+    self._execute_steps_loop(
+    ~~~~~~~~~~~~~~~~~~~~~~~~^
+        row.id,
+        ^^^^^^^
+        evaluation_run_id=evaluation_run.id if evaluation_run is not None else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        run_started_at=started_at,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1184, in _execute_steps_loop
+    self._execute_single_step(run_id, step.id, evaluation_run_id=evaluation_run_id)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1281, in _execute_single_step
+    output = self._dispatch_step(
+        row=row,
+    ...<3 lines>...
+        skill_warnings=skill_warnings,
+    )
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1376, in _dispatch_step
+    return self._run_consistency_step(row=row, step=step, raw_state=raw_state)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 2177, in _run_consistency_step
+    raise RuntimeError("consistency_review 缺少 chapter_id")
+RuntimeError: consistency_review 缺少 chapter_id
+2026-04-17 07:54:54,019 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-17 07:54:57,085 [INFO] writeragent.worker - auto_worker_tick processed=0
+2026-04-17 07:55:02,155 [INFO] writeragent.worker - auto_worker_tick processed=0
+2026-04-17 07:55:07,212 [INFO] writeragent.worker - auto_worker_tick processed=0
+2026-04-17 07:56:57,512 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 07:57:42,379 [INFO] packages.workflows.orchestration.service - claimed run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 (workflow=writing_full)
+2026-04-17 07:57:42,379 [INFO] packages.workflows.orchestration.service - execute_run start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 07:57:42,397 [ERROR] packages.workflows.orchestration.service - run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 failed: RuntimeError: 步骤失败: consistency_review
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 964, in _execute_run
+    self._execute_steps_loop(
+    ~~~~~~~~~~~~~~~~~~~~~~~~^
+        row.id,
+        ^^^^^^^
+        evaluation_run_id=evaluation_run.id if evaluation_run is not None else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        run_started_at=started_at,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1173, in _execute_steps_loop
+    raise RuntimeError(f"步骤失败: {failed[0].step_key}")
+RuntimeError: 步骤失败: consistency_review
+2026-04-17 07:57:42,407 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-17 07:57:47,458 [INFO] writeragent.worker - auto_worker_tick processed=0
+2026-04-17 07:57:52,595 [INFO] writeragent.worker - auto_worker_tick processed=0
+2026-04-17 07:57:53,171 [INFO] writeragent.worker - auto_worker_tick processed=0
+2026-04-17 07:58:18,314 [INFO] packages.workflows.orchestration.service - claimed run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 (workflow=writing_full)
+2026-04-17 07:58:18,314 [INFO] packages.workflows.orchestration.service - execute_run start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 07:58:18,327 [ERROR] packages.workflows.orchestration.service - run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 failed: RuntimeError: 步骤失败: consistency_review
+Traceback (most recent call last):
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 964, in _execute_run
+    self._execute_steps_loop(
+    ~~~~~~~~~~~~~~~~~~~~~~~~^
+        row.id,
+        ^^^^^^^
+        evaluation_run_id=evaluation_run.id if evaluation_run is not None else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        run_started_at=started_at,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shenfeng/Project/WriterAgent/packages/workflows/orchestration/service.py", line 1173, in _execute_steps_loop
+    raise RuntimeError(f"步骤失败: {failed[0].step_key}")
+RuntimeError: 步骤失败: consistency_review
+2026-04-17 07:58:18,334 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-17 07:58:55,922 [INFO] packages.workflows.orchestration.service - claimed run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 (workflow=writing_full)
+2026-04-17 07:58:55,923 [INFO] packages.workflows.orchestration.service - execute_run start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 07:58:55,945 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1146 key=consistency_review type=workflow
+2026-04-17 07:59:01,082 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "consistency_agent", "step_key": "chapter_audit", "context_tier": "strict_review", "raw_state_keys": ["chapter_draft_audit", "review_context", "review_contract", "review_evidence_pack", "review_focus"], "projected_state_keys": ["chapter_draft_audit", "review_context", "review_contract", "review_evidence_pack", "review_focus"], "dependency_keys": ["review_contract", "review_focus", "review_context", "review_evidence_pack", "chapter_draft_audit"], "retrieval_mode": "compact_items", "payload_size_chars": 33253, "payload_chunk_chars": {"project": 9592, "state": 8764, "retrieval": 7367, "retrieval_decision": 7367, "state.review_contract": 304, "state.review_focus": 347, "state.review_context": 3852, "state.review_evidence_pack": 918, "state.chapter_draft_audit": 3233}}
+2026-04-17 08:03:24,418 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:03:25,511 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:03:31,322 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:12:02,756 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:12:03,650 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:12:06,949 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:12:10,283 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:12:44,292 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:12:47,376 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:12:51,684 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:00,152 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:02,736 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:03,907 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:05,398 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:06,507 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:08,655 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:11,328 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:19,391 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:25,273 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:26,892 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:13:49,606 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:14:06,473 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:14:06,605 [INFO] packages.workflows.orchestration.service - recovered 1 stale runs (lease/heartbeat)
+2026-04-17 08:19:34,673 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:19:44,980 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:20:06,930 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:20:07,990 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:20:09,305 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:20:10,703 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:20:12,975 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:20:14,158 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:20:15,712 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:20:24,767 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:37,067 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:49,131 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:50,067 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:51,109 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:54,066 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:55,176 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:56,157 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:57,136 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:24:59,895 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:03,806 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:06,511 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:16,948 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:18,098 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:19,127 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:20,151 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:39,747 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:40,737 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:25:57,168 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:26:13,339 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:33:23,851 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:33:27,080 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:33:28,061 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:33:39,616 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:33:40,439 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:34:01,121 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:34:02,026 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:34:03,052 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:34:13,953 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:34:23,109 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:34:29,434 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:34:31,701 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:09,712 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:14,345 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:15,422 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:16,904 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:19,202 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:20,999 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:27,025 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:28,405 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:29,905 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:31,447 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:50,766 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:54,470 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:54:58,681 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:55:17,688 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:55:19,744 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:55:20,946 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:55:27,424 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:55:42,444 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:55:43,457 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:55:49,256 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 08:55:50,985 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:01:10,740 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:01:13,408 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:01:24,466 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:10:26,488 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:10:27,346 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:10:28,868 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:10:55,305 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:11:09,216 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:11:10,202 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:11:12,765 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:11:14,940 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:11:19,313 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:11:24,087 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:11:37,388 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:23:13,603 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:23:47,769 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:24:26,966 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:24:36,291 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:24:52,761 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:24:54,127 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:26:07,667 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:26:10,181 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:26:11,117 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:26:12,169 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:26:17,704 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:26:20,123 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:26:26,077 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:27:18,487 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:27:30,728 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:30:36,778 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:30:51,845 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:31:03,460 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:31:23,385 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:31:24,560 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:32:09,156 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:33:14,543 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:33:33,085 [INFO] packages.workflows.orchestration.service - claimed run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 (workflow=writing_full)
+2026-04-17 09:33:33,085 [INFO] packages.workflows.orchestration.service - execute_run start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 09:33:33,119 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1146 key=consistency_review type=workflow
+2026-04-17 09:33:51,439 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "consistency_agent", "step_key": "chapter_audit", "context_tier": "strict_review", "raw_state_keys": ["chapter_draft_audit", "review_context", "review_contract", "review_evidence_pack", "review_focus"], "projected_state_keys": ["chapter_draft_audit", "review_context", "review_contract", "review_evidence_pack", "review_focus"], "dependency_keys": ["review_contract", "review_focus", "review_context", "review_evidence_pack", "chapter_draft_audit"], "retrieval_mode": "compact_items", "payload_size_chars": 29359, "payload_chunk_chars": {"project": 9592, "state": 8764, "retrieval": 5420, "retrieval_decision": 5420, "state.review_contract": 304, "state.review_focus": 347, "state.review_context": 3852, "state.review_evidence_pack": 918, "state.chapter_draft_audit": 3233}}
+2026-04-17 09:43:14,789 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:43:52,458 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:44:05,476 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:44:25,503 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:44:26,468 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:44:32,480 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:44:40,624 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:44:46,520 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:44:52,162 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:45:14,606 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:46:06,292 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 09:58:10,081 [INFO] packages.workflows.orchestration.service - claimed run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 (workflow=writing_full)
+2026-04-17 09:58:10,081 [INFO] packages.workflows.orchestration.service - execute_run start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 09:58:10,173 [INFO] packages.workflows.orchestration.service - run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 completed latency=36ms
+2026-04-17 09:58:10,205 [INFO] writeragent.worker - auto_worker_tick processed=1
+2026-04-17 10:04:30,881 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:10:08,776 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:10:11,804 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:10:13,372 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:10:21,767 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:10:23,178 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:10:27,061 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:10:29,345 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:12:08,150 [INFO] packages.workflows.orchestration.service - claimed run e9aebeae-1aca-4e6b-b650-be2f7c1acc82 (workflow=writing_full)
+2026-04-17 10:12:08,150 [INFO] packages.workflows.orchestration.service - execute_run start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 project=4027f433-9e83-4857-92fa-78ba0f600618 workflow=writing_full
+2026-04-17 10:12:08,176 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1146 key=consistency_review type=workflow
+2026-04-17 10:12:29,163 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "consistency_agent", "step_key": "chapter_audit", "context_tier": "strict_review", "raw_state_keys": ["chapter_draft_audit", "review_context", "review_contract", "review_evidence_pack", "review_focus"], "projected_state_keys": ["chapter_draft_audit", "review_context", "review_contract", "review_evidence_pack", "review_focus"], "dependency_keys": ["review_contract", "review_focus", "review_context", "review_evidence_pack", "chapter_draft_audit"], "retrieval_mode": "compact_items", "payload_size_chars": 29517, "payload_chunk_chars": {"project": 9592, "state": 10302, "retrieval": 4730, "retrieval_decision": 4730, "state.review_contract": 473, "state.review_focus": 347, "state.review_context": 3852, "state.review_evidence_pack": 2287, "state.chapter_draft_audit": 3233}}
+2026-04-17 10:22:29,622 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1146 key=consistency_review latency=621446ms
+2026-04-17 10:22:29,654 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1147 key=writer_revision type=workflow
+2026-04-17 10:22:30,638 [INFO] packages.workflows.orchestration.service - step done run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1147 key=writer_revision latency=982ms
+2026-04-17 10:22:30,679 [INFO] packages.workflows.orchestration.service - step start run=e9aebeae-1aca-4e6b-b650-be2f7c1acc82 step=1148 key=persist_artifacts type=agent
+2026-04-17 10:22:30,776 [INFO] packages.workflows.orchestration.prompt_payload_assembler - {"event": "prompt_payload_built", "role_id": "writer_agent", "step_key": "persist_artifacts", "context_tier": "generative", "raw_state_keys": ["character_alignment", "consistency_review", "outline_generation", "planner_bootstrap", "plot_alignment", "retrieval_context", "style_alignment", "world_alignment", "writer_draft", "writer_revision"], "projected_state_keys": ["consistency_review", "writer_draft", "writer_revision"], "dependency_keys": ["writer_revision", "writer_draft", "consistency_review"], "retrieval_mode": "none", "payload_size_chars": 16532, "payload_chunk_chars": {"project": 9592, "outline": 2063, "state": 4742, "state.writer_revision": 138, "state.writer_draft": 4467, "state.consistency_review": 74}}
+2026-04-17 10:23:08,921 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:23:22,230 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:23:27,751 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:23:29,126 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:23:54,069 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:23:55,731 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:23:57,335 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:23:58,359 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:24:18,532 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:53:49,601 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 10:53:49,799 [INFO] packages.workflows.orchestration.service - recovered 1 stale runs (lease/heartbeat)
+2026-04-17 11:14:40,572 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:14:41,440 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:14:48,375 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:14:51,347 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:14:54,496 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:15:11,032 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:15:13,914 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:15:25,341 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:15:27,489 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:15:28,352 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:16:48,995 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:16:49,946 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:16:50,952 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent
+2026-04-17 11:16:55,830 [INFO] writeragent.worker - API worker 文件日志已启用 path=/Users/shenfeng/Project/WriterAgent/data/worker.log level=INFO repo_root=/Users/shenfeng/Project/WriterAgent

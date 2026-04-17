@@ -28,6 +28,7 @@ from packages.workflows.consistency_review.evidence_tool_loop import (
 )
 from packages.workflows.consistency_review.retrieval_dedup import (
     dedupe_retrieval_bundle_against_evidence,
+    sanitize_consistency_retrieval_bundle,
 )
 from packages.workflows.orchestration.prompt_payload_assembler import PromptPayloadAssembler
 
@@ -160,9 +161,20 @@ class ConsistencyReviewWorkflowService:
 
         chapter_no_raw = getattr(chapter, "chapter_no", None)
         chapter_no = int(chapter_no_raw) if chapter_no_raw is not None else None
-        story_context = self.story_context_provider.load(
+        chapter_text_preview = str(chapter.content or "").strip()[:12000]
+        relevance_blob = " ".join(
+            x
+            for x in (
+                chapter_text_preview,
+                str(chapter.title or ""),
+                str(chapter.summary or ""),
+            )
+            if x
+        )
+        story_context = self.story_context_provider.load_focused(
             project_id=request.project_id,
             chapter_no=chapter_no,
+            relevance_blob=relevance_blob,
         )
 
         chapter_payload = {
@@ -199,6 +211,7 @@ class ConsistencyReviewWorkflowService:
             chapter_no=chapter_no,
             story_context=story_context,
             review_focus=review_focus,
+            review_context_slice=review_context_slice,
         )
         review_contract = build_review_contract()
         project_ctx = dict(request.project_snapshot or {})
@@ -211,6 +224,7 @@ class ConsistencyReviewWorkflowService:
             retrieval_bundle,
             review_context_slice,
         )
+        retrieval_bundle = sanitize_consistency_retrieval_bundle(retrieval_bundle)
 
         raw_state: dict[str, dict[str, Any]] = {
             "review_contract": {"view": review_contract},

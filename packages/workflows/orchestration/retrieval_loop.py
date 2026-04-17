@@ -9,6 +9,11 @@ from uuid import uuid4
 
 from packages.core.context_bundle_decision import mirror_context_bundle_lists_from_summary
 from packages.core.utils import estimate_token_count
+from packages.workflows.orchestration.planner_executable_tools import source_boosts_for_executable_tools
+from packages.workflows.orchestration.planner_slot_vocabulary import (
+    normalize_planner_slot,
+    normalize_planner_slots_list,
+)
 from packages.workflows.orchestration.runtime_config import OrchestratorRuntimeConfig
 from packages.workflows.orchestration.types import (
     EvidenceCoverageReport,
@@ -43,6 +48,8 @@ class RetrievalLoopRequest:
     planner_preferred_tools: list[str] | None = None
     # 库存类槽位结构化工具（CharacterInventoryTool）
     focus_character_id: str | None = None
+    # True：仅使用 planner_slot_hints + must_have_slots，不并入 _workflow_base_slots（修订 issue-scoped 用）
+    slot_merge_skip_workflow_base: bool = False
 
 
 @dataclass(frozen=True)
@@ -226,6 +233,7 @@ class RetrievalLoopService:
             planner_hints=request.planner_slot_hints,
             explicit_extra=request.must_have_slots,
             merge_workflow_defaults_when_planner_nonempty=merge_wf,
+            skip_workflow_base=bool(request.slot_merge_skip_workflow_base),
         )
         structured_items = self._build_structured_evidence(
             request=request,
@@ -946,7 +954,8 @@ class RetrievalLoopService:
         elif wf == "consistency_review":
             slots = ["character", "world_rule", "timeline", "foreshadowing", "conflict_evidence"]
         elif wf == "revision":
-            slots = ["character", "world_rule", "timeline", "foreshadowing", "conflict_evidence", "chapter_neighborhood"]
+            # 与 orchestrator revision 步对齐：只拉冲突/证据类槽位，避免把整书设定池灌进修订上下文
+            slots = ["conflict_evidence"]
         else:
             slots = [
                 "project_goal",
@@ -967,15 +976,6 @@ class RetrievalLoopService:
         return slots
 
     @classmethod
-    def _dedupe_slots(cls, items: list[str] | None) -> list[str]:
-        out: list[str] = []
-        for raw in list(items or []):
-            slot = str(raw or "").strip().lower().replace(" ", "_").replace("-", "_")
-            if slot and slot not in out:
-                out.append(slot)
-        return out
-
-    @classmethod
     def _merge_inference_slots(
         cls,
         *,
@@ -984,15 +984,24 @@ class RetrievalLoopService:
         planner_hints: list[str] | None,
         explicit_extra: list[str] | None,
         merge_workflow_defaults_when_planner_nonempty: bool = True,
+        skip_workflow_base: bool = False,
     ) -> list[str]:
         """planner 槽位优先，其次编排显式追加；若 planner 非空且不允许合并，则不再追加 workflow 默认。"""
-        base = cls._workflow_base_slots(workflow_type=workflow_type, writing_goal=writing_goal)
         merged: list[str] = []
         for chunk in (planner_hints, explicit_extra):
-            for slot in cls._dedupe_slots(chunk):
-                if slot not in merged:
+            for raw in list(chunk or []):
+                slot = normalize_planner_slot(str(raw))
+                if slot and slot not in merged:
                     merged.append(slot)
-        planner_nonempty = bool(cls._dedupe_slots(planner_hints))
+        if skip_workflow_base:
+            if merged:
+                return merged
+            fb = normalize_planner_slots_list(list(explicit_extra or [])) or normalize_planner_slots_list(
+                list(planner_hints or [])
+            )
+            return fb or ["conflict_evidence"]
+        base = cls._workflow_base_slots(workflow_type=workflow_type, writing_goal=writing_goal)
+        planner_nonempty = bool(normalize_planner_slots_list(list(planner_hints or [])))
         if planner_nonempty and not merge_workflow_defaults_when_planner_nonempty:
             return merged
         for slot in base:
@@ -1050,25 +1059,7 @@ class RetrievalLoopService:
         preferred_tools: list[str] | None = None,
     ) -> list[str]:
         allowed = set(source_types)
-        boosted: list[str] = []
-        for raw in list(preferred_tools or []):
-            t = str(raw or "").strip().lower().replace("-", "_")
-            if t in ("character_inventory", "inventory_tool", "characterinventorytool"):
-                if "character_inventory" in allowed:
-                    boosted.append("character_inventory")
-            elif t in (
-                "memory",
-                "project_memory",
-                "vector_memory",
-                "long_term_search",
-                "memory_search",
-            ):
-                if "memory_fact" in allowed:
-                    boosted.append("memory_fact")
-            elif t in ("story_state", "story_state_snapshot", "snapshot"):
-                if "story_state_snapshot" in allowed:
-                    boosted.append("story_state_snapshot")
-        boosted = list(dict.fromkeys(boosted))
+        boosted = source_boosts_for_executable_tools(preferred_tools, allowed=allowed)
 
         def _take(dest: list[str], cand: str) -> bool:
             if cand in allowed and cand not in dest:

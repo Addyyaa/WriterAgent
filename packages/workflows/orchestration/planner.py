@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -8,12 +9,16 @@ from typing import Any
 from packages.llm.text_generation.base import TextGenerationRequest
 from packages.llm.text_generation.openai_compatible import OpenAICompatibleTextProvider
 from packages.llm.text_generation.runtime_config import TextGenerationRuntimeConfig
+from packages.llm.text_generation.schema_errors import ResponseSchemaValidationError
 from packages.schemas.dynamic_planner_output import (
     DYNAMIC_PLANNER_INPUT_SCHEMA,
     dynamic_planner_output_schema,
 )
+from packages.observability import record_planner_event
 from packages.workflows.orchestration.runtime_config import PlannerRuntimeConfig
 from packages.workflows.orchestration.types import PlannerNode, PlannerPlan, WorkflowRunRequest
+
+logger = logging.getLogger(__name__)
 
 
 def _str_list_prop(raw: Any) -> list[str]:
@@ -115,7 +120,7 @@ class MockDynamicPlanner(DynamicPlanner):
                 workflow_type="character_alignment",
                 agent_name="character_agent",
                 role_id="character_agent",
-                depends_on=["outline_generation"],
+                depends_on=["plot_alignment"],
             ),
             PlannerNode(
                 step_key="world_alignment",
@@ -123,7 +128,7 @@ class MockDynamicPlanner(DynamicPlanner):
                 workflow_type="world_alignment",
                 agent_name="world_agent",
                 role_id="world_agent",
-                depends_on=["outline_generation"],
+                depends_on=["plot_alignment"],
             ),
             PlannerNode(
                 step_key="style_alignment",
@@ -152,7 +157,7 @@ class MockDynamicPlanner(DynamicPlanner):
                     "chapter_neighborhood",
                     "current_inventory",
                 ],
-                preferred_tools=["character_inventory"],
+                preferred_tools=["get_character_inventory"],
                 must_verify_facts=[],
                 allowed_assumptions=[],
                 fallback_when_missing="关键设定缺失时标注待补，不写死为既定事实",
@@ -212,15 +217,16 @@ class OpenAICompatibleDynamicPlanner(DynamicPlanner):
             "context": context_json,
         }
 
-        try:
-            llm_cfg = TextGenerationRuntimeConfig.from_env()
-            provider = OpenAICompatibleTextProvider(
-                api_key=self.config.api_key,
-                model=self.config.model,
-                base_url=self.config.base_url,
-                timeout_seconds=self.config.timeout_seconds,
-                compat_mode=llm_cfg.compat_mode,
-            )
+        llm_cfg = TextGenerationRuntimeConfig.from_env()
+        provider = OpenAICompatibleTextProvider(
+            api_key=self.config.api_key,
+            model=self.config.model,
+            base_url=self.config.base_url,
+            timeout_seconds=self.config.timeout_seconds,
+            compat_mode=llm_cfg.compat_mode,
+        )
+
+        def _llm_plan(strict_node_knowledge: bool) -> PlannerPlan | None:
             llm_result = provider.generate(
                 TextGenerationRequest(
                     system_prompt=self.system_prompt,
@@ -232,7 +238,7 @@ class OpenAICompatibleDynamicPlanner(DynamicPlanner):
                     input_schema_name="dynamic_planner_input",
                     input_schema_strict=True,
                     response_schema=dynamic_planner_output_schema(
-                        strict_node_knowledge=bool(self.config.strict_node_knowledge_schema),
+                        strict_node_knowledge=bool(strict_node_knowledge),
                     ),
                     response_schema_name="dynamic_planner_output",
                     response_schema_strict=True,
@@ -246,21 +252,131 @@ class OpenAICompatibleDynamicPlanner(DynamicPlanner):
                 )
             )
             parsed = llm_result.json_data
-            nodes = []
+            nodes: list[PlannerNode] = []
             for item in parsed.get("nodes", []):
                 if not isinstance(item, dict):
                     continue
                 nodes.append(planner_node_from_dict(item))
             if not nodes:
-                return self.fallback.plan(request, context_json=context_json)
+                return None
             return PlannerPlan(
                 plan_version="llm-v1",
                 nodes=nodes,
                 retry_policy=dict(parsed.get("retry_policy") or {}),
                 fallback_policy=dict(parsed.get("fallback_policy") or {}),
             )
+
+        wf_type = str(request.workflow_type or "")
+        effective_strict = self.config.effective_strict_node_knowledge(request.workflow_type)
+        try:
+            plan = _llm_plan(effective_strict)
+            if plan is None:
+                record_planner_event("empty_nodes_mock", workflow_type=wf_type)
+                logger.warning(
+                    json.dumps(
+                        {
+                            "event": "planner_empty_nodes_fallback_mock",
+                            "workflow_type": wf_type,
+                            "strict_node_knowledge": bool(effective_strict),
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+                return self.fallback.plan(request, context_json=context_json)
+            if effective_strict:
+                record_planner_event("strict_ok", workflow_type=wf_type)
+                logger.info(
+                    json.dumps(
+                        {
+                            "event": "planner_node_knowledge_strict_ok",
+                            "workflow_type": wf_type,
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+            return plan
+        except ResponseSchemaValidationError as exc:
+            if not effective_strict:
+                if self.config.fallback_to_mock_on_error:
+                    record_planner_event("fallback_mock", workflow_type=wf_type)
+                    logger.error(
+                        json.dumps(
+                            {
+                                "event": "planner_fallback_mock",
+                                "workflow_type": wf_type,
+                                "reason": "response_schema_validation",
+                            },
+                            ensure_ascii=False,
+                        )
+                    )
+                    return self.fallback.plan(request, context_json=context_json)
+                raise
+            record_planner_event("strict_schema_failed", workflow_type=wf_type)
+            logger.warning(
+                json.dumps(
+                    {
+                        "event": "planner_node_knowledge_strict_schema_failed",
+                        "workflow_type": wf_type,
+                        "errors": list(exc.errors or [])[:8],
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            try:
+                plan = _llm_plan(False)
+                if plan is None:
+                    record_planner_event("loose_empty_nodes", workflow_type=wf_type)
+                    logger.warning(
+                        json.dumps(
+                            {"event": "planner_loose_retry_empty_nodes"},
+                            ensure_ascii=False,
+                        )
+                    )
+                    return self.fallback.plan(request, context_json=context_json)
+                record_planner_event("loose_retry_ok", workflow_type=wf_type)
+                logger.info(
+                    json.dumps(
+                        {
+                            "event": "planner_node_knowledge_loose_retry_success",
+                            "workflow_type": wf_type,
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+                return plan
+            except ResponseSchemaValidationError as exc2:
+                record_planner_event("loose_retry_failed", workflow_type=wf_type)
+                logger.error(
+                    json.dumps(
+                        {
+                            "event": "planner_node_knowledge_loose_retry_failed",
+                            "workflow_type": wf_type,
+                            "errors": list(exc2.errors or [])[:8],
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+                if self.config.fallback_to_mock_on_error:
+                    record_planner_event("fallback_mock", workflow_type=wf_type)
+                    return self.fallback.plan(request, context_json=context_json)
+                raise
+            except Exception:
+                record_planner_event("loose_retry_failed", workflow_type=wf_type)
+                logger.exception(
+                    "planner_node_knowledge_loose_retry_failed workflow_type=%s",
+                    wf_type,
+                )
+                if self.config.fallback_to_mock_on_error:
+                    record_planner_event("fallback_mock", workflow_type=wf_type)
+                    return self.fallback.plan(request, context_json=context_json)
+                raise
         except Exception:
             if self.config.fallback_to_mock_on_error:
+                record_planner_event("fallback_mock", workflow_type=wf_type)
+                logger.exception(
+                    "planner_fallback_mock workflow_type=%s",
+                    wf_type,
+                )
                 return self.fallback.plan(request, context_json=context_json)
             raise
 

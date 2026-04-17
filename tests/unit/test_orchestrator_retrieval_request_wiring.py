@@ -64,19 +64,19 @@ class TestOrchestratorRetrievalRequestWiring(unittest.TestCase):
             input_json={
                 "plan_required_slots": ["inventory"],
                 "plan_must_verify_facts": ["主角是否已暴露能力"],
-                "plan_preferred_tools": ["memory_search"],
+                "plan_preferred_tools": ["search_project_memory_vectors"],
             },
         )
         raw_state = {
             "planner_bootstrap": {
                 "view": {
                     "global_required_slots": ["power_rules"],
-                    "global_preferred_tools": ["character_inventory"],
+                    "global_preferred_tools": ["get_character_inventory"],
                     "steps": [
                         {
                             "required_slots": ["timeline"],
                             "must_verify_facts": ["失火日是否一致"],
-                            "preferred_tools": ["project_memory"],
+                            "preferred_tools": ["search_project_memory_vectors"],
                         }
                     ],
                 }
@@ -103,8 +103,8 @@ class TestOrchestratorRetrievalRequestWiring(unittest.TestCase):
         self.assertIn("inventory", blob)
         self.assertEqual(captured["focus_character_id"], "char-protagonist")
         pt = captured["planner_preferred_tools"]
-        self.assertIn("character_inventory", pt)
-        self.assertIn("memory_search", pt)
+        self.assertIn("get_character_inventory", pt)
+        self.assertIn("search_project_memory_vectors", pt)
 
     def test_retrieval_round_decision_includes_slot_query_fragments(self) -> None:
         """开放槽位时首轮 decision 带 per-slot query 片段，便于回放。"""

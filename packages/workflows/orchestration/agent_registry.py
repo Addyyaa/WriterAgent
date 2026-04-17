@@ -357,4 +357,6 @@ class AgentRegistry:
             if normalized_workflow == "revision" or normalized_step in {"writer_revision", "revision"}:
                 return "revision"
             return "draft"
+        if role_id == "character_agent":
+            return "guardrails"
         return "default"

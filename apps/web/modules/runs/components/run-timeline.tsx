@@ -506,6 +506,8 @@ export function RunTimeline({ runId }: { runId: string }) {
   );
   const [actionError, setActionError] = useState<string | null>(null);
   const cursorRef = useRef(0);
+  /** 用于检测「终结态 → 重新入队」：重试后事件序列重建，必须重置游标，避免 cursor 大于新 last_seq 时服务端立刻 run_terminal 关断。 */
+  const prevRunStatusRef = useRef<string | null>(null);
 
   const handleRetry = async () => {
     setActionLoading("retry");
@@ -540,6 +542,19 @@ export function RunTimeline({ runId }: { runId: string }) {
   };
 
   useEffect(() => {
+    const statusNow = String(data?.status || "").toLowerCase();
+    const prevStatus = prevRunStatusRef.current;
+    const wasTerminal = ["failed", "cancelled", "success"].includes(
+      prevStatus ?? "",
+    );
+    const isActive = ["queued", "running", "waiting_review"].includes(
+      statusNow,
+    );
+    if (wasTerminal && isActive) {
+      cursorRef.current = 0;
+    }
+    prevRunStatusRef.current = statusNow;
+
     let isMounted = true;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -596,9 +611,13 @@ export function RunTimeline({ runId }: { runId: string }) {
           setWsError("实时连接异常，正在尝试重连");
         };
 
-        socket.onclose = () => {
+        socket.onclose = (ev: CloseEvent) => {
           if (!isMounted) return;
           setWsState("closed");
+          // 服务端在 run 已达终结态且游标追上末尾时用 1000 + run_terminal 主动关断；若仍自动重连会形成 connect→立刻被踢→再连 的风暴。
+          if (ev.code === 1000) {
+            return;
+          }
           reconnectTimer = setTimeout(connect, 2000);
         };
       } catch (err) {
@@ -616,7 +635,7 @@ export function RunTimeline({ runId }: { runId: string }) {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (socket && socket.readyState <= 1) socket.close();
     };
-  }, [runId, refetch]);
+  }, [runId, refetch, data?.status]);
 
   const sortedSteps = useMemo(() => {
     return [...(data?.steps || [])].sort((a, b) => Number(a.id) - Number(b.id));
@@ -663,6 +682,19 @@ export function RunTimeline({ runId }: { runId: string }) {
     return { completedCount, totalExpected, pct };
   }, [sortedSteps, expectedSteps]);
 
+  /** 含「伪成功」：run 为 success 但仍有非 success/skipped 步骤时（曾错误 succeed），允许手动重试。 */
+  const showManualRetry = useMemo(() => {
+    if (!data) return false;
+    const runStatus = String(data.status || "").toLowerCase();
+    const incomplete = sortedSteps.some((s) => {
+      const st = String(s.status || "").toLowerCase();
+      return st !== "success" && st !== "skipped";
+    });
+    if (["failed", "cancelled"].includes(runStatus)) return true;
+    if (runStatus === "success" && incomplete) return true;
+    return false;
+  }, [data, sortedSteps]);
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -692,10 +724,7 @@ export function RunTimeline({ runId }: { runId: string }) {
               <RefreshCcw className="mr-1.5 h-4 w-4" />
               刷新
             </Button>
-            {data &&
-              ["failed", "cancelled"].includes(
-                String(data.status || "").toLowerCase(),
-              ) && (
+            {showManualRetry ? (
                 <Button
                   size="sm"
                   onClick={handleRetry}
@@ -708,7 +737,7 @@ export function RunTimeline({ runId }: { runId: string }) {
                   )}
                   重试
                 </Button>
-              )}
+              ) : null}
             {data &&
               ["queued", "running"].includes(
                 String(data.status || "").toLowerCase(),

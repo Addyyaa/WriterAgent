@@ -10,3 +10,10 @@ max_tokens: 24576
 
 style: character # 保持风格
 mode: default
+mode_strategies:
+  guardrails:
+    temperature: 0.55
+    max_tokens: 24576
+  audit:
+    temperature: 0.6
+    max_tokens: 24576

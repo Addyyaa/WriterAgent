@@ -260,6 +260,7 @@ class SQLAlchemyStoryContextProvider:
                 "name": row.name,
                 "role_type": row.role_type,
                 "faction": row.faction,
+                "age": getattr(row, "age", None),
                 "profile_json": row.profile_json or {},
                 "speech_style_json": row.speech_style_json or {},
                 "arc_status_json": row.arc_status_json or {},
@@ -367,7 +368,10 @@ class SQLAlchemyStoryContextProvider:
                 "name": row.name,
                 "role_type": row.role_type,
                 "faction": row.faction,
+                "age": getattr(row, "age", None),
                 "profile_json": row.profile_json or {},
+                "speech_style_json": row.speech_style_json or {},
+                "arc_status_json": row.arc_status_json or {},
                 "inventory_json": inv,
                 "wealth_json": wealth,
             }

@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from packages.workflows.orchestration.agent_output_envelope import step_agent_view
-
-_SLOT_NORMALIZE_RE = re.compile(r"[\s\-]+")
+from packages.workflows.orchestration.planner_executable_tools import normalize_preferred_tools_list
+from packages.workflows.orchestration.planner_slot_vocabulary import normalize_planner_slot
 
 
 def _norm_slot(raw: str) -> str:
-    s = str(raw or "").strip().lower()
-    if not s:
-        return ""
-    return _SLOT_NORMALIZE_RE.sub("_", s)
+    """兼容旧调用：与槽位闭集归一一致。"""
+    return normalize_planner_slot(raw)
 
 
 def _dedupe_str_list(items: list[str]) -> list[str]:
@@ -67,7 +64,7 @@ def extract_planner_preferred_tools(planner_step_output: dict[str, Any] | None) 
             t = str(item or "").strip()
             if t and t not in out:
                 out.append(t)
-    return out
+    return normalize_preferred_tools_list(out)
 
 
 def extract_planner_verify_facts(planner_step_output: dict[str, Any] | None) -> list[str]:
@@ -110,7 +107,7 @@ def extract_preferred_tools_from_step_input(step_input: dict[str, Any] | None) -
             t = str(item or "").strip()
             if t and t not in out:
                 out.append(t)
-    return out
+    return normalize_preferred_tools_list(out)
 
 
 def extract_verify_facts_from_step_input(step_input: dict[str, Any] | None) -> list[str]:
@@ -171,7 +168,7 @@ def merge_planner_preferred_tools(
         for t in chunk:
             if t not in merged:
                 merged.append(t)
-    return merged
+    return normalize_preferred_tools_list(merged)
 
 
 def planner_knowledge_meta(planner_step_output: dict[str, Any] | None) -> dict[str, Any]:

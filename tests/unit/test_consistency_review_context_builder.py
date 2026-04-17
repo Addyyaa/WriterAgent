@@ -19,6 +19,7 @@ from packages.workflows.consistency_review.context_builder import (
 )
 from packages.workflows.consistency_review.retrieval_dedup import (
     dedupe_retrieval_bundle_against_evidence,
+    sanitize_consistency_retrieval_bundle,
 )
 
 
@@ -146,6 +147,7 @@ class TestConsistencyReviewContextBuilder(unittest.TestCase):
             chapter_no=1,
             story_context=ctx,
             review_focus=focus,
+            review_context_slice=sl,
         )
         self.assertTrue(any("甲" in str(x.get("name")) for x in pack["characters_detail"]))
         allow = collect_review_fetch_allowlist(
@@ -268,6 +270,143 @@ class TestConsistencyReviewContextBuilder(unittest.TestCase):
         }
         out = dedupe_retrieval_bundle_against_evidence(bundle, rc)
         self.assertLess(len(out.get("items") or []), len(bundle.get("items") or []))
+
+    def test_review_contract_includes_passed_and_severity_policy(self) -> None:
+        c = build_review_contract()
+        self.assertIn("passed", c.get("allowed_severities") or [])
+        self.assertIn("severity_policy", c)
+
+    def test_evidence_pack_profile_audit_speech_arc(self) -> None:
+        ctx = StoryConstraintContext(
+            chapters=[],
+            characters=[
+                {
+                    "id": "c1",
+                    "name": "甲",
+                    "role_type": "主角",
+                    "faction": "北港",
+                    "profile_json": {"personality": "谨慎", "core_beliefs": "不信权威"},
+                    "speech_style_json": {"habits": "句尾常说「罢了」"},
+                    "arc_status_json": {"stage": "第二幕"},
+                    "inventory_json": {},
+                    "wealth_json": {},
+                    "effective_inventory_json": {},
+                    "effective_wealth_json": {},
+                }
+            ],
+            world_entries=[],
+            timeline_events=[],
+            foreshadowings=[],
+        )
+        focus = build_review_focus(
+            chapter_text="甲说道罢了。",
+            chapter_no=1,
+            story_context=ctx,
+            rule_issues=[],
+        )
+        sl = build_review_context_slice(
+            chapter_text="甲说道罢了。",
+            chapter_no=1,
+            story_context=ctx,
+            review_focus=focus,
+            rule_issues=[],
+        )
+        pack = build_review_evidence_pack(
+            chapter_text="甲说道罢了。",
+            chapter_no=1,
+            story_context=ctx,
+            review_focus=focus,
+            review_context_slice=sl,
+        )
+        det = (pack.get("characters_detail") or [{}])[0]
+        pa = det.get("profile_audit") or {}
+        self.assertIn("speech_habits", pa)
+        self.assertIn("arc_stage", pa)
+        self.assertIn("personality", pa)
+
+    def test_sanitize_drops_outline_like_summary_lines(self) -> None:
+        bundle = {
+            "summary": {
+                "key_facts": ["角色甲在第三章学会剑术。"],
+                "confirmed_facts": [],
+                "current_states": [],
+                "supporting_evidence": [
+                    "第一章 开端\n第二章 发展\n第三章 转折\n第四章 高潮\n第五章 结局",
+                ],
+                "information_gaps": [],
+            },
+            "items": [],
+            "meta": {},
+        }
+        out = sanitize_consistency_retrieval_bundle(bundle)
+        se = list((out.get("summary") or {}).get("supporting_evidence") or [])
+        self.assertEqual(se, [])
+
+    def test_slim_character_always_includes_inventory_cap(self) -> None:
+        ctx = StoryConstraintContext(
+            chapters=[],
+            characters=[
+                {
+                    "id": "x1",
+                    "name": "乙",
+                    "role_type": "配角",
+                    "faction": None,
+                    "age": 30,
+                    "profile_json": {"quirks": "摸鼻子"},
+                    "speech_style_json": {},
+                    "arc_status_json": {},
+                    "inventory_json": {"匕首": "铁制", "地图": "旧纸"},
+                    "wealth_json": {"铜钱": "十二枚"},
+                    "effective_inventory_json": {"匕首": "铁制", "地图": "旧纸"},
+                    "effective_wealth_json": {"铜钱": "十二枚"},
+                }
+            ],
+            world_entries=[],
+            timeline_events=[],
+            foreshadowings=[],
+        )
+        focus = build_review_focus(
+            chapter_text="乙沉默。",
+            chapter_no=1,
+            story_context=ctx,
+            rule_issues=[],
+        )
+        sl = build_review_context_slice(
+            chapter_text="乙沉默。",
+            chapter_no=1,
+            story_context=ctx,
+            review_focus=focus,
+            rule_issues=[],
+        )
+        ch0 = (sl.get("characters") or [{}])[0]
+        self.assertIn("匕首", str(ch0.get("effective_inventory_json") or {}))
+        self.assertIn("profile_audit", ch0)
+        self.assertIn("structured_brief", (ch0.get("profile_audit") or {}))
+
+    def test_sanitize_retrieval_truncates_and_dedupes(self) -> None:
+        long_outline = "大纲节" * 200
+        bundle = {
+            "summary": {
+                "key_facts": ["事实甲段落够长用于测试", "事实甲段落够长用于测试"],
+                "current_states": [],
+                "confirmed_facts": [],
+                "supporting_evidence": ["支持性证据段落够长一", "支持性证据段落够长一"],
+                "conflicts": [],
+                "information_gaps": [],
+            },
+            "items": [
+                {"source": "outline", "text": long_outline},
+                {"source": "outline", "text": long_outline + "x"},
+                {"source": "memory", "text": "独立记忆片段用于章节审查测试足够长"},
+            ],
+            "meta": {},
+        }
+        out = sanitize_consistency_retrieval_bundle(bundle)
+        kf = list((out.get("summary") or {}).get("key_facts") or [])
+        self.assertEqual(len(kf), 1)
+        items = list(out.get("items") or [])
+        self.assertLessEqual(len(items), 3)
+        self.assertTrue(any("记忆" in str(i.get("text") or "") for i in items))
 
 
 if __name__ == "__main__":

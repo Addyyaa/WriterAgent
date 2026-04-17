@@ -48,7 +48,10 @@ _PLANNER_NODE_SCHEMA: dict[str, Any] = {
         "preferred_tools": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "优先结构化工具/检索通道（如 character_inventory、memory_search）",
+            "description": (
+                "可执行本地工具名（白名单）：get_character_inventory、list_project_chapters、"
+                "search_project_memory_vectors、get_chapter_content；历史别名由服务端归一"
+            ),
         },
         "must_verify_facts": {
             "type": "array",

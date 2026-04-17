@@ -9,6 +9,7 @@ from time import perf_counter
 from typing import Any, TYPE_CHECKING
 
 from packages.core.config import env_bool
+from packages.core.context_bundle_decision import mirror_context_bundle_lists_from_summary
 from packages.core.tracing import new_request_id, new_trace_id, request_context
 from packages.core.utils import ensure_non_empty_string
 from packages.core.utils.chapter_metrics import (
@@ -203,6 +204,30 @@ class ChapterGenerationWorkflowService:
         self.schema_registry = schema_registry
         self.skill_runtime = skill_runtime or SkillRuntimeEngine()
         self._prompt_assembler = PromptPayloadAssembler()
+
+    def _local_data_tool_llm_fields(self) -> dict[str, Any]:
+        """OpenAI `tools`：章节写作侧与编排 agent 步一致，挂载本地数据查询。"""
+        from packages.tools.system_tools.local_data_tools_dispatch import (
+            LOCAL_DATA_TOOLS_OPENAI,
+            execute_local_data_tool,
+        )
+
+        db = self.chapter_repo.db
+        pms = self.project_memory_service
+
+        def _run(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+            return execute_local_data_tool(
+                name=name,
+                arguments=arguments,
+                db=db,
+                project_memory_service=pms,
+            )
+
+        return {
+            "extra_function_tools": tuple(LOCAL_DATA_TOOLS_OPENAI),
+            "local_data_tool_executor": _run,
+            "local_data_tool_max_rounds": 8,
+        }
 
     @staticmethod
     def _notify_live_progress(request: ChapterGenerationRequest, payload: dict[str, Any]) -> None:
@@ -588,6 +613,7 @@ class ChapterGenerationWorkflowService:
                                         "word_count_attempt": int(word_attempt) + 1,
                                         "word_count_max_attempts": int(max_word_attempts),
                                     },
+                                    **self._local_data_tool_llm_fields(),
                                 )
                             )
                             last_llm_request_metadata = dict(
@@ -683,6 +709,7 @@ class ChapterGenerationWorkflowService:
                                         "word_count_attempt": int(word_attempt) + 1,
                                         "word_count_max_attempts": int(max_word_attempts),
                                     },
+                                    **self._local_data_tool_llm_fields(),
                                 )
                             )
                             last_llm_request_metadata = dict(
@@ -1670,11 +1697,13 @@ class ChapterGenerationWorkflowService:
         text = str(orchestrator_retrieval_text or "").strip()
         if text:
             key_facts.append(text[:12000])
-        return {
+        bundle = {
             "summary": {"key_facts": key_facts, "current_states": []},
             "items": items,
             "meta": {},
         }
+        mirror_context_bundle_lists_from_summary(bundle)
+        return bundle
 
     @staticmethod
     def _merge_retrieval_bundles(
@@ -1689,11 +1718,13 @@ class ChapterGenerationWorkflowService:
         items = list(a.get("items") or []) + list(b.get("items") or [])
         meta_a = a.get("meta") if isinstance(a.get("meta"), dict) else {}
         meta_b = b.get("meta") if isinstance(b.get("meta"), dict) else {}
-        return {
+        merged = {
             "summary": {"key_facts": kf, "current_states": cs},
             "items": items,
             "meta": {**dict(meta_a), **dict(meta_b)},
         }
+        mirror_context_bundle_lists_from_summary(merged)
+        return merged
 
     @staticmethod
     def _should_use_writer_draft_assembler(
@@ -1787,6 +1818,7 @@ class ChapterGenerationWorkflowService:
                     **retrieval_bundle,
                     "summary": {**summary, "key_facts": facts},
                 }
+                mirror_context_bundle_lists_from_summary(retrieval_bundle)
             outline_state = dict(merged_raw.get("outline_generation") or {})
             core = self._prompt_assembler.build(
                 role_id="writer_agent",

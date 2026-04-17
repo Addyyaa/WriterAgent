@@ -243,11 +243,16 @@ class WorkflowStepRepository(BaseRepository):
         return count
 
     def reset_for_retry(self, *, workflow_run_id, auto_commit: bool = True) -> int:
-        """将未完成步骤恢复为 pending，供 run 重试。"""
+        """将未完成步骤恢复为 pending，供 run 重试。
+
+        注意：用户取消 run 时未完成步骤会被标为 cancelled；重试时必须把这类步骤一并恢复，
+        否则 run 已入队但后续步骤仍为 cancelled，表现为「点了重试却不继续跑」。
+        已成功或明确 skipped 的步骤保持不变。
+        """
         steps = self.list_by_run(workflow_run_id=workflow_run_id)
         count = 0
         for step in steps:
-            if str(step.status) in {"success", "skipped", "cancelled"}:
+            if str(step.status) in {"success", "skipped"}:
                 continue
             step.status = "pending"
             step.error_code = None

@@ -10,6 +10,15 @@ RetrievalMode = Literal["none", "summary_only", "compact_items", "full_items"]
 # 步骤上下文档位：规划（轻量）、生成（摘要 + 可工具拉细节）、严格审查（服务端证据优先）
 StepContextTier = Literal["planning", "generative", "strict_review"]
 
+# project：`retrieval_brief` 用于 retrieval_agent；`plot_brief` 用于 plot_agent，收窄 premise/metadata
+ProjectProfile = Literal["full", "retrieval_brief", "plot_brief"]
+
+# outline：`plot_beats` 仅向节拍类步骤暴露结构 + 短 synopsis，避免长正文
+OutlineProfile = Literal["full", "plot_beats"]
+
+# 检索缺口：inline 与 confirmed 同级；soft_sidebar 将缺口收入 soft_gaps，避免主导节拍层级
+RetrievalGapTreatment = Literal["inline", "soft_sidebar"]
+
 
 @dataclass
 class RetrievalViewSpec:
@@ -19,6 +28,8 @@ class RetrievalViewSpec:
     max_items: int = 5
     max_chars_per_item: int = 6000
     allowed_sources: list[str] = field(default_factory=list)
+    gap_treatment: RetrievalGapTreatment = "inline"
+    max_information_gaps: int = 16
 
 
 @dataclass
@@ -45,3 +56,5 @@ class StepInputSpec:
     retrieval: RetrievalViewSpec = field(default_factory=RetrievalViewSpec)
     # Summary-first：与 RetrievalViewSpec 配套，用于日志与策略路由（非强制校验）
     context_tier: StepContextTier = "generative"
+    project_profile: ProjectProfile = "full"
+    outline_profile: OutlineProfile = "full"

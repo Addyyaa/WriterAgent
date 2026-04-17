@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
+
+# 本地数据工具：由编排层注入，签名 (tool_name, arguments_dict) -> 可 JSON 序列化的结果
+LocalDataToolExecutor = Callable[[str, dict[str, Any]], dict[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -25,6 +28,10 @@ class TextGenerationRequest:
     use_function_calling: bool = False
     function_name: str | None = None
     function_description: str | None = None
+    # 与 output function 一并放入 Chat Completions `tools`；需配合 local_data_tool_executor 才会发起多轮 tool 回灌
+    extra_function_tools: tuple[dict[str, Any], ...] | None = None
+    local_data_tool_executor: LocalDataToolExecutor | None = None
+    local_data_tool_max_rounds: int = 8
 
 
 @dataclass(frozen=True)

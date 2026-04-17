@@ -7,7 +7,7 @@
 用户 JSON 由服务端组装，结构为：
 
 - `project`：项目摘要
-- `state.review_contract`：审查契约（`audit_dimensions`、`allowed_severities`、`evidence_policy`）
+- `state.review_contract`：审查契约（`audit_dimensions`、`allowed_severities`、`severity_policy`、`evidence_policy`）
 - `state.review_focus`：规则引擎给出的审查焦点（角色、主视角启发式、结构化资产、关键词、已发现 rule 问题等）
 - `state.review_context`：**证据包**（已切片的章节摘要与短 preview、角色卡、世界观条目、时间线、伏笔），**不含**当前章全文
 - `state.chapter_draft_audit`：**当前章全文**（含 `content`），即待审草稿
@@ -25,8 +25,10 @@
 
 # Output Rules
 
-1. **Issue Grading (定级)**:
-   - **passed**: 无明显冲突。
+1. **定级（与 `state.review_contract` 一致）**:
+   - **`overall_status`**：必须从 `allowed_severities` 中选一档。**无问题**时用 **passed**，并令 **`issues` 为空数组**。
+   - **`issues[].severity`**：仅允许 **warning** 或 **failed**（见 `severity_policy`）；**不得**在单条 issue 上使用 passed。
+   - **passed（整体）**: 无明显冲突。
    - **warning**: 存在轻微瑕疵（如形容词矛盾、语调微变），不破坏主逻辑但建议润色。
    - **failed**: 存在硬伤（如死人复活、时间倒流、核心设定违背），必须强制修正。
 

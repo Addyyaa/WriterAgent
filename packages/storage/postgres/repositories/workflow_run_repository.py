@@ -20,6 +20,15 @@ class WorkflowRunRepository(BaseRepository):
         row.heartbeat_at = None
         row.lease_expires_at = None
 
+    def _apply_manual_retry_requeue_fields(self, row: WorkflowRun) -> None:
+        """将 run 字段重置为可再次出队执行（不校验当前 status，由调用方负责）。"""
+        row.status = "queued"
+        row.error_code = None
+        row.error_message = None
+        row.next_attempt_at = datetime.now(tz=timezone.utc)
+        row.finished_at = None
+        self._clear_lease_fields(row)
+
     def create_run(
         self,
         *,
@@ -311,12 +320,20 @@ class WorkflowRunRepository(BaseRepository):
             return None
         if str(row.status) not in {"failed", "cancelled"}:
             return None
-        row.status = "queued"
-        row.error_code = None
-        row.error_message = None
-        row.next_attempt_at = datetime.now(tz=timezone.utc)
-        row.finished_at = None
-        self._clear_lease_fields(row)
+        self._apply_manual_retry_requeue_fields(row)
+        if auto_commit:
+            self.db.commit()
+            self.db.refresh(row)
+        else:
+            self.db.flush()
+        return row
+
+    def requeue_after_manual_retry(self, run_id, *, auto_commit: bool = True) -> WorkflowRun | None:
+        """用户手动重试：在业务层已允许时强制重新入队（例如曾错误标记为 success 的 run）。"""
+        row = self.get(run_id)
+        if row is None:
+            return None
+        self._apply_manual_retry_requeue_fields(row)
         if auto_commit:
             self.db.commit()
             self.db.refresh(row)

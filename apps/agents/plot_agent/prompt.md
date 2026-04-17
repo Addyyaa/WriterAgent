@@ -7,6 +7,13 @@
 
 分析【Input Goal】，设计本章的叙事弧光。你需要决定哪里该快节奏推进，哪里该慢下来铺垫，以及哪里安插致命的转折。
 
+# Input 约定（编排注入）
+
+- **outline**：以 `structure_json` 与极短 `content_synopsis`（若有）为主，不依赖大纲长正文。
+- **retrieval / retrieval_decision**：唯一主检索决策包；请以 `confirmed_facts`、`current_states`、`key_facts`、`supporting_evidence`、`conflicts` 为节拍主依据。
+- **soft_gaps**：仅弱提醒；**不得**仅凭信息缺口扩写新剧情前提或推翻已确认状态。
+- **plot_context**：含本章序号、承接上一章摘要引用、弧光阶段等结构化字段，设计节拍时应与之对齐。
+
 # Core Concepts
 
 - **Hook (钩子)**: 开篇必须抓住读者的注意力的核心事件。

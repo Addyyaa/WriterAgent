@@ -204,8 +204,8 @@ class TestRetrievalLoopService(unittest.TestCase):
                 workflow_step_id=3,
                 project_id="p1",
                 trace_id="trace-3",
-                step_key="writer_revision",
-                workflow_type="revision",
+                step_key="writer_draft",
+                workflow_type="chapter_generation",
                 writing_goal="按报告修订章节",
                 must_have_slots=["project_goal", "character"],
             )
@@ -240,6 +240,18 @@ class TestRetrievalLoopService(unittest.TestCase):
         )
         self.assertEqual(merged, ["character", "power_rules"])
         self.assertNotIn("outline", merged)
+
+    def test_merge_skip_workflow_base_issue_scoped(self) -> None:
+        merged = RetrievalLoopService._merge_inference_slots(
+            workflow_type="revision",
+            writing_goal="修订",
+            planner_hints=["character", "world_rule"],
+            explicit_extra=None,
+            merge_workflow_defaults_when_planner_nonempty=True,
+            skip_workflow_base=True,
+        )
+        self.assertEqual(merged, ["character", "world_rule"])
+        self.assertNotIn("chapter_neighborhood", merged)
 
     def test_merge_without_planner_or_explicit_matches_workflow_base_only(self) -> None:
         base = RetrievalLoopService._workflow_base_slots(
@@ -277,7 +289,7 @@ class TestRetrievalLoopService(unittest.TestCase):
         picked = RetrievalLoopService._select_round_sources(
             open_slots=["inventory"],
             source_types=src,
-            preferred_tools=["character_inventory"],
+            preferred_tools=["get_character_inventory"],
         )
         self.assertGreaterEqual(len(picked), 1)
         self.assertEqual(picked[0], "character_inventory")

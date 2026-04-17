@@ -238,6 +238,20 @@ export function MetricsDashboard() {
             </Card>
           )}
 
+          {data.planner && Object.keys(data.planner.by_event || {}).length > 0 ? (
+            <Card className="p-5">
+              <h2 className="mb-3 text-lg font-semibold text-ink">规划器 (Planner)</h2>
+              <p className="mb-3 text-xs text-graphite/60">
+                进程内计数：strict / loose 重试 / mock 回退等（见 api_metrics 中 writeragent_planner_events_total）。
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(data.planner.by_event).map(([ev, n]) => (
+                  <Stat key={ev} label={ev} value={n} />
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
           {/* 检索与 Skill */}
           <section className="grid gap-4 lg:grid-cols-2">
             <Card className="p-5">

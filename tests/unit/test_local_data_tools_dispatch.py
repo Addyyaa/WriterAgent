@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from packages.tools.system_tools.local_data_tools_dispatch import (
+    LOCAL_DATA_TOOL_NAMES,
     LOCAL_DATA_TOOLS_OPENAI,
     execute_local_data_tool,
     parse_tool_arguments,
@@ -22,6 +23,7 @@ class TestLocalDataToolsDispatch(unittest.TestCase):
                 "get_chapter_content",
             ],
         )
+        self.assertEqual(LOCAL_DATA_TOOL_NAMES, frozenset(names))
 
     def test_parse_tool_arguments_empty(self) -> None:
         self.assertEqual(parse_tool_arguments(None), {})

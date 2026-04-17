@@ -23,12 +23,21 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
         role_id="retrieval_agent",
         include_project=True,
         include_outline=False,
+        project_profile="retrieval_brief",
         dependencies=[
             StateDependencySpec(
-                step_key="planner_bootstrap",
+                step_key="planner_retrieval_intent",
                 required=True,
-                fields=["plan_summary", "steps"],
-                compact=True,
+                fields=[
+                    "writing_goal",
+                    "chapter_no",
+                    "focus_character_id",
+                    "normalized_required_slots",
+                    "normalized_preferred_tools",
+                    "must_verify_facts",
+                    "project_id",
+                ],
+                compact=False,
             ),
         ],
         retrieval=RetrievalViewSpec(
@@ -43,23 +52,21 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
         role_id="plot_agent",
         include_project=True,
         include_outline=True,
+        project_profile="plot_brief",
+        outline_profile="plot_beats",
         dependencies=[
             StateDependencySpec(
                 step_key="outline_generation",
                 required=True,
-                fields=["title", "content", "structure_json"],
-                compact=True,
-            ),
-            StateDependencySpec(
-                step_key="retrieval_context",
-                required=False,
-                fields=["writing_context_summary", "potential_conflicts", "information_gaps"],
+                fields=["title", "structure_json"],
                 compact=True,
             ),
         ],
         retrieval=RetrievalViewSpec(
             mode="summary_only",
             allowed_sources=["memory", "summary"],
+            gap_treatment="soft_sidebar",
+            max_information_gaps=4,
         ),
     ),
     "character_agent": StepInputSpec(
@@ -74,6 +81,12 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
                 compact=True,
             ),
             StateDependencySpec(
+                step_key="plot_alignment",
+                required=True,
+                fields=["chapter_goal", "core_conflict", "narcotic_arc", "climax_twist"],
+                compact=True,
+            ),
+            StateDependencySpec(
                 step_key="retrieval_context",
                 required=False,
                 fields=["writing_context_summary"],
@@ -83,6 +96,38 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
         retrieval=RetrievalViewSpec(
             mode="summary_only",
             allowed_sources=["memory", "summary"],
+        ),
+    ),
+    # world_alignment：单一收口 bundle，由 orchestrator 组装 world_lore_brief / chapter_* / 证据分层。
+    "world_agent:world_alignment": StepInputSpec(
+        role_id="world_agent",
+        include_project=False,
+        include_outline=False,
+        dependencies=[
+            StateDependencySpec(
+                step_key="outline_generation",
+                required=True,
+                fields=["title", "structure_json"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="plot_alignment",
+                required=True,
+                fields=["chapter_goal", "core_conflict", "narcotic_arc", "climax_twist"],
+                compact=True,
+            ),
+            StateDependencySpec(
+                step_key="retrieval_context",
+                required=False,
+                fields=["writing_context_summary"],
+                compact=True,
+            ),
+        ],
+        retrieval=RetrievalViewSpec(
+            mode="summary_only",
+            allowed_sources=["memory", "summary"],
+            gap_treatment="soft_sidebar",
+            max_information_gaps=8,
         ),
     ),
     "world_agent": StepInputSpec(
@@ -285,6 +330,7 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
                 fields=[
                     "audit_dimensions",
                     "allowed_severities",
+                    "severity_policy",
                     "evidence_policy",
                 ],
                 compact=True,
@@ -386,11 +432,12 @@ STEP_INPUT_SPECS: dict[str, StepInputSpec] = {
                 compact=True,
             ),
         ],
+        # 决策五段走 summary/root；items 仅白名单、少条数，避免整章生成型宽检索片段
         retrieval=RetrievalViewSpec(
             mode="compact_items",
-            max_items=10,
-            max_chars_per_item=4000,
-            allowed_sources=[],
+            max_items=8,
+            max_chars_per_item=2000,
+            allowed_sources=["memory_fact", "chapter", "character_inventory", "story_state_snapshot"],
         ),
         context_tier="generative",
     ),

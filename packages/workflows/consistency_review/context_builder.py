@@ -20,8 +20,24 @@ _MAX_PROFILE_KEYS = (
     "abilities",
     "personality",
     "appearance",
+    "summary",
+    "bio",
+    "background",
+    "backstory",
+    "goals",
+    "motivations",
+    "values",
+    "fears",
+    "quirks",
+    "voice",
+    "role_in_story",
+    "speech_quirks",
 )
+_MAX_EXTRA_PROFILE_KEYS_FOR_AUDIT = 14
 _MAX_INVENTORY_ENTRIES = 8
+# 焦点角色：库存/财富在正文未提及时也保留若干条，便于核对 OOC 与禁忌物。
+_INVENTORY_ALWAYS_INCLUDE = 6
+_WEALTH_ALWAYS_INCLUDE = 4
 _WORLD_CONTENT_CAP = 400
 # 审查证据包内章节列表：邻章与当前章仅保留短 preview（全文仅在 chapter_draft_audit）
 _CHAPTER_EVIDENCE_PREVIEW_CAP = 180
@@ -33,7 +49,13 @@ def build_review_contract() -> dict[str, Any]:
     """审查输出契约：与 review_focus 分离，供 Assembler 独立投影。"""
     return {
         "audit_dimensions": ["character", "worldview", "timeline", "foreshadowing"],
-        "allowed_severities": ["warning", "failed"],
+        # 与 output_schema.overall_status 三档对齐；单条 issue 仍仅 warning/failed（见 severity_policy）
+        "allowed_severities": ["passed", "warning", "failed"],
+        "severity_policy": (
+            "overall_status 必须从 allowed_severities 中择一：无问题时为 passed。"
+            "issues 数组内每条 issue 的 severity 仅允许 warning 或 failed，不得使用 passed；"
+            "无问题则 issues 应为空数组。"
+        ),
         "evidence_policy": (
             "仅可引用本请求 JSON 内 state.review_context、state.review_evidence_pack、"
             "state.review_focus、state.review_contract、state.chapter_draft_audit 与 retrieval 已给出片段；"
@@ -302,6 +324,58 @@ def build_review_focus(
     }
 
 
+def _structured_character_brief(character: dict[str, Any]) -> dict[str, Any]:
+    """审查用结构化摘要：列字段 + 年龄等，不依赖 profile_json 是否已填。"""
+    age = character.get("age")
+    out: dict[str, Any] = {
+        "role_type": character.get("role_type"),
+        "faction": character.get("faction"),
+    }
+    if age is not None:
+        try:
+            out["age"] = int(age)
+        except (TypeError, ValueError):
+            out["age"] = age
+    return {k: v for k, v in out.items() if v is not None and str(v).strip()}
+
+
+def _merge_inventory_for_evidence(
+    character: dict[str, Any],
+    *,
+    max_entries: int = 12,
+) -> dict[str, Any]:
+    """合并章节快照与基线库存，优先稳定键序展示，供 profile_audit 侧核对。"""
+    inv = dict(character.get("effective_inventory_json") or character.get("inventory_json") or {})
+    out: dict[str, Any] = {}
+    for k in sorted(inv.keys(), key=lambda x: str(x)):
+        v = inv.get(k)
+        vs = str(v).strip() if v is not None else ""
+        if not vs:
+            continue
+        out[str(k)] = v if len(vs) <= 220 else _clip(vs, 220)
+        if len(out) >= max_entries:
+            break
+    return out
+
+
+def _merge_wealth_for_evidence(
+    character: dict[str, Any],
+    *,
+    max_entries: int = 8,
+) -> dict[str, Any]:
+    w = dict(character.get("effective_wealth_json") or character.get("wealth_json") or {})
+    out: dict[str, Any] = {}
+    for k in sorted(w.keys(), key=lambda x: str(x)):
+        v = w.get(k)
+        vs = str(v).strip() if v is not None else ""
+        if not vs:
+            continue
+        out[str(k)] = v if len(vs) <= 180 else _clip(vs, 180)
+        if len(out) >= max_entries:
+            break
+    return out
+
+
 def _slim_profile(profile: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k in _MAX_PROFILE_KEYS:
@@ -317,13 +391,95 @@ def _slim_profile(profile: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _profile_audit_for_evidence_pack(character: dict[str, Any]) -> dict[str, Any]:
+    """审查证据包专用：合并 profile / 口癖 / 弧光，供 OOC 与行为禁忌核对。"""
+    prof = dict(character.get("profile_json") or {})
+    speech = dict(character.get("speech_style_json") or {})
+    arc = dict(character.get("arc_status_json") or {})
+    audit: dict[str, Any] = {}
+
+    def put_mixed(key: str, val: Any, lim: int = 520) -> None:
+        if val is None or val == "":
+            return
+        if isinstance(val, str) and val.strip():
+            audit[key] = _clip(val.strip(), lim)
+        elif isinstance(val, list) and val:
+            audit[key] = [_clip(str(x), 220) for x in val[:18] if str(x).strip()]
+        elif isinstance(val, dict) and val:
+            audit[key] = {
+                str(a): _clip(str(b), 180) for a, b in list(val.items())[:16] if str(b).strip()
+            }
+
+    for k in _MAX_PROFILE_KEYS:
+        if k in prof:
+            put_mixed(k, prof[k])
+    put_mixed("summary", prof.get("summary") or prof.get("bio"))
+    put_mixed("core_beliefs", prof.get("core_beliefs") or prof.get("beliefs"))
+    rel = prof.get("relationships")
+    if isinstance(rel, list):
+        lines: list[str] = []
+        for x in rel[:12]:
+            if isinstance(x, dict):
+                lines.append(
+                    _clip(
+                        " ".join(f"{k}={v}" for k, v in list(x.items())[:6] if v is not None),
+                        240,
+                    )
+                )
+            else:
+                lines.append(_clip(str(x), 240))
+        if lines:
+            audit["relationships"] = lines
+    elif isinstance(rel, dict):
+        put_mixed("relationships", rel, 480)
+
+    put_mixed("speech_habits", speech.get("habits") or speech.get("summary"))
+    put_mixed("speech_patterns", speech.get("patterns") or speech.get("tropes"))
+    arc_st = arc.get("stage") or arc.get("arc_phase")
+    if arc_st:
+        put_mixed("arc_stage", str(arc_st), 220)
+
+    consumed = set(audit.keys())
+    extra_n = 0
+    for pk, pv in prof.items():
+        if str(pk) in consumed or pk in _MAX_PROFILE_KEYS:
+            continue
+        if extra_n >= _MAX_EXTRA_PROFILE_KEYS_FOR_AUDIT:
+            break
+        if isinstance(pv, (str, int, float)) and str(pv).strip():
+            put_mixed(f"profile.{pk}", pv, 240)
+            extra_n += 1
+        elif isinstance(pv, list) and pv:
+            put_mixed(f"profile.{pk}", pv[:10], 360)
+            extra_n += 1
+        elif isinstance(pv, dict) and pv:
+            put_mixed(f"profile.{pk}", pv, 360)
+            extra_n += 1
+
+    brief = _structured_character_brief(character)
+    if brief:
+        audit["structured_brief"] = brief
+    return audit
+
+
 def _slim_character_for_audit(
     character: dict[str, Any],
     text: str,
 ) -> dict[str, Any]:
     inv = dict(character.get("effective_inventory_json") or character.get("inventory_json") or {})
     slim_inv: dict[str, Any] = {}
+    ordered_keys = sorted(inv.keys(), key=lambda x: str(x))
+    for k in ordered_keys:
+        if len(slim_inv) >= _INVENTORY_ALWAYS_INCLUDE:
+            break
+        v = inv.get(k)
+        vs = str(v).strip() if v is not None else ""
+        if not vs:
+            continue
+        slim_inv[str(k)] = v if len(vs) <= 160 else _clip(vs, 160)
     for k, v in inv.items():
+        if str(k) in slim_inv:
+            continue
         vs = str(v).strip()
         if not vs:
             continue
@@ -331,15 +487,27 @@ def _slim_character_for_audit(
             slim_inv[str(k)] = v if len(vs) <= 160 else _clip(vs, 160)
         if len(slim_inv) >= _MAX_INVENTORY_ENTRIES:
             break
+    w = dict(character.get("effective_wealth_json") or character.get("wealth_json") or {})
+    slim_wealth: dict[str, Any] = {}
+    for i, k in enumerate(sorted(w.keys(), key=lambda x: str(x))):
+        if i >= _WEALTH_ALWAYS_INCLUDE:
+            break
+        v = w.get(k)
+        vs = str(v).strip() if v is not None else ""
+        if vs:
+            slim_wealth[str(k)] = v if len(vs) <= 120 else _clip(vs, 120)
     profile = _slim_profile(dict(character.get("profile_json") or {}))
+    pa = _profile_audit_for_evidence_pack(character)
     return {
         "id": character.get("id"),
         "name": character.get("name"),
         "role_type": character.get("role_type"),
         "faction": character.get("faction"),
+        "age": character.get("age"),
         "profile_json": profile,
+        "profile_audit": pa,
         "effective_inventory_json": slim_inv,
-        "effective_wealth_json": dict(character.get("effective_wealth_json") or {}) or None,
+        "effective_wealth_json": slim_wealth or None,
     }
 
 
@@ -578,6 +746,7 @@ def build_review_evidence_pack(
     chapter_no: int | None,
     story_context: StoryConstraintContext,
     review_focus: dict[str, Any],
+    review_context_slice: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     服务端预取的「加深证据」（一档审查）：在 review_context 摘要之上补充可核对原文片段，
@@ -589,6 +758,22 @@ def build_review_evidence_pack(
     focus_fid = {str(x).strip() for x in (review_focus.get("focus_foreshadowing_ids") or []) if x}
     world_kws = [str(x).strip() for x in (review_focus.get("focus_world_keywords") or []) if x]
 
+    slice_tid: set[str] = set()
+    slice_fid: set[str] = set()
+    slice_wid: set[str] = set()
+    if isinstance(review_context_slice, dict):
+        for x in list(review_context_slice.get("timeline_events") or []):
+            if isinstance(x, dict) and x.get("id"):
+                slice_tid.add(str(x["id"]).strip())
+        for x in list(review_context_slice.get("foreshadowings") or []):
+            if isinstance(x, dict) and x.get("id"):
+                slice_fid.add(str(x["id"]).strip())
+        for x in list(review_context_slice.get("world_entries") or []):
+            if isinstance(x, dict) and x.get("id"):
+                slice_wid.add(str(x["id"]).strip())
+    eff_tid = focus_tid | slice_tid
+    eff_fid = focus_fid | slice_fid
+
     characters_detail: list[dict[str, Any]] = []
     for c in list(story_context.characters or []):
         if not isinstance(c, dict):
@@ -596,27 +781,17 @@ def build_review_evidence_pack(
         n = str(c.get("name") or "").strip()
         if n not in names:
             continue
-        prof = dict(c.get("profile_json") or {})
-        audit_prof: dict[str, Any] = {}
-        for key in ("forbidden_behaviors", "must_not", "taboos", "abilities", "personality"):
-            if key not in prof:
-                continue
-            v = prof[key]
-            if isinstance(v, str):
-                audit_prof[key] = _clip(v, 520)
-            elif isinstance(v, list):
-                audit_prof[key] = [_clip(str(x), 200) for x in v[:20]]
-            elif isinstance(v, dict):
-                audit_prof[key] = {str(a): _clip(str(b), 160) for a, b in list(v.items())[:16]}
+        audit_prof = _profile_audit_for_evidence_pack(c)
         characters_detail.append(
             {
                 "id": c.get("id"),
                 "name": n,
                 "role_type": c.get("role_type"),
                 "faction": c.get("faction"),
+                "age": c.get("age"),
                 "profile_audit": audit_prof,
-                "inventory_snapshot": dict(c.get("effective_inventory_json") or c.get("inventory_json") or {}),
-                "wealth_snapshot": dict(c.get("effective_wealth_json") or c.get("wealth_json") or {}),
+                "inventory_snapshot": _merge_inventory_for_evidence(c, max_entries=14),
+                "wealth_snapshot": _merge_wealth_for_evidence(c, max_entries=10),
             }
         )
     characters_detail = characters_detail[:_MAX_SLICED_CHARACTERS]
@@ -626,7 +801,7 @@ def build_review_evidence_pack(
         if not isinstance(ev, dict):
             continue
         eid = str(ev.get("id") or "").strip()
-        if eid not in focus_tid:
+        if eid not in eff_tid:
             continue
         raw_no = ev.get("chapter_no")
         try:
@@ -651,7 +826,7 @@ def build_review_evidence_pack(
         if not isinstance(item, dict):
             continue
         fid = str(item.get("id") or "").strip()
-        if fid not in focus_fid:
+        if fid not in eff_fid:
             continue
         setup_text = str(item.get("setup_text") or "")
         payoff_text = str(item.get("payoff_text") or "")
@@ -672,8 +847,9 @@ def build_review_evidence_pack(
     for e in list(story_context.world_entries or []):
         if not isinstance(e, dict):
             continue
+        wid = str(e.get("id") or "").strip()
         title = str(e.get("title") or "").strip()
-        if title not in world_kws and title not in text:
+        if wid not in slice_wid and title not in world_kws and title not in text:
             continue
         world_detail.append(
             {

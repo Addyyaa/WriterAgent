@@ -106,6 +106,7 @@ def build_test_orchestrator_service(db: Session) -> WritingOrchestratorService:
         project_repo=project_repo,
         outline_repo=outline_repo,
         text_provider=text_provider,
+        project_memory_service=project_memory_service,
     )
 
     consistency_service = ConsistencyReviewWorkflowService(
@@ -120,6 +121,7 @@ def build_test_orchestrator_service(db: Session) -> WritingOrchestratorService:
         report_repo=ConsistencyReportRepository(db),
         ingestion_service=ingestion_service,
         text_provider=text_provider,
+        project_memory_service=project_memory_service,
     )
 
     root = Path(__file__).resolve().parents[1]

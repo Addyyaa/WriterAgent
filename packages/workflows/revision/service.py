@@ -9,13 +9,14 @@ from typing import Any, TYPE_CHECKING
 from packages.llm.text_generation.base import TextGenerationProvider, TextGenerationRequest
 from packages.llm.text_generation.runtime_config import TextGenerationRuntimeConfig
 from packages.memory.long_term.ingestion.ingestion_service import MemoryIngestionService
+from packages.memory.project_memory.project_memory_service import ProjectMemoryService
 from packages.schemas import SchemaRegistry
 from packages.skills import SkillRuntimeContext, SkillRuntimeEngine
 from packages.storage.postgres.repositories.chapter_repository import ChapterRepository
 from packages.storage.postgres.repositories.consistency_report_repository import (
     ConsistencyReportRepository,
 )
-from packages.workflows.orchestration.agent_output_envelope import step_agent_view
+from packages.core.context_bundle_decision import mirror_context_bundle_lists_from_summary
 from packages.workflows.orchestration.prompt_payload_assembler import PromptPayloadAssembler
 from packages.workflows.revision.context_builder import (
     build_revision_context_slice,
@@ -40,7 +41,7 @@ class RevisionRequest:
     force: bool = False
     # 统一检索包（summary/items/meta + 根级五段与 key_facts 与 summary 双写）；编排侧来自 RetrievalLoopSummary.context_bundle
     retrieval_bundle: dict[str, Any] | None = None
-    # 编排快照：供后续扩展依赖；当前修订仍以 DB 章节 + 报告为主
+    # 编排快照（兼容字段）；writer_revision 装配已改为仅依赖本服务注入的 revision_* / consistency_review，不再合并全量 raw_state
     orchestrator_raw_state: dict[str, Any] | None = None
     project_context: dict[str, Any] | None = None
     working_notes: dict[str, Any] | list[str] | None = None
@@ -101,6 +102,7 @@ class RevisionWorkflowService:
         schema_registry: SchemaRegistry | None = None,
         skill_runtime: SkillRuntimeEngine | None = None,
         prompt_assembler: PromptPayloadAssembler | None = None,
+        project_memory_service: ProjectMemoryService | None = None,
     ) -> None:
         self.chapter_repo = chapter_repo
         self.report_repo = report_repo
@@ -110,27 +112,49 @@ class RevisionWorkflowService:
         self.schema_registry = schema_registry
         self.skill_runtime = skill_runtime or SkillRuntimeEngine()
         self._prompt_assembler = prompt_assembler or PromptPayloadAssembler()
+        self.project_memory_service = project_memory_service
 
-    @staticmethod
-    def _normalize_retrieval_bundle(raw: dict[str, Any] | None) -> dict[str, Any]:
-        b = dict(raw or {})
-        summary = dict(b.get("summary") or {})
+    def _local_data_tool_llm_fields(self) -> dict[str, Any]:
+        """修订步与编排一致：FC 挂载本地数据查询工具。"""
+        from packages.tools.system_tools.local_data_tools_dispatch import (
+            LOCAL_DATA_TOOLS_OPENAI,
+            execute_local_data_tool,
+        )
+
+        pms = self.project_memory_service
+        if pms is None:
+            return {}
+        db = self.chapter_repo.db
+
+        def _run(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+            return execute_local_data_tool(
+                name=name,
+                arguments=arguments,
+                db=db,
+                project_memory_service=pms,
+            )
+
         return {
-            "summary": {
-                "key_facts": list(summary.get("key_facts") or []),
-                "current_states": list(summary.get("current_states") or []),
-            },
-            "items": list(b.get("items") or []),
-            "meta": dict(b.get("meta") or {}),
+            "extra_function_tools": tuple(LOCAL_DATA_TOOLS_OPENAI),
+            "local_data_tool_executor": _run,
+            "local_data_tool_max_rounds": 8,
         }
 
     @staticmethod
-    def _snapshot_raw_state(raw: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
-        out: dict[str, dict[str, Any]] = {}
-        for k, v in dict(raw or {}).items():
-            if isinstance(v, dict):
-                out[str(k)] = copy.deepcopy(v)
-        return out
+    def _normalize_retrieval_bundle(raw: dict[str, Any] | None) -> dict[str, Any]:
+        """保留完整检索包（含 decision 五段与根级双写），兼容旧 bundle。"""
+        b = copy.deepcopy(dict(raw or {}))
+        if "summary" not in b or not isinstance(b.get("summary"), dict):
+            b["summary"] = {
+                "key_facts": [],
+                "current_states": [],
+                "confirmed_facts": [],
+                "supporting_evidence": [],
+                "conflicts": [],
+                "information_gaps": [],
+            }
+        mirror_context_bundle_lists_from_summary(b)
+        return b
 
     @staticmethod
     def _default_project_context(project_id: object) -> dict[str, Any]:
@@ -170,7 +194,7 @@ class RevisionWorkflowService:
         project_context = dict(request.project_context or self._default_project_context(request.project_id))
         retrieval_bundle = self._normalize_retrieval_bundle(request.retrieval_bundle)
 
-        merged_raw = self._snapshot_raw_state(request.orchestrator_raw_state)
+        # 仅注入修订契约步骤，不合并 orchestrator 全量快照，避免 plot/alignment 等起草期状态误入 raw_state
         chapter_no = int(chapter.chapter_no)
         chapter_view = {
             "title": chapter.title,
@@ -178,30 +202,19 @@ class RevisionWorkflowService:
             "summary": chapter.summary,
             "chapter_no": chapter_no,
         }
-        merged_raw["revision_chapter"] = {"view": chapter_view}
-        merged_raw["consistency_review"] = {
-            "view": {
-                "status": str(report.status) if report is not None else "warning",
-                "summary": report.summary if report is not None else "",
-                "issues": issues,
-            }
+        merged_raw: dict[str, dict[str, Any]] = {
+            "revision_chapter": {"view": chapter_view},
+            "consistency_review": {
+                "view": {
+                    "status": str(report.status) if report is not None else "warning",
+                    "summary": report.summary if report is not None else "",
+                    "issues": issues,
+                }
+            },
+            "revision_focus": {"view": build_revision_focus(chapter_no=chapter_no, issues=issues)},
+            "revision_context_slice": {"view": build_revision_context_slice(issues=issues)},
+            "revision_evidence_pack": {"view": build_revision_evidence_pack(issues=issues)},
         }
-        merged_raw["revision_focus"] = {
-            "view": build_revision_focus(chapter_no=chapter_no, issues=issues),
-        }
-        merged_raw["revision_context_slice"] = {
-            "view": build_revision_context_slice(issues=issues),
-        }
-        merged_raw["revision_evidence_pack"] = {
-            "view": build_revision_evidence_pack(issues=issues),
-        }
-
-        outline_state: dict[str, Any] = {}
-        og = merged_raw.get("outline_generation")
-        if isinstance(og, dict):
-            ov = step_agent_view(og)
-            if ov:
-                outline_state = dict(ov)
 
         core = self._prompt_assembler.build(
             role_id=self.AGENT_NAME,
@@ -210,7 +223,7 @@ class RevisionWorkflowService:
             project_context=project_context,
             raw_state=merged_raw,
             retrieval_bundle=retrieval_bundle,
-            outline_state=outline_state,
+            outline_state={},
             working_notes=request.working_notes,
         )
         payload: dict[str, Any] = {
@@ -265,6 +278,7 @@ class RevisionWorkflowService:
                     "strategy_version": runtime.get("strategy_version"),
                     "schema_ref": runtime.get("schema_ref"),
                 },
+                **self._local_data_tool_llm_fields(),
             )
         )
 

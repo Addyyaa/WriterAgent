@@ -21,6 +21,13 @@ class TestPromptPayloadAssembler(unittest.TestCase):
         self.assertEqual(STEP_INPUT_SPECS["retrieval_agent"].context_tier, "planning")
         self.assertEqual(STEP_INPUT_SPECS["consistency_agent:chapter_audit"].context_tier, "strict_review")
         self.assertEqual(STEP_INPUT_SPECS["writer_agent:writer_revision"].context_tier, "generative")
+        rv = STEP_INPUT_SPECS["writer_agent:writer_revision"].retrieval
+        self.assertEqual(rv.mode, "compact_items")
+        self.assertLessEqual(rv.max_items, 8)
+        self.assertEqual(
+            set(rv.allowed_sources or []),
+            {"memory_fact", "chapter", "character_inventory", "story_state_snapshot"},
+        )
 
     def test_build_projects_only_dependencies_not_full_state(self) -> None:
         specs = {
@@ -155,6 +162,177 @@ class TestPromptPayloadAssembler(unittest.TestCase):
                 retrieval_bundle={},
                 outline_state={},
             )
+
+    def test_plot_agent_spec_plot_beats_and_plot_brief(self) -> None:
+        spec = STEP_INPUT_SPECS["plot_agent"]
+        self.assertEqual(spec.outline_profile, "plot_beats")
+        self.assertEqual(spec.project_profile, "plot_brief")
+        self.assertEqual(spec.dependencies[0].fields, ["title", "structure_json"])
+        dep_keys = [d.step_key for d in spec.dependencies]
+        self.assertNotIn("retrieval_context", dep_keys)
+        self.assertEqual(spec.retrieval.gap_treatment, "soft_sidebar")
+        self.assertEqual(spec.retrieval.max_information_gaps, 4)
+
+    def test_outline_plot_beats_no_long_content(self) -> None:
+        """plot_beats：outline 块不出现大纲长正文，仅 structure + 短 synopsis。"""
+        asm = PromptPayloadAssembler()
+        long_content = "节" * 4000
+        payload = asm.build(
+            role_id="plot_agent",
+            step_key="plot_alignment",
+            workflow_type="plot_alignment",
+            project_context={
+                "id": "p1",
+                "title": "T",
+                "genre": "G",
+                "premise": "x" * 2500,
+                "metadata_json": {"noise": "y" * 500, "current_arc_brief": "弧光简述"},
+            },
+            raw_state={
+                "outline_generation": {
+                    "view": {
+                        "title": "大纲",
+                        "structure_json": {"acts": [1]},
+                    }
+                }
+            },
+            retrieval_bundle={
+                "summary": {
+                    "key_facts": [],
+                    "current_states": [],
+                    "confirmed_facts": [],
+                    "supporting_evidence": [],
+                    "conflicts": [],
+                    "information_gaps": [],
+                },
+                "items": [],
+            },
+            outline_state={
+                "title": "大纲",
+                "content": long_content,
+                "structure_json": {"acts": [1]},
+            },
+        )
+        ol = payload["outline"]
+        self.assertNotIn("content", ol)
+        self.assertIn("content_synopsis", ol)
+        self.assertLessEqual(len(str(ol.get("content_synopsis") or "")), 520)
+        st = payload.get("state") or {}
+        og = st.get("outline_generation") or {}
+        self.assertNotIn("content", og)
+        self.assertIn("structure_json", og)
+
+    def test_retrieval_view_soft_sidebar_moves_gaps(self) -> None:
+        specs = {
+            "p": StepInputSpec(
+                role_id="p",
+                include_project=False,
+                include_outline=False,
+                dependencies=[],
+                retrieval=RetrievalViewSpec(
+                    mode="summary_only",
+                    gap_treatment="soft_sidebar",
+                    max_information_gaps=2,
+                ),
+            )
+        }
+        asm = PromptPayloadAssembler(specs=specs)
+        payload = asm.build(
+            role_id="p",
+            step_key="x",
+            workflow_type="t",
+            project_context={},
+            raw_state={},
+            retrieval_bundle={
+                "summary": {
+                    "key_facts": [],
+                    "current_states": [],
+                    "confirmed_facts": [],
+                    "supporting_evidence": [],
+                    "conflicts": [],
+                    "information_gaps": ["gap-a", "gap-b", "gap-c"],
+                },
+                "items": [],
+            },
+            outline_state={},
+        )
+        r = payload["retrieval"]
+        self.assertNotIn("information_gaps", r)
+        sg = r.get("soft_gaps") or {}
+        gaps = sg.get("information_gaps") or []
+        self.assertEqual(len(gaps), 2)
+        self.assertTrue(all(str(x).startswith("待核实") for x in gaps))
+
+    def test_project_plot_brief_truncates_and_filters_meta(self) -> None:
+        specs = {
+            "p": StepInputSpec(
+                role_id="p",
+                include_project=True,
+                include_outline=False,
+                project_profile="plot_brief",
+                dependencies=[],
+                retrieval=RetrievalViewSpec(mode="none"),
+            )
+        }
+        asm = PromptPayloadAssembler(specs=specs)
+        long_premise = "字" * 3000
+        out = asm.build(
+            role_id="p",
+            step_key="x",
+            workflow_type="t",
+            project_context={
+                "id": "p1",
+                "title": "T",
+                "genre": "G",
+                "premise": long_premise,
+                "metadata_json": {
+                    "tags": ["x"],
+                    "current_arc_brief": "弧",
+                    "series_brief": "系列",
+                },
+            },
+            raw_state={},
+            retrieval_bundle={},
+            outline_state={},
+        )
+        p = out["project"]
+        self.assertLessEqual(len(str(p.get("premise") or "")), 1450)
+        meta = p.get("metadata_json") or {}
+        self.assertNotIn("tags", meta)
+        self.assertEqual(meta.get("current_arc_brief"), "弧")
+
+    def test_project_retrieval_brief_truncates_premise(self) -> None:
+        specs = {
+            "r": StepInputSpec(
+                role_id="r",
+                include_project=True,
+                include_outline=False,
+                project_profile="retrieval_brief",
+                dependencies=[],
+                retrieval=RetrievalViewSpec(mode="none"),
+            )
+        }
+        asm = PromptPayloadAssembler(specs=specs)
+        long_premise = "字" * 3000
+        out = asm.build(
+            role_id="r",
+            step_key="x",
+            workflow_type="t",
+            project_context={
+                "id": "p1",
+                "title": "T",
+                "genre": "G",
+                "premise": long_premise,
+                "metadata_json": {"tags": ["x"] * 20, "tone": "dark"},
+            },
+            raw_state={},
+            retrieval_bundle={},
+            outline_state={},
+        )
+        p = out["project"]
+        self.assertLessEqual(len(str(p.get("premise") or "")), 1300)
+        self.assertNotIn("tags", p.get("metadata_json") or {})
+        self.assertEqual((p.get("metadata_json") or {}).get("tone"), "dark")
 
     def test_retrieval_bundle_summary_and_items(self) -> None:
         raw_state = {

@@ -92,7 +92,7 @@ from packages.storage.postgres.repositories.webhook_subscription_repository impo
 )
 from packages.storage.postgres.repositories.world_entry_repository import WorldEntryRepository
 from packages.storage.postgres.session import create_session_factory
-from packages.observability import InMemoryMetrics, render_prometheus
+from packages.observability import InMemoryMetrics, bind_planner_metrics, render_prometheus, summarize_planner_counters
 from packages.schemas import SchemaRegistry, SchemaValidationError
 from packages.schemas.asset_generator_outputs import asset_generator_schema_bundle
 from packages.sessions import SessionService
@@ -1293,6 +1293,7 @@ def create_app(
     app.state.search_factory = search_factory or _build_search_service
     app.state.evaluation_factory = evaluation_factory or _build_evaluation_service
     app.state.metrics_registry = InMemoryMetrics()
+    bind_planner_metrics(app.state.metrics_registry)
 
     @app.middleware("http")
     async def _metrics_middleware(request: Request, call_next):
@@ -2964,7 +2965,7 @@ def create_app(
         "/v2/writing/runs/{run_id}/retry",
         tags=["Writing Runs"],
         summary="重试失败/取消 run",
-        description="仅 failed/cancelled 状态可重试，幂等恢复后重新入队。",
+        description="failed/cancelled 可重试；若 run 被误标为 success 但仍有未完成步骤，亦可重试以修复。",
     )
     def retry_writing_run(run_id: UUID, req: Request, db: Session = Depends(get_db)) -> dict:
         service = req.app.state.orchestrator_factory(db)
@@ -2980,7 +2981,10 @@ def create_app(
         )
         ok = service.retry_run(run_id)
         if not ok:
-            raise HTTPException(status_code=400, detail="仅 failed/cancelled 状态可重试，或 run 不存在")
+            raise HTTPException(
+                status_code=400,
+                detail="无法重试：run 不存在，或已为成功且步骤均完成，或当前状态不允许",
+            )
         trigger_auto_worker_tick(limit=1)
         return {"ok": True, "run_id": str(run_id), "status": "queued"}
 
@@ -3894,6 +3898,7 @@ def create_app(
                 "delivery_success_total": webhook_success,
                 "delivery_dead_total": webhook_dead,
             },
+            "planner": summarize_planner_counters(counters),
         }
 
     @app.get(

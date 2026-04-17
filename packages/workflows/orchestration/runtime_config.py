@@ -135,6 +135,16 @@ class OrchestratorRuntimeConfig:
         )
 
 
+def _planner_strict_workflows_from_env() -> frozenset[str]:
+    raw = env_str(
+        "WRITER_PLANNER_STRICT_NODE_KNOWLEDGE_WORKFLOWS",
+        "writing_full,chapter_generation,revision",
+    ).strip()
+    if not raw or raw.lower() in {"none", "off", "false"}:
+        return frozenset()
+    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
+
+
 @dataclass(frozen=True)
 class PlannerRuntimeConfig:
     use_mock: bool = True
@@ -147,6 +157,17 @@ class PlannerRuntimeConfig:
     # 默认 False：动态规划节点知识字段在 schema 中为可选 properties，避免历史 plan_json / 弱模型缺键拖垮整次规划。
     # 需要硬合同时在 staging 试跑 WRITER_PLANNER_STRICT_NODE_KNOWLEDGE=true，再评估是否改为默认 True。
     strict_node_knowledge_schema: bool = False
+    # 按 workflow_type 默认强知识合同（与 strict_node_knowledge_schema 或关系）；可用 env 覆盖列表或置空关闭。
+    strict_node_knowledge_workflows: frozenset[str] = frozenset(
+        {"writing_full", "chapter_generation", "revision"}
+    )
+
+    def effective_strict_node_knowledge(self, workflow_type: str | None) -> bool:
+        """是否对本次规划使用节点知识 required（strict schema）。"""
+        if self.strict_node_knowledge_schema:
+            return True
+        wf = str(workflow_type or "").strip().lower()
+        return wf in self.strict_node_knowledge_workflows
 
     @classmethod
     def from_env(cls) -> "PlannerRuntimeConfig":
@@ -159,4 +180,5 @@ class PlannerRuntimeConfig:
             temperature=env_float("WRITER_PLANNER_TEMPERATURE", 0.2, minimum=0.0, maximum=2.0),
             timeout_seconds=env_float("WRITER_PLANNER_TIMEOUT", 20.0, minimum=1.0, maximum=300.0),
             strict_node_knowledge_schema=env_bool("WRITER_PLANNER_STRICT_NODE_KNOWLEDGE", False),
+            strict_node_knowledge_workflows=_planner_strict_workflows_from_env(),
         )

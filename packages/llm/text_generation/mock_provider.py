@@ -37,6 +37,8 @@ class MockTextGenerationProvider(TextGenerationProvider):
         fn = str(request.function_name or "").lower()
         if "consistency" in fn:
             return self._generate_consistency_mock(request)
+        if fn == "outline_generation_output":
+            return self._generate_outline_mock(request)
 
         goal = self._resolve_goal(request)
         title = self._build_title(goal)
@@ -69,6 +71,45 @@ class MockTextGenerationProvider(TextGenerationProvider):
                 "request": asdict(request),
                 "output": payload,
             },
+            request_metadata_json=dict(request.metadata_json or {}),
+        )
+
+    def _generate_outline_mock(self, request: TextGenerationRequest) -> TextGenerationResult:
+        """与 OutlineGenerationWorkflowService 输出 schema 对齐的 mock。"""
+        goal = self._resolve_goal(request)
+        title = self._build_title(goal)
+        synopsis = (
+            f"[Mock 大纲梗概] 围绕目标推进：{goal[:120].replace('\n', ' ')}。"
+            "关键转折与章末钩子为占位；不得视为正文。"
+        )
+        payload = {
+            "title": title,
+            "content": synopsis,
+            "structure_json": {
+                "chapter_goal": goal[:500],
+                "core_conflict": "[Mock] 核心矛盾占位",
+                "end_hook": "[Mock] 章末钩子占位",
+                "must_preserve_facts": [],
+                "open_questions": [],
+                "assumptions_used": [],
+                "acts": [
+                    {
+                        "name": "第一幕",
+                        "chapter_targets": [goal[:200] or "本章目标"],
+                        "risk_points": [],
+                    }
+                ],
+                "character_arcs": [],
+                "foreshadowing_plan": [],
+            },
+        }
+        return TextGenerationResult(
+            text=json.dumps(payload, ensure_ascii=False),
+            json_data=payload,
+            model=self.model,
+            provider="mock",
+            is_mock=True,
+            raw_response_json={"mock": True, "output": payload},
             request_metadata_json=dict(request.metadata_json or {}),
         )
 

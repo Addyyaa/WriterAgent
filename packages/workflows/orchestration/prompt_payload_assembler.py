@@ -101,10 +101,10 @@ class PromptPayloadAssembler:
         }
 
         if spec.include_project:
-            payload["project"] = self._build_project_view(project_context)
+            payload["project"] = self._build_project_view(project_context, spec)
 
         if spec.include_outline:
-            payload["outline"] = self._build_outline_view(outline_state)
+            payload["outline"] = self._build_outline_view(outline_state, spec)
 
         state_view = self._build_state_view(spec, raw_state)
         payload["state"] = state_view
@@ -211,7 +211,7 @@ class PromptPayloadAssembler:
             section = self._resolve_section_dict(src_step, dep.from_section)
             projected = self._project_fields(section, dep.fields)
             if dep.compact:
-                projected = self._compact_step_output(dep.step_key, projected)
+                projected = self._compact_step_output(dep.step_key, projected, spec)
 
             if not projected:
                 continue
@@ -244,9 +244,22 @@ class PromptPayloadAssembler:
             return {}
         return {k: src[k] for k in fields if k in src}
 
-    def _compact_step_output(self, step_key: str, data: dict[str, Any]) -> dict[str, Any]:
-        del step_key
+    def _compact_step_output(
+        self,
+        step_key: str,
+        data: dict[str, Any],
+        spec: StepInputSpec | None = None,
+    ) -> dict[str, Any]:
         out = dict(data)
+        if (
+            str(step_key or "") == "outline_generation"
+            and spec is not None
+            and getattr(spec, "outline_profile", "full") == "plot_beats"
+        ):
+            raw_c = out.get("content")
+            if isinstance(raw_c, str) and raw_c.strip():
+                out["content_synopsis"] = self._summarize_long_text(raw_c, limit=500)
+            out.pop("content", None)
         ch = out.get("chapter")
         if isinstance(ch, dict) and isinstance(ch.get("content"), str):
             ch_copy = dict(ch)
@@ -322,6 +335,8 @@ class PromptPayloadAssembler:
         supporting_evidence = decision["supporting_evidence"]
         conflicts = decision["conflicts"]
         information_gaps = decision["information_gaps"]
+        gap_cap = max(0, int(getattr(rv, "max_information_gaps", 16) or 0))
+        gaps_slice = list(information_gaps[:gap_cap]) if gap_cap else []
 
         def _layered_retrieval_view(*, items_payload: list[dict[str, Any]] | None) -> dict[str, Any]:
             """决策型分层：与 retrieval_agent / ContextPackage 合同对齐。"""
@@ -331,8 +346,20 @@ class PromptPayloadAssembler:
                 "confirmed_facts": confirmed_facts[:36],
                 "supporting_evidence": supporting_evidence[:40],
                 "conflicts": conflicts[:16],
-                "information_gaps": information_gaps[:16],
             }
+            gap_mode = getattr(rv, "gap_treatment", "inline") or "inline"
+            if gap_mode == "soft_sidebar":
+                prefixed = []
+                for g in gaps_slice:
+                    s = str(g).strip()
+                    if not s:
+                        continue
+                    if not s.startswith("待核实"):
+                        s = f"待核实：{s}"
+                    prefixed.append(s)
+                out["soft_gaps"] = {"information_gaps": prefixed}
+            else:
+                out["information_gaps"] = gaps_slice
             if items_payload is not None:
                 out["items"] = items_payload
             return out
@@ -373,7 +400,42 @@ class PromptPayloadAssembler:
 
         return {}
 
-    def _build_project_view(self, project_context: dict[str, Any]) -> dict[str, Any]:
+    def _build_project_view(self, project_context: dict[str, Any], spec: StepInputSpec | None = None) -> dict[str, Any]:
+        profile = getattr(spec, "project_profile", "full") if spec is not None else "full"
+        if spec is not None and profile == "retrieval_brief":
+            meta = project_context.get("metadata_json") if isinstance(project_context.get("metadata_json"), dict) else {}
+            brief_meta: dict[str, Any] = {}
+            for k in ("target_audience", "tone"):
+                if k in meta and meta.get(k) is not None:
+                    brief_meta[k] = meta[k]
+            premise = str(project_context.get("premise") or "").strip()
+            max_ch = 1200
+            if len(premise) > max_ch:
+                premise = premise[: max_ch - 1] + "…"
+            return {
+                "id": project_context.get("id"),
+                "title": project_context.get("title"),
+                "genre": project_context.get("genre"),
+                "premise": premise,
+                "metadata_json": brief_meta,
+            }
+        if spec is not None and profile == "plot_brief":
+            meta = project_context.get("metadata_json") if isinstance(project_context.get("metadata_json"), dict) else {}
+            brief_meta = {}
+            for k in ("current_arc_brief", "current_chapter_position_brief", "series_brief"):
+                if k in meta and meta.get(k) is not None:
+                    brief_meta[k] = meta[k]
+            premise = str(project_context.get("premise") or "").strip()
+            max_ch = 1400
+            if len(premise) > max_ch:
+                premise = premise[: max_ch - 1] + "…"
+            return {
+                "id": project_context.get("id"),
+                "title": project_context.get("title"),
+                "genre": project_context.get("genre"),
+                "premise": premise,
+                "metadata_json": brief_meta,
+            }
         return {
             "id": project_context.get("id"),
             "title": project_context.get("title"),
@@ -382,10 +444,43 @@ class PromptPayloadAssembler:
             "metadata_json": project_context.get("metadata_json") or {},
         }
 
-    def _build_outline_view(self, outline_state: dict[str, Any]) -> dict[str, Any]:
+    def _build_outline_view(self, outline_state: dict[str, Any], spec: StepInputSpec) -> dict[str, Any]:
         structure = outline_state.get("structure_json")
         if not isinstance(structure, dict):
             structure = {}
+        if getattr(spec, "outline_profile", "full") == "plot_beats":
+            synopsis: str | None = None
+            for key in ("synopsis", "logline", "one_line", "elevator_pitch"):
+                v = structure.get(key)
+                if isinstance(v, str) and v.strip():
+                    synopsis = self._summarize_long_text(v.strip(), limit=500)
+                    break
+            if synopsis is None:
+                cg = structure.get("chapter_goal")
+                if isinstance(cg, str) and cg.strip():
+                    eh = structure.get("end_hook")
+                    eh_s = f"｜钩子：{eh}" if isinstance(eh, str) and eh.strip() else ""
+                    synopsis = self._summarize_long_text(f"{cg.strip()}{eh_s}", limit=500)
+            if synopsis is None:
+                meta = outline_state.get("metadata_json")
+                if isinstance(meta, dict):
+                    for key in ("synopsis", "logline"):
+                        v = meta.get(key)
+                        if isinstance(v, str) and v.strip():
+                            synopsis = self._summarize_long_text(v.strip(), limit=500)
+                            break
+            if synopsis is None:
+                raw_content = outline_state.get("content")
+                if isinstance(raw_content, str) and raw_content.strip():
+                    synopsis = self._summarize_long_text(raw_content, limit=500)
+            out: dict[str, Any] = {
+                "title": outline_state.get("title"),
+                "structure_json": structure,
+            }
+            if synopsis:
+                out["content_synopsis"] = synopsis
+            return out
+
         raw_content = outline_state.get("content")
         content_out: Any = raw_content
         if isinstance(raw_content, str) and len(raw_content) > 2400:
